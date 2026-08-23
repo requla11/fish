@@ -184,13 +184,13 @@ We actively welcome community contributions and translations for our documentati
 
 ```text
 fish-rs/
-â”œâ”€â”€ crates/
-â”‚   â”œâ”€â”€ fish-core/           # Core functionality
-â”‚   â”œâ”€â”€ fish-cli/            # Command-line interface
-â”‚   â”œâ”€â”€ fish-backend-*/      # Language backends
-â”‚   â””â”€â”€ ...                   # Other feature crates
-â”œâ”€â”€ examples/                 # Example projects
-â””â”€â”€ docs/                     # Documentation
+├── crates/
+│   ├── fish-core/           # Core functionality
+│   ├── fish-cli/            # Command-line interface
+│   ├── fish-backend-*/      # Language backends
+│   └── ...                   # Other feature crates
+├── examples/                 # Example projects
+└── docs/                     # Documentation
 ```
 
 ## Testing

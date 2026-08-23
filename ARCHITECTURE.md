@@ -332,17 +332,17 @@ Supports multiple CI/CD platforms:
 
 ```
 1. Workspace Discovery
-   â†“
+   ↓
 2. Dependency Graph Construction
-   â†“
+   ↓
 3. Cache Fingerprint Computation
-   â†“
+   ↓
 4. Scheduler Task Distribution
-   â†“
+   ↓
 5. Executor Process Management
-   â†“
+   ↓
 6. Result Collection & Caching
-   â†“
+   ↓
 7. Build Completion
 ```
 
@@ -350,15 +350,15 @@ Supports multiple CI/CD platforms:
 
 ```
 1. Worker Registration
-   â†“
+   ↓
 2. Task Distribution
-   â†“
+   ↓
 3. VFS File Streaming
-   â†“
+   ↓
 4. Remote Execution
-   â†“
+   ↓
 5. Result Aggregation
-   â†“
+   ↓
 6. Cache Population
 ```
 

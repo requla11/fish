@@ -141,7 +141,7 @@ jobs:
       - name: Evaluate job results
         run: |
           failed=0
-          for result in "${{ join(needs.*.result, ' ') }}"; do
+          for result in ${{ join(needs.*.result, ' ') }}; do
             case "$result" in
               success|skipped) ;;
               *) failed=1; echo "job result: $result" ;;

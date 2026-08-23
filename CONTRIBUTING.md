@@ -165,6 +165,12 @@ We embrace modern developer tooling, including AI coding assistants (e.g., Copil
 4. **Memory Safety**: Adhere strictly to `#![forbid(unsafe_code)]` wherever enabled. Unsafe blocks must have documented safety justifications and be minimal.
 5. **Architectural Coherence**: Code must be functional, maintainable, and avoid bloated or dead implementations.
 6. **No Code Comments Violation**: Maintain the codebase policy of zero source code comments where applicable.
+7. **Human Review Before Submission**: Contributors must review, understand, and be able to explain every line they submit — including AI-generated lines. Submitting unreviewed machine output is treated as submitting code you did not write.
+8. **Provenance & Originality**: Contributors are responsible for ensuring submitted content is original or properly attributed and licensed for inclusion under MIT. If an AI tool reproduces recognizable third-party code (e.g., from a copyleft project), that code must not be submitted as-is; rewrite it or obtain compatible licensing.
+
+#### Why Human Review Matters Here
+
+Substantial, curated human involvement is what allows Fish to claim copyright over its combined work and keep the MIT grant meaningful. Treat AI output as a draft from an eager junior contributor: useful, fast, and always requiring your signature before it enters the tree.
 
 ### Documentation & Translation Contributions
 
@@ -426,6 +432,6 @@ For security-related issues, follow the private reporting instructions in `SECUR
 
 ## License
 
-By contributing to Fish, you agree that your contributions will be licensed under the MIT License.
+By contributing to Fish, you agree that your contributions will be licensed under the MIT License. This applies equally to human-written and AI-assisted contributions; see the [AI-Assisted Development Policy](#ai-assisted-development-policy) for the provenance and review requirements that make this grant valid.
 
 Fish is distributed under the MIT License. See [`LICENSE`](LICENSE) for the full license text.

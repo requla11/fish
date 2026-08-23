@@ -108,6 +108,10 @@ mod tests {
     #[test]
     fn test_lld_on_posix_uses_fuse_ld() {
         let flags = LinkerDispatcher::rustc_linker_flags(LinkerKind::Lld);
-        assert_eq!(flags, vec!["-C", "link-arg=-fuse-ld=lld"]);
+        if cfg!(target_os = "macos") {
+            assert_eq!(flags, vec!["-C", "link-arg=-fuse-ld=ld64.lld"]);
+        } else {
+            assert_eq!(flags, vec!["-C", "link-arg=-fuse-ld=lld"]);
+        }
     }
 }

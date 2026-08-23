@@ -1,8 +1,40 @@
 use crate::error::{SecurityError, SecurityResult};
-use crate::scanner::ScanOptions;
+use crate::osv::{OsvClient, OsvConfig};
+use crate::scanner::{AdvisorySource, ScanOptions};
 use crate::vulnerability::{Severity, Vulnerability, VulnerabilitySource};
 use semver::Version;
 use std::path::Path;
+
+/// Run a live OSV lookup when the scan options request one.
+///
+/// `Ok(None)` means "stay on the embedded database"; `Ok(Some(..))` carries
+/// the flattened live results. Transport/API errors propagate so callers see
+/// a failed scan instead of silently stale data.
+async fn query_osv(
+    options: &ScanOptions,
+    ecosystem: &str,
+    packages: &[(String, String)],
+) -> SecurityResult<Option<Vec<Vulnerability>>> {
+    match &options.advisory_source {
+        AdvisorySource::EmbeddedDatabase => Ok(None),
+        AdvisorySource::Osv { base_url } => {
+            let client = OsvClient::new(OsvConfig {
+                base_url: base_url.clone(),
+                ..OsvConfig::default()
+            })?;
+            let triples: Vec<(String, String, String)> = packages
+                .iter()
+                .map(|(name, version)| (ecosystem.to_string(), name.clone(), version.clone()))
+                .collect();
+            let per_package = client.query_packages(&triples).await?;
+            let mut flat = Vec::new();
+            for mut vulns in per_package {
+                flat.append(&mut vulns);
+            }
+            Ok(Some(flat))
+        }
+    }
+}
 
 pub trait BackendScanner {
     fn scan(
@@ -114,7 +146,7 @@ impl BackendScanner for RustScanner {
     async fn scan(
         &self,
         project_path: &Path,
-        _options: &ScanOptions,
+        options: &ScanOptions,
     ) -> SecurityResult<Vec<Vulnerability>> {
         let lock_file = project_path.join("Cargo.lock");
         if !lock_file.exists() {
@@ -128,6 +160,9 @@ impl BackendScanner for RustScanner {
             .map_err(SecurityError::IoError)?;
 
         let packages = Self::parse_cargo_lock(&content);
+        if let Some(vulns) = query_osv(options, "crates.io", &packages).await? {
+            return Ok(vulns);
+        }
         Ok(Self::check_advisories(&packages))
     }
 }
@@ -205,7 +240,7 @@ impl BackendScanner for NpmScanner {
     async fn scan(
         &self,
         project_path: &Path,
-        _options: &ScanOptions,
+        options: &ScanOptions,
     ) -> SecurityResult<Vec<Vulnerability>> {
         let lock_file = project_path.join("package-lock.json");
         if !lock_file.exists() {
@@ -241,6 +276,9 @@ impl BackendScanner for NpmScanner {
             }
         }
 
+        if let Some(vulns) = query_osv(options, "npm", &packages).await? {
+            return Ok(vulns);
+        }
         Ok(Self::check_advisories(&packages))
     }
 }

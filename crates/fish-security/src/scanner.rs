@@ -6,6 +6,17 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
 
+/// Where advisory data comes from during a scan.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub enum AdvisorySource {
+    /// Built-in rule snapshot (works offline, but ages quickly).
+    #[default]
+    EmbeddedDatabase,
+    /// Live OSV lookups against the given base URL
+    /// (e.g. `https://api.osv.dev/v1`, or an internal mirror).
+    Osv { base_url: String },
+}
+
 /// Scan options
 #[derive(Debug, Clone, Default)]
 pub struct ScanOptions {
@@ -17,6 +28,9 @@ pub struct ScanOptions {
     pub scan_dev_dependencies: bool,
     /// Maximum number of vulnerabilities to return
     pub max_results: Option<usize>,
+    /// Advisory data source. Defaults to the embedded snapshot; switch to
+    /// [`AdvisorySource::Osv`] for live lookups.
+    pub advisory_source: AdvisorySource,
 }
 
 /// Scan report

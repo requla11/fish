@@ -1,0 +1,264 @@
+   Compiling fish-security v0.4.0 (C:\Users\newo\Downloads\fish\crates\fish-security)
+   Compiling fish-cli v0.4.0 (C:\Users\newo\Downloads\fish\crates\fish-cli)
+   Compiling fish-backend-go v0.4.0 (C:\Users\newo\Downloads\fish\crates\fish-backend-go)
+   Compiling fish-backend-rust v0.4.0 (C:\Users\newo\Downloads\fish\crates\fish-backend-rust)
+   Compiling fish-worker v0.4.0 (C:\Users\newo\Downloads\fish\crates\fish-worker)
+   Compiling fish-remote-cache v0.4.0 (C:\Users\newo\Downloads\fish\crates\fish-remote-cache)
+   Compiling fish-analytics v0.4.0 (C:\Users\newo\Downloads\fish\crates\fish-analytics)
+
+thread 'coordinator' (9648) panicked at /rustc-dev/8bab26f4f68e0e26f0bb7960be334d5b520ea452/compiler\rustc_codegen_ssa\src\back\lto.rs:61:17:
+failed to mmap LTO bitcode file `\\?\C:\Users\newo\Downloads\fish\target\debug\incremental\fish_remote_cache-3luk8hyzep33x\s-hlm6jw3wrv-15sm4rb-working\24racsidiu10i1xjle0bcranc.pre-lto.bc`: The paging file is too small for this operation to complete. (os error 1455)
+stack backtrace:
+error: linking with `link.exe` failed: exit code: 1102
+  |
+  = note: "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe" "/NOLOGO" "C:\\Users\\newo\\Downloads\\fish\\target\\debug\\deps\\rustcJYtRTY\\symbols.o" "<45 object files omitted>" "<sysroot>\\lib\\rustlib\\x86_64-pc-windows-msvc\\lib/{libtest-*,libgetopts-*,librustc_std_workspace_std-*}.rlib" "C:\\Users\\newo\\Downloads\\fish\\target\\debug\\deps/{libfish_scheduler-ba488dffb5a80cb5,libcrossbeam_channel-8d249c16f59145e1,libjobserver-9b2e6488c9745655,libtracing-688ba1d8e5eda97b,libtracing_core-6913a23f39eaedd9,libnotify-ed8b0217c0f6fd9a,liblog-5feb37e1cdc2da14,libwalkdir-d703eba2e39e30a3,libsame_file-e3217c5849e126ef,libwinapi_util-fac028daae00bf8b,libnotify_types-ce1cc93c08c0c8ff,libbitflags-ef54f413f9c20bb4,libsysinfo-ea720e03f7c41f72,libntapi-b4ebb7abaf680c4d,libwinapi-99e638360a46cdfb,liblibc-4775a6e5a5c1808c,libwindows-0a4fb0f03beabb1e,libwindows_core-6927301b88f97cea,libwindows_strings-c42bc560e00bcbf0,libwindows_result-a96746ff1b417a7c,libfish_cache-e32ee35622528374,libfish_cas-52de765e7350859f,libzstd-f273498233774e63,libzstd_safe-27b09fe004cedf0d,libzstd_sys-1ae75b03054c36a7,libdashmap-97623d2020657252,libhashbrown-6c3054a5ba844b0a,librayon-bbc2d002e81df04d,librayon_core-ca72f50571eeb92f,libcrossbeam_deque-afb0e364eb73f9cd,libcrossbeam_epoch-0cc992ef2c245fc4,libeither-d2b95b1ff6032ce3,libcrossbeam_utils-9bc24d1305fa88c4,libfish_backend_rust-3a3d7af1c8589fc6,libfish_executor-235d71a97209d6e3,libwait_timeout-90b077a8b4915d62,libtokio-9210a5d43e95a99a,libsocket2-50c2a6531387255f,libwindows_sys-89b426db6e1bc925,libwindows_targets-d51a163292ad00a3,libbytes-364fdb9e21a9b81f,libmio-4f1aa4622f5b17fb,libwindows_sys-943dcc19853339b4,libparking_lot-b9fa2215011da99a,libparking_lot_core-89581fdfce81e4f9,libwindows_link-61dfa106dbe02a55,libsmallvec-5be729fe3ede5cf0,libpin_project_lite-17e71591983a1f3a,libfish_core-0eff705fd8e5adcc,libtempfile-108eb49fd6a3410e,libfastrand-adf66ca859e394d7,libonce_cell-142a5956bca51a8e,libwindows_sys-29f0b42e6c05d109,libwindows_targets-ff596b7bdf844d4f,libuuid-152d4ee0ce0689a5,libgetrandom-0705b49ce9f90705,librand_core-20e926414bde6fad,libtoml-6c48d270d7e0ae8c,libtoml_writer-cf1d9c54415aee48,libtoml_parser-832e062c157d7ddb,libwinnow-f1c58c9f578d3311,libserde_spanned-eb99ac46b5febdbd,libtoml_datetime-5c27c067e485685c,libblake3-517f27a20256b588,libconstant_time_eq-caf19953a9c06ccf,libcpufeatures-6517c0f5b8e0d25f,libcfg_if-6ddd773ecb902517,libarrayvec-77538033012ed7cc,libarrayref-2a8ba9432f1d5a4d,libfish_graph-33a9a548d08fd351,libspin-e63cd863131c874f,liblock_api-026e31c0485a45ea,libscopeguard-26f8967763713132,libregex-78a6ece437a67a79,libregex_automata-9dc5e63fc6d3e011,libaho_corasick-8f115b2ecb4d0935,libregex_syntax-92d048c5a327ef24,libanyhow-59da02d3e32c3783,libcargo_metadata-9bf05241c494adad,libserde_json-95ab3cc63570ed70,libmemchr-2ed1c782f55c80af,libitoa-583b12786d6f1b11,libzmij-9ddf387035183c1b,libthiserror-1c548a7c31df6c9a,libserde-53dcd64fc7878158,libsemver-9245d1488b9268c7,libcargo_platform-e2d12e3a3a36c39b,libcamino-46bd8717c3deb71a,libserde_core-100bc9a84a757c86}.rlib" "<sysroot>\\lib\\rustlib\\x86_64-pc-windows-msvc\\lib/{libstd-*,libpanic_unwind-*,libcfg_if-*,libwindows_link-*,librustc_demangle-*,libstd_detect-*,libhashbrown-*,librustc_std_workspace_alloc-*,libunwind-*,librustc_std_workspace_core-*,liballoc-*,libcore-*,libcompiler_builtins-*}.rlib" "kernel32.lib" "kernel32.lib" "ntdll.lib" "advapi32.lib" "cfgmgr32.lib" "credui.lib" "gdi32.lib" "kernel32.lib" "msimg32.lib" "opengl32.lib" "secur32.lib" "synchronization.lib" "user32.lib" "winspool.lib" "legacy_stdio_definitions.lib" "C:\\Users\\newo\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\windows_x86_64_msvc-0.53.1\\lib\\windows.0.53.0.lib" "C:\\Users\\newo\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\windows_x86_64_msvc-0.52.6\\lib\\windows.0.52.0.lib" "kernel32.lib" "kernel32.lib" "kernel32.lib" "ntdll.lib" "userenv.lib" "ws2_32.lib" "dbghelp.lib" "/defaultlib:msvcrt" "/NXCOMPAT" "/LIBPATH:C:\\Users\\newo\\Downloads\\fish\\target\\debug\\build\\blake3-5de948b7f70cde67\\out" "/LIBPATH:C:\\Users\\newo\\Downloads\\fish\\target\\debug\\build\\zstd-sys-639746af45f7d06f\\out" "/LIBPATH:C:\\Users\\newo\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\windows_x86_64_msvc-0.52.6\\lib" "/LIBPATH:C:\\Users\\newo\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\windows_x86_64_msvc-0.53.1\\lib" "/OUT:C:\\Users\\newo\\Downloads\\fish\\target\\debug\\deps\\pipeline-24778e2748d10fe6.exe" "/OPT:REF,ICF" "/DEBUG" "/PDBALTPATH:%_PDB%" "/NATVIS:<sysroot>\\lib\\rustlib\\etc\\intrinsic.natvis" "/NATVIS:<sysroot>\\lib\\rustlib\\etc\\liballoc.natvis" "/NATVIS:<sysroot>\\lib\\rustlib\\etc\\libcore.natvis" "/NATVIS:<sysroot>\\lib\\rustlib\\etc\\libstd.natvis" "/NATVIS:C:\\Users\\newo\\Downloads\\fish\\target\\debug\\deps\\rustcJYtRTY\\pipeline-0.natvis" "/NATVIS:C:\\Users\\newo\\Downloads\\fish\\target\\debug\\deps\\rustcJYtRTY\\pipeline-1.natvis" "/NATVIS:C:\\Users\\newo\\Downloads\\fish\\target\\debug\\deps\\rustcJYtRTY\\pipeline-2.natvis" "/OPT:REF" "/OPT:ICF"
+  = note: some arguments are omitted. use `--verbose` to show all linker arguments
+  = note: LINK : fatal error LNK1102: out of memory
+          
+
+error: could not compile `fish-backend-rust` (test "pipeline") due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+   0:     0x7ffebc52f38e - std::backtrace_rs::backtrace::win64::trace
+                               at /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library\std\src\..\..\backtrace\src\backtrace\win64.rs:85
+   1:     0x7ffebc52f38e - std::backtrace_rs::backtrace::trace_unsynchronized
+                               at /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library\std\src\..\..\backtrace\src\backtrace\mod.rs:66
+   2:     0x7ffebc52f38e - std::sys::backtrace::_print_fmt
+                               at /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library\std\src\sys\backtrace.rs:74
+   3:     0x7ffebc52f38e - std::sys::backtrace::impl$0::print::impl$0::fmt
+                               at /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library\std\src\sys\backtrace.rs:44
+   4:     0x7ffebc557c61 - core::fmt::write
+                               at /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library\core\src\fmt\mod.rs:0
+   5:     0x7ffebc53f7e4 - std::io::default_write_fmt
+                               at /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library\std\src\io\mod.rs:622
+   6:     0x7ffebc53f7e4 - std::io::Write::write_fmt<std::sys::stdio::windows::Stderr>
+                               at /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library\std\src\io\mod.rs:1977
+   7:     0x7ffebc508189 - std::sys::backtrace::BacktraceLock::print
+                               at /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library\std\src\sys\backtrace.rs:47
+   8:     0x7ffebc508189 - std::panicking::default_hook::closure$0
+                               at /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library\std\src\panicking.rs:292
+   9:     0x7ffebc522a18 - std::panicking::default_hook
+                               at /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library\std\src\panicking.rs:319
+  10:     0x7ffebdd9c2cb - core[3b42104b74debb2e]::slice::sort::unstable::heapsort::heapsort::<((rustc_lint_defs[2520521cc992afd]::Level, &str), usize), <((rustc_lint_defs[2520521cc992afd]::Level, &str), usize) as core[3b42104b74debb2e]::cmp::PartialOrd>::lt>
+  11:     0x7ffebc522d14 - std::panicking::panic_with_hook
+                               at /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library\std\src\panicking.rs:833
+  12:     0x7ffebc50825e - std::panicking::panic_handler::closure$0
+                               at /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library\std\src\panicking.rs:698
+  13:     0x7ffebc5057bf - std::sys::backtrace::__rust_end_short_backtrace<std::panicking::panic_handler::closure_env$0,never$>
+                               at /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library\std\src\sys\backtrace.rs:182
+  14:     0x7ffebc508e1e - std::panicking::panic_handler
+                               at /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library\std\src\panicking.rs:689
+  15:     0x7ffec0abd4ad - core::panicking::panic_fmt
+                               at /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library\core\src\panicking.rs:80
+  16:     0x7ffeb989ee16 - RNvMs3_NtCs8oYkXk2gzQW_5alloc7raw_vecINtB5_6RawVecINtNvMs5_NtNtCsdNe2zuWOxH4_21rustc_data_structures5graph3sccINtBV_16SccsConstructionppE19walk_unvisited_node17VisitingNodeFrameINtNtNtCs3lC3oIQvEGD_14rustc_borrowck11constraints5graph11RegionGraphNtB2S_6Nor
+  17:     0x7ffeb98b19cb - rustc_codegen_llvm[a938eaeeea5afa6e]::llvm_util::global_llvm_features
+  18:     0x7ffeb98d65fc - <rustc_codegen_llvm[a938eaeeea5afa6e]::LlvmCodegenBackend as rustc_codegen_ssa[f515b37f3e18fe62]::traits::write::WriteBackendMethods>::run_thin_lto
+  19:     0x7ffeb987cfa5 - rustc_interface[7971ec2362d01f78]::interface::parse_cfg
+  20:     0x7ffebc5fa0ba - <hashbrown[b80bb9581ca00aa9]::raw::RawTable<((&rustc_codegen_llvm[a938eaeeea5afa6e]::llvm::ffi::Metadata, usize), &rustc_codegen_llvm[a938eaeeea5afa6e]::llvm::ffi::Metadata)>>::reserve_rehash::<hashbrown[b80bb9581ca00aa9]::map::make_hasher<(&rustc_codegen_llvm[a938eaeeea5afa6e]::llvm::ffi::Metadata, usize), &rustc_codegen_llvm[a938eaeeea5afa6e]::llvm::ffi::Metadata, rustc_hash[cc6f12e651399690]::FxBuildHasher>::{closure#0}>
+  21:     0x7ffeb988252d - RINvNtNtCslFVcyoAu48q_3std3sys9backtrace28___rust_begin_short_backtraceNCINvNtNtCsl2zZmMRHZLi_17rustc_codegen_ssa4back5write20start_executing_workNtCsewLwuxuJ3v6_18rustc_codegen_llvm18LlvmCodegenBackendEs1_0INtNtCs55qC6OcLGgs_4core6result6ResultINtB1c_15Ma
+  22:     0x7ffeb988e9bd - RINvNtNtNtNtCs55qC6OcLGgs_4core5slice4sort6stable9quicksort9quicksortTNtNtCs8oYkXk2gzQW_5alloc6string6StringB16_ENCINvMNtB1a_5sliceSB15_7sort_byNCINvXs1o_NtNtNtB1a_11collections5btree3mapINtB2s_8BTreeMapB16_B16_EINtNtNtNtBa_4iter6traits7collect12FromIterat
+  23:     0x7ffebc52c55a - std::sys::thread::windows::impl$0::new::thread_start
+                               at /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library\std\src\sys\thread\windows.rs:58
+  24:     0x7fff51fde957 - BaseThreadInitThunk
+  25:     0x7fff529cad6c - RtlUserThreadStart
+
+error: the compiler unexpectedly panicked. This is a bug
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.97.1 (8bab26f4f 2026-07-14) running on x86_64-pc-windows-msvc
+
+note: compiler flags: -C opt-level=1 -C embed-bitcode=no -C codegen-units=256 -C debuginfo=2 -C debug-assertions=on -C incremental=[REDACTED] -C link-arg=/OPT:REF -C link-arg=/OPT:ICF
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+end of query stack
+
+thread 'rustc' (1008) panicked at /rustc-dev/8bab26f4f68e0e26f0bb7960be334d5b520ea452/compiler\rustc_codegen_ssa\src\back\write.rs:2111:17:
+/rustc-dev/8bab26f4f68e0e26f0bb7960be334d5b520ea452/compiler\rustc_codegen_ssa\src\back\write.rs:2111:17: panic during codegen/LLVM phase
+stack backtrace:
+   0:     0x7ffebc52f38e - std::backtrace_rs::backtrace::win64::trace
+                               at /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library\std\src\..\..\backtrace\src\backtrace\win64.rs:85
+   1:     0x7ffebc52f38e - std::backtrace_rs::backtrace::trace_unsynchronized
+                               at /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library\std\src\..\..\backtrace\src\backtrace\mod.rs:66
+   2:     0x7ffebc52f38e - std::sys::backtrace::_print_fmt
+                               at /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library\std\src\sys\backtrace.rs:74
+   3:     0x7ffebc52f38e - std::sys::backtrace::impl$0::print::impl$0::fmt
+                               at /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library\std\src\sys\backtrace.rs:44
+   4:     0x7ffebc557c61 - core::fmt::write
+                               at /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library\core\src\fmt\mod.rs:0
+   5:     0x7ffebc53f7e4 - std::io::default_write_fmt
+                               at /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library\std\src\io\mod.rs:622
+   6:     0x7ffebc53f7e4 - std::io::Write::write_fmt<std::sys::stdio::windows::Stderr>
+                               at /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library\std\src\io\mod.rs:1977
+   7:     0x7ffebc508189 - std::sys::backtrace::BacktraceLock::print
+                               at /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library\std\src\sys\backtrace.rs:47
+   8:     0x7ffebc508189 - std::panicking::default_hook::closure$0
+                               at /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library\std\src\panicking.rs:292
+   9:     0x7ffebc522a18 - std::panicking::default_hook
+                               at /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library\std\src\panicking.rs:319
+  10:     0x7ffebdd9c2cb - core[3b42104b74debb2e]::slice::sort::unstable::heapsort::heapsort::<((rustc_lint_defs[2520521cc992afd]::Level, &str), usize), <((rustc_lint_defs[2520521cc992afd]::Level, &str), usize) as core[3b42104b74debb2e]::cmp::PartialOrd>::lt>
+  11:     0x7ffebc522d14 - std::panicking::panic_with_hook
+                               at /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library\std\src\panicking.rs:833
+  12:     0x7ffec067f2af - <rustc_data_structures[a0aabe1ba95bce04]::profiling::SelfProfilerRef>::exec::cold_call::<<rustc_data_structures[a0aabe1ba95bce04]::profiling::SelfProfilerRef>::incr_result_hashing::{closure#0}>
+  13:     0x7ffec0669119 - std[fc79cc53f84b73ec]::sys::backtrace::__rust_end_short_backtrace::<std[fc79cc53f84b73ec]::panicking::begin_panic<alloc[61df5e49bb59a840]::string::String>::{closure#0}, !>
+  14:     0x7ffec06616b6 - std[fc79cc53f84b73ec]::panicking::begin_panic::<alloc[61df5e49bb59a840]::string::String>
+  15:     0x7ffec067f866 - <rustc_data_structures[a0aabe1ba95bce04]::profiling::SelfProfilerRef>::exec::cold_call::<<rustc_data_structures[a0aabe1ba95bce04]::profiling::SelfProfilerRef>::incr_result_hashing::{closure#0}>
+  16:     0x7ffec067f8e5 - <rustc_data_structures[a0aabe1ba95bce04]::profiling::SelfProfilerRef>::exec::cold_call::<<rustc_data_structures[a0aabe1ba95bce04]::profiling::SelfProfilerRef>::incr_result_hashing::{closure#0}>
+  17:     0x7ffec0669656 - std[fc79cc53f84b73ec]::sys::backtrace::__rust_end_short_backtrace::<std[fc79cc53f84b73ec]::panicking::begin_panic<alloc[61df5e49bb59a840]::string::String>::{closure#0}, !>
+  18:     0x7ffec06c8226 - rustc_middle[327ca6dd13956ce7]::util::bug::bug_fmt
+  19:     0x7ffeb98dd1d5 - <rustc_codegen_llvm[a938eaeeea5afa6e]::LlvmCodegenBackend as rustc_codegen_ssa[f515b37f3e18fe62]::traits::backend::CodegenBackend>::join_codegen
+  20:     0x7ffeb983619d - <rustc_interface[7971ec2362d01f78]::queries::Linker>::link
+  21:     0x7ffeb97de861 - std[fc79cc53f84b73ec]::sys::backtrace::__rust_begin_short_backtrace::<std[fc79cc53f84b73ec]::thread::lifecycle::spawn_unchecked<ctrlc[85c6d45e5360c17e]::set_handler_inner<rustc_driver_impl[3c242465527f1190]::install_ctrlc_handler::{closure#0}>::{closure#0}, ()>::{closure#1}::{closure#0}::{closure#0}, ()>
+  22:     0x7ffeb97da591 - RINvNtNtCslFVcyoAu48q_3std3sys9backtrace28___rust_begin_short_backtraceNCNCINvNtCsaqrPHTSpvJs_15rustc_interface4util26run_in_thread_with_globalsNCINvB1e_31run_in_thread_pool_with_globalsNCINvNtB1g_9interface12run_compileruNCNvCs5a844wrxEGq_17rustc_driver_i
+  23:     0x7ffeb97e3507 - std[fc79cc53f84b73ec]::sys::backtrace::__rust_begin_short_backtrace::<std[fc79cc53f84b73ec]::thread::lifecycle::spawn_unchecked<ctrlc[85c6d45e5360c17e]::set_handler_inner<rustc_driver_impl[3c242465527f1190]::install_ctrlc_handler::{closure#0}>::{closure#0}, ()>::{closure#1}::{closure#0}::{closure#0}, ()>
+  24:     0x7ffebc52c55a - std::sys::thread::windows::impl$0::new::thread_start
+                               at /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library\std\src\sys\thread\windows.rs:58
+  25:     0x7fff51fde957 - BaseThreadInitThunk
+  26:     0x7fff529cad6c - RtlUserThreadStart
+
+error: the compiler unexpectedly panicked. This is a bug
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.97.1 (8bab26f4f 2026-07-14) running on x86_64-pc-windows-msvc
+
+note: compiler flags: -C opt-level=1 -C embed-bitcode=no -C codegen-units=256 -C debuginfo=2 -C debug-assertions=on -C incremental=[REDACTED] -C link-arg=/OPT:REF -C link-arg=/OPT:ICF
+
+note: some of the compiler flags provided by cargo are hidden
+
+query stack during panic:
+end of query stack
+error: could not compile `fish-remote-cache` (lib test)
+
+Caused by:
+  process didn't exit successfully: `C:\Users\newo\.rustup\toolchains\stable-x86_64-pc-windows-msvc\bin\rustc.exe --crate-name fish_remote_cache --edition=2024 crates\fish-remote-cache\src\lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C opt-level=1 -C embed-bitcode=no -C codegen-units=256 -C debuginfo=2 -C debug-assertions=on --test --check-cfg cfg(docsrs,test) --check-cfg "cfg(feature, values())" -C metadata=805416d5905c2de9 -C extra-filename=-d7a60eea445492ab --out-dir C:\Users\newo\Downloads\fish\target\debug\deps -C incremental=C:\Users\newo\Downloads\fish\target\debug\incremental -L dependency=C:\Users\newo\Downloads\fish\target\debug\deps --extern anyhow=C:\Users\newo\Downloads\fish\target\debug\deps\libanyhow-59da02d3e32c3783.rlib --extern base64=C:\Users\newo\Downloads\fish\target\debug\deps\libbase64-27d9266f342090dd.rlib --extern blake3=C:\Users\newo\Downloads\fish\target\debug\deps\libblake3-517f27a20256b588.rlib --extern fish_cache=C:\Users\newo\Downloads\fish\target\debug\deps\libfish_cache-e32ee35622528374.rlib --extern fish_executor=C:\Users\newo\Downloads\fish\target\debug\deps\libfish_executor-235d71a97209d6e3.rlib --extern serde=C:\Users\newo\Downloads\fish\target\debug\deps\libserde-53dcd64fc7878158.rlib --extern serde_json=C:\Users\newo\Downloads\fish\target\debug\deps\libserde_json-95ab3cc63570ed70.rlib --extern tar=C:\Users\newo\Downloads\fish\target\debug\deps\libtar-51c6f484110580bf.rlib --extern tempfile=C:\Users\newo\Downloads\fish\target\debug\deps\libtempfile-108eb49fd6a3410e.rlib --extern thiserror=C:\Users\newo\Downloads\fish\target\debug\deps\libthiserror-1c548a7c31df6c9a.rlib --extern zstd=C:\Users\newo\Downloads\fish\target\debug\deps\libzstd-f273498233774e63.rlib -C link-arg=/OPT:REF -C link-arg=/OPT:ICF -L native=C:\Users\newo\Downloads\fish\target\debug\build\blake3-5de948b7f70cde67\out -L native=C:\Users\newo\Downloads\fish\target\debug\build\blake3-5de948b7f70cde67\out -L native=C:\Users\newo\Downloads\fish\target\debug\build\zstd-sys-639746af45f7d06f\out -L native=C:\Users\newo\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\windows_x86_64_msvc-0.53.1\lib -L native=C:\Users\newo\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\windows_x86_64_msvc-0.52.6\lib` (exit code: 101)
+error[E0463]: can't find crate for `ratatui`
+ --> crates\fish-cli\src\tui.rs:8:5
+  |
+8 | use ratatui::{
+  |     ^^^^^^^ can't find crate
+
+error[E0463]: can't find crate for `fish_backend_cc`
+ --> crates\fish-cli\src\backends.rs:4:5
+  |
+4 | use fish_backend_cc::{CcBackend, CcProjectConfig};
+  |     ^^^^^^^^^^^^^^^ can't find crate
+
+error[E0463]: can't find crate for `fish_backend_dart`
+ --> crates\fish-cli\src\backends.rs:5:5
+  |
+5 | use fish_backend_dart::{DartBackend, DartProjectConfig};
+  |     ^^^^^^^^^^^^^^^^^ can't find crate
+
+error[E0463]: can't find crate for `fish_backend_docker`
+ --> crates\fish-cli\src\backends.rs:6:5
+  |
+6 | use fish_backend_docker::DockerBackend;
+  |     ^^^^^^^^^^^^^^^^^^^ can't find crate
+
+error[E0463]: can't find crate for `fish_backend_dotnet`
+ --> crates\fish-cli\src\backends.rs:7:5
+  |
+7 | use fish_backend_dotnet::{DotnetBackend, DotnetProjectConfig};
+  |     ^^^^^^^^^^^^^^^^^^^ can't find crate
+
+error[E0463]: can't find crate for `fish_backend_go`
+ --> crates\fish-cli\src\backends.rs:8:5
+  |
+8 | use fish_backend_go::{GoBackend, GoProjectConfig};
+  |     ^^^^^^^^^^^^^^^ can't find crate
+
+error[E0463]: can't find crate for `fish_backend_java`
+ --> crates\fish-cli\src\backends.rs:9:5
+  |
+9 | use fish_backend_java::{JavaBackend, JavaProjectConfig};
+  |     ^^^^^^^^^^^^^^^^^ can't find crate
+
+error[E0463]: can't find crate for `fish_backend_py`
+  --> crates\fish-cli\src\backends.rs:10:5
+   |
+10 | use fish_backend_py::{PyBackend, PyProjectConfig};
+   |     ^^^^^^^^^^^^^^^ can't find crate
+
+error[E0463]: can't find crate for `fish_backend_rust`
+  --> crates\fish-cli\src\backends.rs:11:5
+   |
+11 | use fish_backend_rust::BuildMode;
+   |     ^^^^^^^^^^^^^^^^^ can't find crate
+
+error[E0463]: can't find crate for `fish_backend_swift`
+  --> crates\fish-cli\src\backends.rs:12:5
+   |
+12 | use fish_backend_swift::{SwiftBackend, SwiftProjectConfig};
+   |     ^^^^^^^^^^^^^^^^^^ can't find crate
+
+error[E0463]: can't find crate for `fish_backend_ts`
+  --> crates\fish-cli\src\backends.rs:13:5
+   |
+13 | use fish_backend_ts::{TsBackend, TsProjectConfig};
+   |     ^^^^^^^^^^^^^^^ can't find crate
+
+error[E0463]: can't find crate for `fish_backend_zig`
+  --> crates\fish-cli\src\backends.rs:14:5
+   |
+14 | use fish_backend_zig::{ZigBackend, ZigProjectConfig};
+   |     ^^^^^^^^^^^^^^^^ can't find crate
+
+error[E0463]: can't find crate for `fish_executor`
+  --> crates\fish-cli\src\backends.rs:16:5
+   |
+16 | use fish_executor::Task;
+   |     ^^^^^^^^^^^^^ can't find crate
+
+error[E0463]: can't find crate for `fish_plugin`
+  --> crates\fish-cli\src\backends.rs:17:5
+   |
+17 | use fish_plugin::{
+   |     ^^^^^^^^^^^ can't find crate
+
+error[E0463]: can't find crate for `fish_cache`
+ --> crates\fish-cli\src\build.rs:6:5
+  |
+6 | use fish_cache::{CachingExecutor, LocalCache};
+  |     ^^^^^^^^^^ can't find crate
+
+error[E0463]: can't find crate for `fish_remote_cache`
+  --> crates\fish-cli\src\build.rs:10:5
+   |
+10 | use fish_remote_cache::{CompositeCache, CompositeCachingExecutor, TcpRemoteCacheClient};
+   |     ^^^^^^^^^^^^^^^^^ can't find crate
+
+error[E0463]: can't find crate for `fish_sandbox`
+  --> crates\fish-cli\src\build.rs:11:5
+   |
+11 | use fish_sandbox::{SandboxConfig, SandboxedExecutor};
+   |     ^^^^^^^^^^^^ can't find crate
+
+error[E0463]: can't find crate for `fish_worker`
+  --> crates\fish-cli\src\build.rs:12:5
+   |
+12 | use fish_worker::{ClusterExecutor, RemoteWorkerClient};
+   |     ^^^^^^^^^^^ can't find crate
+
+error[E0463]: can't find crate for `fish_analytics`
+   --> crates\fish-cli\src\build.rs:601:9
+    |
+601 |     use fish_analytics::{BuildRunRecord, RegressionConfig, RegressionHistory, evaluate};
+    |         ^^^^^^^^^^^^^^ can't find crate
+
+error[E0463]: can't find crate for `fish_cas`
+ --> crates\fish-cli\src\commands\cache.rs:5:5
+  |
+5 | use fish_cas::{Artifact, ArtifactHash, CasStorage, CasStorageConfig, CleanupPolicy};
+  |     ^^^^^^^^ can't find crate
+
+For more information about this error, try `rustc --explain E0463`.
+error[E0463]: can't find crate for `fish_scheduler`
+ --> crates\fish-cli\src\utils.rs:5:5
+  |
+5 | use fish_scheduler::Scheduler;
+  |     ^^^^^^^^^^^^^^ can't find crate
+
+error: could not compile `fish-cli` (bin "fish" test) due to 1 previous error
+error: could not compile `fish-cli` (bin "fish") due to 20 previous errors

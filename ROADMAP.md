@@ -100,7 +100,7 @@ North-star outcomes we optimize for, in order:
 ### 3. Security Hardening
 - [ ] **Sandbox Policy Profiles**: Declarative allow-list profiles (`strict`, `default`, `trusted`) wired through the existing security policy engine into OS-level sandboxing.
 - [ ] **Signature Verification Gate for Remote Artifacts**: Refuse unsigned or untrusted remote CAS pulls unless explicitly overridden.
-- [ ] **Dependency Audit Integration**: Replace the embedded advisory snapshot with live RustSec/OSV feed support behind a configurable endpoint. *(Lockfile parsing and rule-matching pipeline already exist in `fish-security`.)*
+- [x] **Dependency Audit Integration**: Replace the embedded advisory snapshot with live RustSec/OSV feed support behind a configurable endpoint. *(Full OSV client in `fish-security/src/osv.rs`: batched `/querybatch` lookups with per-id detail fetching and caching, ecosystem mapping (`crates.io`/`npm`) wired into `RustScanner`/`NpmScanner`, `FISH_OSV_ENDPOINT`/`FISH_OSV_TIMEOUT_MS` env configuration, GHSA severity label mapping, fixed-version extraction from SEMVER/ECOSYSTEM ranges, and loud failures instead of silently empty results. Maven stays on embedded rules pending a pom parser.)*
 
 ---
 

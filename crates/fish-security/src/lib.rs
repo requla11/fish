@@ -4,6 +4,7 @@
 
 pub mod backend;
 pub mod error;
+pub mod osv;
 pub mod rbac;
 pub mod scanner;
 pub mod slsa;

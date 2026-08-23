@@ -997,6 +997,7 @@ dependencies = [
  "chrono",
  "fish-cache",
  "fish-core",
+ "reqwest",
  "serde",
  "serde_json",
  "tempfile",
@@ -1522,7 +1523,9 @@ name = "fish-security"
 version = "0.4.0"
 dependencies = [
  "anyhow",
+ "base64 0.23.1",
  "chrono",
+ "ed25519-dalek",
  "fish-core",
  "regex",
  "reqwest",

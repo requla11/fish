@@ -57,7 +57,7 @@ North-star outcomes we optimize for, in order:
 
 ### 1. Cloud-Native Distributed Infrastructure
 - [ ] **Kubernetes Operator (Go)**: Custom Resource Definitions (CRDs) for auto-scaling elastic worker fleets. *(Go reconciliation loop exists under `go/k8s`; remaining work is CRD manifests, leader election, and end-to-end cluster tests.)*
-- [ ] **Spot Instance Optimization**: Fault-tolerant task migration upon cloud node preemption. *(Dynamic racing executor in `fish-scheduler/src/racing.rs` provides local-vs-remote racing semantics; needs preemption signals, checkpoint hand-off, and retry policies.)*
+- [ ] **Spot Instance Optimization**: Fault-tolerant task migration upon cloud node preemption. *(Task-granularity migration shipped: `PreemptionRetryExecutor` in `fish-scheduler/src/preemption.rs` retries infrastructure-shaped failures on surviving spot capacity with backoff, then migrates to an on-demand fallback — genuine task failures are never retried. Node-level checkpoint hand-off remains.)*
 - [ ] **Cross-Region Cache Replication**: Peer-to-peer CAS artifact synchronization with geo-distributed L2 caches. *(Chunked CAS mesh foundation landed in v0.4; replication topology and conflict resolution remain.)*
 
 ### 2. Machine Learning & Predictive Optimization
@@ -66,16 +66,16 @@ North-star outcomes we optimize for, in order:
 - [x] **Speculative Pre-Warming**: Predicting likely changed packages and pre-compiling on background idle cores. *(Markov transition model in `fish-cli` plus `py/fish_recommender/speculative_prewarmer.py`, whose transitive impact propagation was fixed.)*
 
 ### 3. Telemetry, Observability & Team Collaboration
-- [ ] **OpenTelemetry Integration**: End-to-end distributed tracing across all build steps and network nodes. *(In-process span model with OTLP JSON serialization and Chrome trace export already shipped in `fish-analytics/src/otel.rs`; missing pieces are an OTLP HTTP exporter, scheduler/executor instrumentation, and env-based collector configuration.)*
+- [x] **OpenTelemetry Integration**: End-to-end distributed tracing across all build steps and network nodes. *(Span model with OTLP JSON serialization in `fish-analytics/src/otel.rs`; OTLP/HTTP + JSON exporter (`OtlpExporter`) honoring `OTEL_EXPORTER_OTLP_ENDPOINT`/`_TIMEOUT_MS`, automatic conversion of every `fish build` summary into a root span plus per-task child spans, and export at build completion verified end-to-end against a mock collector.)*
 - [ ] **Web Team Analytics Dashboard**: Aggregated build speedups, cache hit efficiency, and team velocity metrics. *(Server shell and metrics types exist; HTTP layer and persistence are unimplemented and fail loudly today.)*
 - [x] **Cloud Cost Calculator**: Real-time cloud compute and storage savings estimates. *(Full implementation in `fish-analytics/src/cost.rs`: TOML pricing catalogs with version stamps and org overrides for AWS/GCP/Azure, greedy LPT bin-packing onto instance fleets, per-run compute/egress/storage pricing in on-demand vs spot modes, workload ingestion from inline specs or JSON task lists with cache-hit exclusion, ranked savings reports over CLI `fish cost-estimate` with human and `--json` output. 14 unit tests cover packing optimality bounds, exact cost math, catalog loading, and report serialization.)*
-- [ ] **Distributed Trace Aggregation**: Merge spans from all workers into one coherent build trace keyed by trace ID. *(Depends on the OTLP exporter above.)*
-- [ ] **Build Regression Alerts**: Automatic detection of wall-clock regressions between baseline and PR builds, surfaced in CI checks.
+- [x] **Distributed Trace Aggregation**: Merge spans from all workers into one coherent build trace keyed by trace ID. *(`merge_worker_traces` in `fish-analytics/src/trace_merge.rs`: deduplication on `(trace_id, span_id)`, adoption of the earliest worker's trace id, orphan re-parenting onto the earliest surviving root with synthetic-root fallback — nothing dropped silently, every adjustment reported in `MergeStats`.)*
+- [x] **Build Regression Alerts**: Automatic detection of wall-clock regressions between baseline and PR builds, surfaced in CI checks. *(Median-baseline evaluation over a rolling JSONL-persisted history in `fish-analytics/src/regression.rs` with dual relative+absolute thresholds to suppress noise; wired into `fish build`, printing alerts/improvements after every run.)*
 
 ### 4. Plugin Ecosystem
 - [ ] **WebAssembly Plugin Engine**: Sandboxed Wasm plugins using Extism/WASI for custom toolchain adapters. *(Manifest validation, bytecode header checks, capability policy, and honest refusal-without-runtime already shipped; embedding `wasmi`/`wasmtime` with fuel metering is the next step.)*
 - [ ] **Plugin Marketplace Registry**: Decentralized plugin discovery and signed artifact distribution. *(Ed25519 signing and verification infrastructure already exists in `fish-signing`.)*
-- [ ] **Plugin Capability Auditor**: Static analysis of plugin manifests flagging overly broad read/write/host permissions before install.
+- [x] **Plugin Capability Auditor**: Static analysis of plugin manifests flagging overly broad read/write/host permissions before install. *(`fish-plugin/src/audit.rs`: risk-ranked findings (Low→Critical) for wildcard/system-path reads, source- and git-mutating writes, absolute escape paths, secret-bearing environment grants, and oversized resource limits; `audit_registry` ranks a whole plugin directory worst-first with an accept/reject verdict.)*
 
 ### 5. Performance Engineering (new)
 - [ ] **Benchmark Suite vs Peers**: Repeatable harness comparing Fish against Ninja, Bazel, and Buck2 on synthetic polyglot monorepos, published per release.
@@ -120,8 +120,8 @@ All AI features follow the house rule established in v0.4: **refuse loudly rathe
 
 ### 1. Enterprise Security & Zero-Trust Execution
 - [ ] **MicroVM Hardware Isolation**: Hermetic build execution inside ultra-lightweight Firecracker / Cloud-Hypervisor microVMs.
-- [ ] **Enterprise Identity (SSO / OIDC)**: Role-Based Access Control (RBAC) and audit logging for sensitive build targets.
-- [ ] **Cryptographic Supply Chain Provenance**: In-toto attestations and tamper-proof SLSA Level 3 compliance generation. *(SLSA-style attestation generate/verify flows already exist in the CLI.)*
+- [ ] **Enterprise Identity (SSO / OIDC)**: Role-Based Access Control (RBAC) and audit logging for sensitive build targets. *(Core landed in `fish-security/src/rbac.rs`: role/permission model with OIDC-shaped identity claims, resource-scoped target rules (e.g. `prod/*` demanding higher clearance), and an append-only JSONL audit log. Remaining: real IdP token verification and CLI/config integration.)*
+- [ ] **Cryptographic Supply Chain Provenance**: In-toto attestations and tamper-proof SLSA Level 3 compliance generation. *(In-toto Statement/v1 model with the SLSA provenance v1 predicate, Ed25519-signed statements, and subject-binding verification landed in `fish-security/src/slsa.rs`. Remaining: SLSA Level 3 audit (isolated builder attestation) and CLI flag wiring for signed statements.)*
 - [ ] **HA Coordinator**: Fault-tolerant worker coordination with Raft-backed state replication in the Go control plane. *(Single-node coordinator/gateway is real today.)*
 - [ ] **Multi-Tenant Cache Isolation**: Namespaced CAS with per-team quotas, retention policies, and billing tags.
 

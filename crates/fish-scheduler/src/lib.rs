@@ -3,6 +3,7 @@
 pub mod bin_packing;
 pub mod jobserver_pool;
 pub mod pipelining;
+pub mod preemption;
 pub mod racing;
 pub mod resource_governor;
 pub mod watcher;

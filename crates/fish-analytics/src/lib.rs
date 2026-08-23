@@ -7,6 +7,9 @@ pub mod cost;
 pub mod dashboard;
 pub mod metrics;
 pub mod otel;
+pub mod otel_export;
+pub mod regression;
+pub mod trace_merge;
 
 pub use aggregator::MetricsAggregator;
 pub use cost::{
@@ -19,6 +22,11 @@ pub use otel::{
     ActiveSpanBuilder, AttributeValue, OtelSpan, OtelTracer, SpanEvent, SpanKind, SpanStatus,
     StatusCode,
 };
+pub use otel_export::{OtelExportConfig, OtelExportError, OtlpExporter};
+pub use regression::{
+    BuildRunRecord, RegressionConfig, RegressionHistory, RegressionVerdict, evaluate,
+};
+pub use trace_merge::{MergeStats, merge_worker_traces};
 
 use std::path::Path;
 

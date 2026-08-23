@@ -1,3 +1,11 @@
+//! File-event recording and hermeticity analysis.
+//!
+//! This module compares *observed* filesystem accesses against a task's
+//! declared inputs/outputs. Events arrive through
+//! [FileEventRecorder::record_access]; attaching an automatic capture
+//! source (eBPF tracepoints, strace, platform APIs) is deliberately out of
+//! scope until a real implementation lands.
+
 use std::collections::BTreeSet;
 use std::path::PathBuf;
 
@@ -15,20 +23,26 @@ pub struct TracedFileEvent {
     pub access_type: FileAccessType,
 }
 
+/// Summary comparing recorded file events against declared inputs/outputs.
 #[derive(Debug, Clone, Default)]
-pub struct EbpfTraceSummary {
+pub struct HermeticitySummary {
     pub declared_inputs: BTreeSet<PathBuf>,
     pub undeclared_inputs: BTreeSet<PathBuf>,
     pub declared_outputs: BTreeSet<PathBuf>,
     pub undeclared_outputs: BTreeSet<PathBuf>,
 }
 
-pub struct EbpfSyscallTracer {
+/// Manual file-event recorder feeding hermeticity analysis.
+///
+/// Callers push observed [TracedFileEvent]s via [Self::record_access];
+/// nothing here attaches to the kernel. Loading an actual eBPF program to
+/// capture syscalls automatically remains future work.
+pub struct FileEventRecorder {
     enabled: bool,
     events: Vec<TracedFileEvent>,
 }
 
-impl EbpfSyscallTracer {
+impl FileEventRecorder {
     pub fn new() -> Self {
         Self {
             enabled: cfg!(target_os = "linux"),
@@ -56,11 +70,11 @@ impl EbpfSyscallTracer {
         &self,
         declared_inputs: &[PathBuf],
         declared_outputs: &[PathBuf],
-    ) -> EbpfTraceSummary {
+    ) -> HermeticitySummary {
         let decl_inputs_set: BTreeSet<_> = declared_inputs.iter().cloned().collect();
         let decl_outputs_set: BTreeSet<_> = declared_outputs.iter().cloned().collect();
 
-        let mut summary = EbpfTraceSummary {
+        let mut summary = HermeticitySummary {
             declared_inputs: decl_inputs_set.clone(),
             declared_outputs: decl_outputs_set.clone(),
             undeclared_inputs: BTreeSet::new(),
@@ -120,7 +134,7 @@ impl EbpfSyscallTracer {
     }
 }
 
-impl Default for EbpfSyscallTracer {
+impl Default for FileEventRecorder {
     fn default() -> Self {
         Self::new()
     }
@@ -131,8 +145,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_ebpf_undeclared_dependency_detection() {
-        let mut tracer = EbpfSyscallTracer::new();
+    fn test_undeclared_dependency_detection() {
+        let mut tracer = FileEventRecorder::new();
         let p_declared = PathBuf::from("/workspace/src/lib.rs");
         let p_undeclared = PathBuf::from("/etc/secret_config.json");
         let p_output = PathBuf::from("/workspace/target/out.o");
@@ -147,8 +161,8 @@ mod tests {
     }
 
     #[test]
-    fn test_ebpf_filter_system_paths_and_discovery() {
-        let mut tracer = EbpfSyscallTracer::new();
+    fn test_filter_system_paths_and_discovery() {
+        let mut tracer = FileEventRecorder::new();
         let root = PathBuf::from("/workspace");
         let project_file = root.join("src/main.rs");
         let sys_file = PathBuf::from("/usr/include/stdio.h");

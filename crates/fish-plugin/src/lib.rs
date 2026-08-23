@@ -9,6 +9,7 @@ use fish_core::BuildBackend;
 use fish_executor::{CacheEntry, CommandSpec, Task};
 use fish_graph::BuildGraph;
 
+pub mod audit;
 pub mod manifest;
 pub mod rule;
 pub mod scripting;

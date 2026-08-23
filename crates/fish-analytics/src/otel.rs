@@ -116,6 +116,12 @@ impl ActiveSpanBuilder {
         }
     }
 
+    /// Identifier of the span under construction; children created from the
+    /// same tracer link back through this value.
+    pub fn span_id(&self) -> &str {
+        &self.span_id
+    }
+
     pub fn with_parent(mut self, parent_span_id: impl Into<String>) -> Self {
         self.parent_span_id = Some(parent_span_id.into());
         self

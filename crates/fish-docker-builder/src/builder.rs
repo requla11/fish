@@ -60,23 +60,80 @@ impl DockerBuilder {
         }
 
         let stdout = String::from_utf8_lossy(&output.stdout);
-        let image_id = stdout
-            .lines()
-            .rev()
-            .find(|l| l.contains("writing image") || l.contains("Successfully built"))
-            .map(|l| l.to_string())
-            .unwrap_or_else(|| blake3::hash(stdout.as_bytes()).to_hex().to_string());
+        let image_id = extract_image_id(&stdout).ok_or_else(|| {
+            anyhow::anyhow!(
+                "`docker build` succeeded but its output contained no recognizable \
+                 image id; refusing to invent one"
+            )
+        })?;
 
         Ok(DockerImage {
             id: image_id,
             tags: options.tags,
+            // Docker does not report image size on stdout; left at zero
+            // rather than estimated.
             size_bytes: 0,
         })
     }
 }
 
+/// Pull the real image reference out of build output, handling both modern
+/// BuildKit (`writing image sha256:...`) and legacy (`Successfully built
+/// <id>`) formats. Returns `None` when neither pattern appears so callers
+/// can fail loudly instead of fabricating an identifier.
+fn extract_image_id(stdout: &str) -> Option<String> {
+    for line in stdout.lines().rev() {
+        if let Some(idx) = line.find("sha256:") {
+            let hex: String = line[idx + "sha256:".len()..]
+                .chars()
+                .take_while(|c| c.is_ascii_hexdigit())
+                .collect();
+            if !hex.is_empty() {
+                return Some(format!("sha256:{hex}"));
+            }
+        }
+        if let Some(rest) = line.trim_start().strip_prefix("Successfully built ") {
+            let id = rest.trim();
+            if !id.is_empty() {
+                return Some(id.to_string());
+            }
+        }
+    }
+    None
+}
+
 impl Default for DockerBuilder {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_extracts_buildkit_image_digest() {
+        let stdout = "#12 [4/4] RUN cargo build --release\n\
+                      #12 DONE 42.3s\n\
+                      #13 exporting to image\n\
+                      #13 writing image sha256:ab12cd34ef56\n\
+                      #13 naming to docker.io/library/demo:latest done\n";
+        assert_eq!(
+            extract_image_id(stdout).as_deref(),
+            Some("sha256:ab12cd34ef56")
+        );
+    }
+
+    #[test]
+    fn test_extracts_legacy_successfully_built_id() {
+        let stdout = "Step 4/4 : RUN cargo build\n Successfully built abc123def\n";
+        assert_eq!(extract_image_id(stdout).as_deref(), Some("abc123def"));
+    }
+
+    #[test]
+    fn test_missing_image_id_is_none_not_fabricated() {
+        let stdout = "#5 exporting layers done\n#7 naming done\n";
+        assert_eq!(extract_image_id(stdout), None);
     }
 }

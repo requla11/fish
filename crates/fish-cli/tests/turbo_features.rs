@@ -244,7 +244,7 @@ fn test_slsa_attestation_and_verification_cli() {
 
     let attest_output = run(fish().arg("attest").arg(dir.path()));
     assert!(attest_output.status.success());
-    assert!(stdout(&attest_output).contains("SLSA Level 3 Attestation generated"));
+    assert!(stdout(&attest_output).contains("SLSA provenance attestation generated"));
 
     let attestation_path = dir.path().join(".fish/attestation.json");
     assert!(attestation_path.exists());

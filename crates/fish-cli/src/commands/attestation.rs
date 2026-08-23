@@ -30,7 +30,7 @@ pub fn run_attest(args: AttestArgs) -> ExitCode {
             match path {
                 Ok(saved_path) => {
                     println!(
-                        "🔒 SLSA Level 3 Attestation generated: {}",
+                        "🔒 SLSA provenance attestation generated: {}",
                         saved_path.display()
                     );
                     println!("   Merkle Root: {}", attestation.merkle_root);

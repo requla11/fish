@@ -20,6 +20,8 @@ reqwest = { version = "0.13", features = ["json"] }
 chrono = { version = "0.4", features = ["serde"] }
 regex = "1.10"
 semver = "1.0"
+base64 = { workspace = true }
+ed25519-dalek = { workspace = true }
 
 [dev-dependencies]
 tempfile = "3.10"

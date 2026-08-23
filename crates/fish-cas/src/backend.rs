@@ -63,6 +63,54 @@ impl LocalCasBackend {
         path.set_extension("meta");
         Ok(path)
     }
+
+    /// Read the stored compression algorithm for `hash` without touching the
+    /// object payload.
+    fn stored_compression(&self, hash: &ArtifactHash) -> Result<Option<CompressionAlgorithm>> {
+        let metadata_path = self.metadata_path(hash)?;
+        if !metadata_path.exists() {
+            return Err(CasError::ArtifactNotFound(hash.to_string()));
+        }
+        let json = std::fs::read_to_string(metadata_path).map_err(CasError::Io)?;
+        let metadata: ArtifactMetadata =
+            serde_json::from_str(&json).map_err(|e| CasError::Serialization(e.to_string()))?;
+        metadata
+            .compression
+            .map(|algo| CompressionAlgorithm::from_str(&algo).map_err(CasError::Compression))
+            .transpose()
+    }
+
+    /// Hand the artifact's original (decompressed) bytes to `consume`.
+    ///
+    /// This is the synchronous, single-allocation read path for consumers
+    /// that only need a borrowed view (hashing, streaming, diffing). Compressed
+    /// objects are decompressed into one buffer before the call; uncompressed
+    /// objects are read straight into it.
+    ///
+    /// True zero-copy memory-mapped serving is deliberately deferred: every
+    /// file-backed constructor in `memmap2` is `unsafe`, and this crate keeps
+    /// the workspace-wide `#![forbid(unsafe_code)]` invariant.
+    pub fn with_artifact_bytes<R>(
+        &self,
+        hash: &ArtifactHash,
+        consume: impl FnOnce(&[u8]) -> R,
+    ) -> Result<R> {
+        validate_hash(hash.as_str())?;
+        let data_path = self.hash_path(hash)?;
+        if !data_path.exists() {
+            return Err(CasError::ArtifactNotFound(hash.to_string()));
+        }
+        let compression = self.stored_compression(hash)?;
+
+        if let Some(algo) = compression {
+            let stored = std::fs::read(&data_path).map_err(CasError::Io)?;
+            let decompressed = crate::compression::decompress(&stored, algo)?;
+            return Ok(consume(&decompressed));
+        }
+
+        let bytes = std::fs::read(&data_path).map_err(CasError::Io)?;
+        Ok(consume(&bytes))
+    }
 }
 
 /// CAS objects are addressed by a 32-byte BLAKE3 digest encoded as lowercase
@@ -649,6 +697,97 @@ impl CasBackend for HybridCasBackend {
 mod tests {
     use super::*;
     use tempfile::tempdir;
+
+    #[tokio::test]
+    async fn with_artifact_bytes_roundtrips_large_uncompressed_blobs() {
+        let temp_dir = tempdir().unwrap();
+        let backend = LocalCasBackend::new(
+            temp_dir.path().to_path_buf(),
+            crate::compression::CompressionAlgorithm::None,
+        )
+        .unwrap();
+
+        let payload: Vec<u8> = (0..(2 * 1024 * 1024)).map(|i| (i % 251) as u8).collect();
+        let artifact =
+            Artifact::from_bytes(payload.clone(), "binary".to_string(), "test".to_string())
+                .unwrap();
+        backend.store(&artifact).await.unwrap();
+
+        let hash = artifact.hash().clone();
+        let consumed_len = backend
+            .with_artifact_bytes(&hash, |bytes| {
+                assert_eq!(bytes.len(), payload.len());
+                bytes[0]
+            })
+            .unwrap();
+        assert_eq!(consumed_len, payload[0]);
+
+        let restored = backend
+            .with_artifact_bytes(&hash, |bytes| bytes.to_vec())
+            .unwrap();
+        assert_eq!(restored, payload);
+    }
+
+    #[tokio::test]
+    async fn with_artifact_bytes_falls_back_for_small_objects() {
+        let temp_dir = tempdir().unwrap();
+        let backend = LocalCasBackend::new(
+            temp_dir.path().to_path_buf(),
+            crate::compression::CompressionAlgorithm::None,
+        )
+        .unwrap();
+
+        let payload = b"tiny object".to_vec();
+        let artifact =
+            Artifact::from_bytes(payload.clone(), "binary".to_string(), "test".to_string())
+                .unwrap();
+        backend.store(&artifact).await.unwrap();
+
+        let hash = artifact.hash().clone();
+        let restored = backend
+            .with_artifact_bytes(&hash, |bytes| bytes.to_vec())
+            .unwrap();
+        assert_eq!(restored, payload);
+    }
+
+    #[tokio::test]
+    async fn with_artifact_bytes_returns_original_content_for_compressed_blobs() {
+        let temp_dir = tempdir().unwrap();
+        let backend = LocalCasBackend::new(
+            temp_dir.path().to_path_buf(),
+            crate::compression::CompressionAlgorithm::Zstd,
+        )
+        .unwrap();
+
+        let payload: Vec<u8> = std::iter::repeat_n(0xABu8, 512 * 1024).collect();
+        let artifact =
+            Artifact::from_bytes(payload.clone(), "binary".to_string(), "test".to_string())
+                .unwrap();
+        backend.store(&artifact).await.unwrap();
+
+        let hash = artifact.hash().clone();
+        let restored = backend
+            .with_artifact_bytes(&hash, |bytes| bytes.to_vec())
+            .unwrap();
+        assert_eq!(restored.len(), payload.len());
+        assert_eq!(restored, payload);
+    }
+
+    #[tokio::test]
+    async fn with_artifact_bytes_reports_missing_hashes() {
+        let temp_dir = tempdir().unwrap();
+        let backend = LocalCasBackend::new(
+            temp_dir.path().to_path_buf(),
+            crate::compression::CompressionAlgorithm::None,
+        )
+        .unwrap();
+
+        let missing = ArtifactHash::from_bytes(b"absent").unwrap();
+        let err = backend
+            .with_artifact_bytes(&missing, |_| ())
+            .expect_err("missing blob must fail");
+        assert!(matches!(err, CasError::ArtifactNotFound(_)));
+    }
 
     #[tokio::test]
     async fn test_local_cas_backend() {

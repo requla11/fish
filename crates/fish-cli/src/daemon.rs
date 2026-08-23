@@ -49,7 +49,7 @@ impl FishDaemon {
             "ping" => (false, "PONG".to_string()),
             "status" => (
                 false,
-                format!("FISH_DAEMON_OK:WARMED:pid={}", std::process::id()),
+                format!("FISH_DAEMON_OK:RUNNING:pid={}", std::process::id()),
             ),
             "shutdown" => (true, "FISH_DAEMON_STOPPING".to_string()),
             other => (false, format!("error: unknown method `{other}`")),

@@ -581,10 +581,148 @@ pub(crate) fn run_rust_build(
         }
     }
 
+    if let Err(err) = export_otel_trace(&summary) {
+        eprintln!("warning: OpenTelemetry export failed: {err}");
+    }
+    report_regression_verdict(&summary);
+
     if summary.succeeded() {
         ExitCode::SUCCESS
     } else {
         render::print_failures(&summary);
         ExitCode::FAILURE
+    }
+}
+
+/// Record this run's duration against the rolling history and surface an
+/// alert when the run regressed beyond configured thresholds. Tracking
+/// failures are warnings, never build failures.
+fn report_regression_verdict(summary: &fish_scheduler::BuildSummary) {
+    use fish_analytics::{BuildRunRecord, RegressionConfig, RegressionHistory, evaluate};
+
+    let project_root = match std::env::current_dir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            eprintln!("warning: cannot determine project root for regression tracking: {err}");
+            return;
+        }
+    };
+    let path = fish_analytics::regression::default_history_path(&project_root);
+
+    let outcome = (|| -> Result<(), String> {
+        let mut history = RegressionHistory::load(&path)
+            .map_err(|e| format!("reading {} failed: {e}", path.display()))?;
+        let config = RegressionConfig::default();
+        let current = summary.duration.as_secs_f64();
+
+        let verdict = evaluate(current, &history, &config);
+        history.record(
+            BuildRunRecord {
+                timestamp_unix_secs: std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs(),
+                duration_secs: current,
+                tasks_total: summary.total,
+                tasks_failed: summary.failed,
+            },
+            config.history_limit,
+        );
+        history
+            .save(&path)
+            .map_err(|e| format!("writing {} failed: {e}", path.display()))?;
+
+        match verdict {
+            fish_analytics::RegressionVerdict::Regressed {
+                baseline_secs,
+                overshoot_pct,
+            } => println!(
+                "⚠️  Build regression alert: {:.2}s vs {:.2}s median (+{:.1}%). \
+                 Investigate before merging.",
+                current, baseline_secs, overshoot_pct
+            ),
+            fish_analytics::RegressionVerdict::Improved {
+                improvement_pct, ..
+            } => println!(
+                "🚀 Build improved: {:.1}% faster than the recent median.",
+                improvement_pct
+            ),
+            _ => {}
+        }
+        Ok(())
+    })();
+    if let Err(err) = outcome {
+        eprintln!("warning: {err}");
+    }
+}
+
+/// Convert the build summary into OTLP spans and push them to the collector
+/// configured through `OTEL_EXPORTER_OTLP_ENDPOINT`. Without that variable
+/// this is a no-op; a configured but unreachable collector surfaces a
+/// warning without failing the build.
+fn export_otel_trace(summary: &fish_scheduler::BuildSummary) -> Result<(), String> {
+    use fish_analytics::{AttributeValue, OtelExportConfig, OtelTracer, OtlpExporter, SpanKind};
+
+    let Some(config) = OtelExportConfig::from_env()? else {
+        return Ok(());
+    };
+    let exporter = OtlpExporter::new(config.clone())?;
+
+    let tracer = OtelTracer::new("fish-build");
+    let root = tracer
+        .start_span("fish.build")
+        .with_kind(SpanKind::Server)
+        .with_attribute("fish.workers", summary.workers as u32)
+        .with_attribute("fish.tasks.total", summary.total as u32)
+        .with_attribute("fish.tasks.executed", summary.executed as u32)
+        .with_attribute("fish.tasks.cached", summary.cached as u32)
+        .with_attribute("fish.tasks.failed", summary.failed as u32)
+        .with_attribute("fish.duration_ms", summary.duration.as_millis() as u64);
+
+    for timing in &summary.timings {
+        let success = timing.status != fish_executor::TaskStatus::Failed;
+        let mut span = tracer
+            .start_span(format!("task:{}", timing.label))
+            .with_parent(root.span_id())
+            .with_kind(SpanKind::Internal)
+            .with_attribute("task.status", format!("{:?}", timing.status))
+            .with_attribute("task.worker_id", timing.worker_id as u32)
+            .with_attribute("task.duration_ms", timing.duration.as_millis() as u64);
+        if !success {
+            span.add_event(
+                "task.failed",
+                [
+                    (
+                        "task.label".to_string(),
+                        AttributeValue::String(timing.label.clone()),
+                    ),
+                    ("task.exit_code".to_string(), AttributeValue::Int(-1)),
+                ]
+                .into_iter()
+                .collect(),
+            );
+        }
+        let finished = span.finish(success, (!success).then(|| timing.label.clone()));
+        tracer.record_span(finished);
+    }
+
+    let root_span = root.finish(summary.succeeded(), None);
+    tracer.record_span(root_span);
+
+    match tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+    {
+        Ok(rt) => {
+            let exported = rt
+                .block_on(exporter.export_and_clear(&tracer))
+                .map_err(|e| e.to_string())?;
+            println!(
+                "🔭 OpenTelemetry: exported {exported} spans to {}",
+                config.endpoint
+            );
+            Ok(())
+        }
+        Err(err) => Err(format!("failed to start async runtime for export: {err}")),
     }
 }

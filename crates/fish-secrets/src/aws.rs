@@ -1,5 +1,3 @@
-// AWS Secrets Manager integration
-
 use crate::manager::SecretManager;
 
 pub struct AwsSecretsManager {
@@ -15,8 +13,6 @@ impl AwsSecretsManager {
 #[async_trait::async_trait]
 impl SecretManager for AwsSecretsManager {
     async fn get_secret(&self, key: &str) -> Result<String, anyhow::Error> {
-        // The AWS SDK integration is not implemented yet. Failing loudly
-        // prevents callers from silently receiving a fabricated value.
         Err(anyhow::anyhow!(
             "AWS Secrets Manager integration is not implemented yet (requested `{key}` in region `{}`)",
             self.region

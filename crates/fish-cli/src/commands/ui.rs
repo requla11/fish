@@ -505,7 +505,7 @@ fn generate_dashboard_html(root: &Path) -> String {
             const cols = 5;
             const xSpacing = 230;
             const ySpacing = 80;
-            
+
             graphData.packages.forEach((pkg, idx) => {
                 const col = idx % cols;
                 const row = Math.floor(idx / cols);

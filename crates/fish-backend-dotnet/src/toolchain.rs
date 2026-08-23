@@ -57,7 +57,6 @@ impl DotnetToolchain {
     }
 
     fn find_executable(name: &str) -> Option<String> {
-        // Check if executable exists in PATH
         if let Ok(output) = std::process::Command::new("where").arg(name).output()
             && output.status.success()
         {
@@ -65,7 +64,6 @@ impl DotnetToolchain {
             return paths.lines().next().map(|s| s.to_string());
         }
 
-        // Try direct execution
         if std::process::Command::new(name)
             .arg("--version")
             .output()
@@ -104,12 +102,10 @@ impl DotnetToolchain {
 
 impl DotnetCompiler {
     pub fn detect() -> Result<Self, DotnetBackendError> {
-        // Try csc first
         if let Some(csc) = DotnetToolchain::find_executable("csc") {
             return Ok(DotnetCompiler::Csc(csc));
         }
 
-        // Fall back to fsc
         if let Some(fsc) = DotnetToolchain::find_executable("fsc") {
             return Ok(DotnetCompiler::Fsc(fsc));
         }
@@ -140,7 +136,6 @@ mod tests {
 
     #[test]
     fn test_dotnet_toolchain_detection() {
-        // This test will fail if .NET is not installed
         let result = DotnetToolchain::detect();
         if let Ok(toolchain) = result {
             assert!(!toolchain.executable.is_empty());

@@ -28,7 +28,6 @@ pub struct DockerToolchain {
 
 impl DockerToolchain {
     pub fn detect() -> Result<Self> {
-        // Try Docker first
         if let Ok(output) = std::process::Command::new("docker")
             .arg("--version")
             .output()
@@ -42,7 +41,6 @@ impl DockerToolchain {
             });
         }
 
-        // Try Podman as fallback
         if let Ok(output) = std::process::Command::new("podman")
             .arg("--version")
             .output()
@@ -116,8 +114,6 @@ mod tests {
     #[test]
     fn test_docker_toolchain_detect() {
         let toolchain = DockerToolchain::detect();
-        // This test will fail if neither Docker nor Podman is installed
-        // In CI environments, we should mock this
         println!("Toolchain detection result: {:?}", toolchain);
     }
 }

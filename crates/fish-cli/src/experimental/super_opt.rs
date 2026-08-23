@@ -76,10 +76,6 @@ impl SuperOptimizer {
         output_path: &Path,
         _target_level: SimdVectorizationLevel,
     ) -> io::Result<OptimizationMetric> {
-        // Real binary rewriting is not implemented. Failing loudly prevents
-        // the previous behaviour of overwriting a freshly built artifact with
-        // placeholder bytes (corrupting it) while reporting a fabricated
-        // speedup.
         Err(io::Error::new(
             io::ErrorKind::Unsupported,
             format!(

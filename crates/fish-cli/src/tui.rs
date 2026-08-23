@@ -97,7 +97,6 @@ impl TuiDashboard {
             let tasks = self.tasks.clone();
             let logs = self.logs.clone();
 
-            // Sample system utilization once per frame (Linux only, via /proc).
             #[cfg(target_os = "linux")]
             {
                 if let Some(cur) = read_sys_snapshot() {
@@ -243,8 +242,6 @@ impl TuiDashboard {
     }
 
     pub fn finish(&mut self, summary: &BuildSummary) -> Result<(), io::Error> {
-        // Render a final frame with the per-task waterfall timeline before
-        // leaving the alternate screen.
         if let Some(ref mut terminal) = self.terminal {
             let rows: Vec<(String, u64, u64)> = summary
                 .timings
@@ -310,7 +307,6 @@ fn read_sys_snapshot() -> Option<SysSnapshot> {
         .skip(1)
         .filter_map(|s| s.parse().ok())
         .collect();
-    // Aggregate line: "cpu  user nice system idle iowait irq softirq steal ..."
     let idle = fields.get(3).copied().unwrap_or(0) + fields.get(4).copied().unwrap_or(0);
     let total: u64 = fields.iter().sum();
 
@@ -388,7 +384,6 @@ fn waterfall_lines(rows: &[(String, u64, u64)], width: usize) -> Vec<String> {
     }
 
     let timeline_width = width.saturating_sub(LABEL_WIDTH + 3).max(12);
-    // Normalize against the schedule end so the widest bar spans the timeline.
     let total_ms = rows
         .iter()
         .map(|(_, start, dur)| start.saturating_add(*dur))
@@ -485,7 +480,6 @@ mod tests {
         ];
         let lines = waterfall_lines(&rows, 80);
         assert_eq!(lines.len(), 2);
-        // The second task starts at 100/300 of the timeline and spans 200/300.
         assert!(lines[0].contains('█'));
         assert!(lines[1].contains('█'));
     }
@@ -495,7 +489,6 @@ mod tests {
         assert!(waterfall_lines(&[], 80).iter().all(|l| !l.is_empty()));
         let rows = vec![("task".to_string(), 0, 0)];
         let lines = waterfall_lines(&rows, 10);
-        // Zero-duration tasks still render a one-block sliver.
         assert!(lines[0].contains('█'));
     }
 

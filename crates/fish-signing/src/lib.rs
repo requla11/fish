@@ -1,7 +1,3 @@
-// Fish Signing - Build Artifact Signing & Verification
-// Provides cryptographic signing and verification for build artifacts
-// with SBOM (Software Bill of Materials) generation
-
 #![forbid(unsafe_code)]
 #![allow(missing_docs)]
 #![warn(clippy::all)]

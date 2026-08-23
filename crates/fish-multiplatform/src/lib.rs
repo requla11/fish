@@ -1,6 +1,3 @@
-// Fish Multiplatform - Multi-Platform CI Matrix Generator
-// Auto-generates test matrix for Linux, macOS, Windows across architectures
-
 #![forbid(unsafe_code)]
 #![allow(missing_docs)]
 #![warn(clippy::all)]

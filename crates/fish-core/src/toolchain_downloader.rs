@@ -93,8 +93,6 @@ impl ToolchainDownloader {
     }
 
     pub fn register_source(&mut self, source: RemoteToolchainSource) {
-        // Refuse sources whose binary path or version could escape the
-        // toolchain base directory when joined into a filesystem path.
         if !is_safe_segment(&source.version) || !is_safe_relative_path(&source.binary_rel_path) {
             return;
         }
@@ -244,10 +242,6 @@ impl ToolchainDownloader {
                 )
             })?;
 
-        // Automatic download is not implemented. Failing loudly here prevents
-        // the previous behaviour of installing a no-op stub (`exit 0`) that
-        // silently turned every build into an empty success. The declared
-        // `url` and `sha256` fields are reserved for the future downloader.
         let install_dir = self.base_dir.join(toolchain_kind_name(kind)).join(version);
         Err(anyhow!(
             "automatic download of toolchain {:?} {} (from {}) is not implemented; \
@@ -300,7 +294,6 @@ mod tests {
     fn rejects_traversal_in_version_and_binary_rel_path() {
         let mut downloader = ToolchainDownloader::new();
 
-        // A source whose binary path escapes the install dir is dropped.
         downloader.register_source(RemoteToolchainSource {
             kind: ToolchainKind::Python,
             version: "1.0".to_string(),
@@ -315,7 +308,6 @@ mod tests {
             "a source with a traversal binary path must not be registered"
         );
 
-        // A traversal version is rejected at lookup time.
         assert!(
             downloader
                 .get_installed_path(&ToolchainKind::Zig, "../../outside")

@@ -75,7 +75,6 @@ impl BuildMetrics {
         );
         self.status = status;
 
-        // Calculate cache hit rate
         let total = self.cache_stats.hits + self.cache_stats.misses;
         if total > 0 {
             self.cache_stats.hit_rate = self.cache_stats.hits as f64 / total as f64;
@@ -140,7 +139,6 @@ impl MetricsStore {
         let build_id = metrics.build_id.clone();
         self.builds.insert(build_id.clone(), metrics);
 
-        // Update recent builds
         if !self.recent_builds.contains(&build_id) {
             self.recent_builds.push(build_id.clone());
             if self.recent_builds.len() > self.max_recent {

@@ -217,8 +217,6 @@ pub fn run_doctor_with_ai(ai_enabled: bool, fix: bool) -> ExitCode {
         if let Ok(cache) = LocalCache::default_location() {
             let _ = std::fs::create_dir_all(cache.root());
 
-            // Owner-only permissions keep cached artifacts and fingerprints
-            // private; never leave the cache world-readable.
             #[cfg(unix)]
             {
                 use std::os::unix::fs::PermissionsExt;
@@ -226,7 +224,6 @@ pub fn run_doctor_with_ai(ai_enabled: bool, fix: bool) -> ExitCode {
                     std::fs::set_permissions(cache.root(), std::fs::Permissions::from_mode(0o700));
             }
 
-            // Sweep stale temporary files left by interrupted writers.
             let (removed, freed) = cleanup_stale_tmp(cache.root());
             if removed > 0 {
                 println!(
@@ -241,7 +238,6 @@ pub fn run_doctor_with_ai(ai_enabled: bool, fix: bool) -> ExitCode {
         }
         let manifest_path = std::path::Path::new("fish.toml");
         if !manifest_path.exists() {
-            // Matches the real flat `fish.toml` schema used by the CLI.
             let default_manifest = "backend = \"rust\"\njobs = 0\nno_cache = false\nsemantic = true\ncritical_path = true\n";
             if std::fs::write(manifest_path, default_manifest).is_ok() {
                 println!("  [fixed] Created default `fish.toml` in current directory.");

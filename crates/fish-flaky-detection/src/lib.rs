@@ -4,8 +4,6 @@
 
 pub mod reordering;
 pub use reordering::{SmartTestReorderer, TestCaseMeta};
-// Fish Flaky Detection - Flaky Test Detection & Auto-Retry
-// Detects flaky tests with statistical analysis and auto-retry
 
 pub mod detector;
 pub mod history;

@@ -64,8 +64,6 @@ impl AiBridge {
         {
             let mut stdin = child.stdin.take().ok_or("AI server stdin unavailable")?;
             writeln!(stdin, "{request}").map_err(|e| format!("failed to write AI request: {e}"))?;
-            // Closing stdin signals EOF: the server processes the line, replies,
-            // then exits its read loop.
         }
 
         let stdout = child.stdout.take().ok_or("AI server stdout unavailable")?;

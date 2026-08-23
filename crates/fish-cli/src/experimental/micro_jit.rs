@@ -50,10 +50,6 @@ impl MicroJitEngine {
         name: &str,
         _constant_value: i32,
     ) -> io::Result<CompiledJitFunction> {
-        // In-process JIT requires mapping executable memory (`mprotect` +
-        // `unsafe`) which is not implemented and is forbidden by
-        // `fish-cli`. Report failure instead of claiming a function was
-        // compiled and loaded at a fabricated address.
         Err(io::Error::new(
             io::ErrorKind::Unsupported,
             format!("in-process micro-JIT is not implemented (cannot compile `{name}`)"),

@@ -1,6 +1,11 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+/// Static description of a WASM plugin's sandbox policy. The runtime that
+/// would enforce these limits (instantiation, fuel metering, host-call
+/// allow-listing) is not embedded in fish yet; the config is accepted and
+/// validated so manifests can be authored today and executed once the
+/// WebAssembly Plugin Engine milestone lands.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WasmPluginConfig {
     pub name: String,
@@ -19,31 +24,14 @@ pub enum WasmValue {
 pub struct WasmPluginSandbox {
     config: WasmPluginConfig,
     active: bool,
-    memory: Vec<u8>,
-    exported_functions: HashMap<String, usize>,
 }
 
 impl WasmPluginSandbox {
     pub fn new(config: WasmPluginConfig) -> Self {
-        let memory_size = (config.memory_limit_pages as usize) * 64 * 1024;
-        let mut sandbox = Self {
+        Self {
             config,
             active: true,
-            memory: vec![0u8; memory_size],
-            exported_functions: HashMap::new(),
-        };
-
-        sandbox.register_builtin_hooks();
-        sandbox
-    }
-
-    fn register_builtin_hooks(&mut self) {
-        self.exported_functions
-            .insert("hook_pre_build".to_string(), 1);
-        self.exported_functions
-            .insert("hook_post_build".to_string(), 2);
-        self.exported_functions
-            .insert("hook_cache_filter".to_string(), 3);
+        }
     }
 
     pub fn is_active(&self) -> bool {
@@ -54,6 +42,8 @@ impl WasmPluginSandbox {
         &self.config
     }
 
+    /// Validate the canonical WASM binary header: 4-byte magic `\0asm`
+    /// followed by a little-endian version field.
     pub fn validate_wasm_header(bytes: &[u8]) -> Result<u32, String> {
         if bytes.len() < 8 {
             return Err("WASM binary is smaller than header length (8 bytes)".to_string());
@@ -72,29 +62,27 @@ impl WasmPluginSandbox {
         Ok(version)
     }
 
+    /// Invoke an exported function inside the sandbox.
+    ///
+    /// Fish does not embed a WASM interpreter yet, so every call fails loudly
+    /// instead of fabricating a result. This keeps plugin pipelines honest
+    /// until the WebAssembly Plugin Engine milestone ships a real runtime
+    /// (wasmtime/wasmi) honoring [`WasmPluginConfig`].
     pub fn execute_function(&self, fn_name: &str, payload: &[u8]) -> Result<Vec<u8>, String> {
         if !self.active {
             return Err("Sandbox terminated".to_string());
         }
-
-        if !self.exported_functions.contains_key(fn_name) {
-            return Err(format!("Exported WASM function `{fn_name}` not found"));
-        }
-
-        let _stack: Vec<WasmValue> = vec![WasmValue::I32(payload.len() as i32)];
-
-        let mut result = Vec::new();
-        result.extend_from_slice(b"WASM_EXEC_OK:");
-        result.extend_from_slice(fn_name.as_bytes());
-        result.push(b':');
-        result.extend_from_slice(payload);
-
-        Ok(result)
+        let _ = (fn_name, payload);
+        Err(
+            "WASM execution is not available: fish does not embed a WASM runtime yet. \
+             The `fish fix`/plugin tooling will run modules once the WebAssembly \
+             Plugin Engine milestone lands."
+                .to_string(),
+        )
     }
 
     pub fn terminate(&mut self) {
         self.active = false;
-        self.memory.clear();
     }
 }
 
@@ -109,10 +97,13 @@ mod tests {
 
         let invalid_magic = [0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00];
         assert!(WasmPluginSandbox::validate_wasm_header(&invalid_magic).is_err());
+
+        let bad_version = [0x00, 0x61, 0x73, 0x6D, 0x63, 0x00, 0x00, 0x00];
+        assert!(WasmPluginSandbox::validate_wasm_header(&bad_version).is_err());
     }
 
     #[test]
-    fn test_wasm_sandbox_lifecycle() {
+    fn test_execute_function_fails_loudly_without_runtime() {
         let config = WasmPluginConfig {
             name: "test-plugin".to_string(),
             wasm_bytes_len: 1024,
@@ -125,16 +116,12 @@ mod tests {
         assert!(sandbox.is_active());
 
         let res = sandbox.execute_function("hook_pre_build", b"payload");
-        assert!(res.is_ok());
-        let bytes = res.unwrap();
-        assert!(bytes.starts_with(b"WASM_EXEC_OK:hook_pre_build:payload"));
+        let err = res.expect_err("execution must fail while no runtime is embedded");
+        assert!(err.contains("not available"), "got: {err}");
 
         sandbox.terminate();
         assert!(!sandbox.is_active());
-        assert!(
-            sandbox
-                .execute_function("hook_pre_build", b"payload")
-                .is_err()
-        );
+        let res = sandbox.execute_function("hook_pre_build", b"payload");
+        assert_eq!(res.unwrap_err(), "Sandbox terminated");
     }
 }

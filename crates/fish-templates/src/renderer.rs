@@ -1,5 +1,3 @@
-// Template renderer using Handlebars
-
 use crate::template::{PipelineTemplate, TemplateContext};
 use handlebars::Handlebars;
 

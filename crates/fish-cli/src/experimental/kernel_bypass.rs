@@ -88,9 +88,6 @@ impl KernelBypassVfs {
     }
 
     pub fn dma_write(&self, key: &str, data: &[u8]) -> io::Result<DmaBufferBlock> {
-        // Kernel-bypass DMA is not implemented. Reporting a synthetic buffer
-        // block with fabricated offsets and throughput would mislead callers
-        // into believing zero-copy I/O occurred.
         let _ = data;
         Err(io::Error::new(
             io::ErrorKind::Unsupported,
@@ -126,7 +123,6 @@ mod tests {
         let result = vfs.dma_write("target/app.bin", payload);
         assert!(result.is_err(), "unimplemented DMA must fail loudly");
 
-        // Nothing was stored, so reading the key reports it as absent.
         assert!(vfs.dma_read("target/app.bin").is_err());
     }
 }

@@ -75,7 +75,6 @@ impl JavaToolchain {
     }
 
     fn find_executable(name: &str) -> Option<String> {
-        // Check if executable exists in PATH
         if let Ok(output) = std::process::Command::new("where").arg(name).output()
             && output.status.success()
         {
@@ -83,7 +82,6 @@ impl JavaToolchain {
             return paths.lines().next().map(|s| s.to_string());
         }
 
-        // Try direct execution
         if std::process::Command::new(name)
             .arg("--version")
             .output()
@@ -122,12 +120,10 @@ impl JavaToolchain {
 
 impl JavaCompiler {
     pub fn detect() -> Result<Self, JavaBackendError> {
-        // Try kotlinc first
         if let Some(kotlinc) = JavaToolchain::find_executable("kotlinc") {
             return Ok(JavaCompiler::Kotlinc(kotlinc));
         }
 
-        // Fall back to javac
         if let Some(javac) = JavaToolchain::find_executable("javac") {
             return Ok(JavaCompiler::Javac(javac));
         }
@@ -158,7 +154,6 @@ mod tests {
 
     #[test]
     fn test_java_toolchain_detection() {
-        // This test will fail if Java is not installed
         let result = JavaToolchain::detect();
         if let Ok(toolchain) = result {
             assert!(!toolchain.java_executable.is_empty());

@@ -93,20 +93,20 @@ impl WorkStealingScheduler {
         self.graph.reset_states();
 
         let (task_tx, task_rx) = crossbeam_channel::unbounded::<(NodeId, Task)>();
-        let (done_tx, done_rx) = crossbeam_channel::unbounded::<(NodeId, TaskOutcome)>();
+        let (done_tx, done_rx) =
+            crossbeam_channel::unbounded::<(NodeId, TaskOutcome, Duration, usize)>();
 
-        // Worker threads pull tasks off the shared queue and publish outcomes.
-        // The graph itself stays on the scheduler thread, so task payloads are
-        // cloned into the queue when they are dispatched.
         let mut workers = Vec::with_capacity(self.worker_count);
-        for _ in 0..self.worker_count {
+        for worker_id in 0..self.worker_count {
             let task_rx = task_rx.clone();
             let done_tx = done_tx.clone();
             let executor = Arc::clone(&self.executor);
             let heuristics = Arc::clone(&self.heuristics);
+            let build_start = start;
             workers.push(std::thread::spawn(move || {
                 while let Ok((id, task)) = task_rx.recv() {
                     let task_start = Instant::now();
+                    let start_offset = task_start.saturating_duration_since(build_start);
                     let outcome = match std::panic::catch_unwind(AssertUnwindSafe(|| {
                         executor.execute(&task)
                     })) {
@@ -122,7 +122,7 @@ impl WorkStealingScheduler {
                         }
                     };
                     heuristics.record_execution(&task, task_start.elapsed());
-                    let _ = done_tx.send((id, outcome));
+                    let _ = done_tx.send((id, outcome, start_offset, worker_id));
                 }
             }));
         }
@@ -132,9 +132,6 @@ impl WorkStealingScheduler {
         let mut timings: Vec<TaskTiming> = Vec::new();
 
         loop {
-            // Dispatch every task whose dependencies have succeeded. `ready`
-            // only returns `Pending` nodes, so marking them `Running` prevents
-            // double dispatch.
             let tail_lengths = self.compute_all_tail_lengths();
             let mut ready = self.graph.ready_nodes();
             ready.sort_by_key(|id| {
@@ -159,18 +156,30 @@ impl WorkStealingScheduler {
                 break;
             }
 
-            // Wait for at least one completion, then drain any that arrived
-            // concurrently before dispatching the newly unblocked tasks.
-            let (id, outcome) = done_rx.recv().map_err(|_| SchedulerError::Stalled)?;
+            let (id, outcome, start_offset, worker_id) =
+                done_rx.recv().map_err(|_| SchedulerError::Stalled)?;
             in_flight -= 1;
-            self.apply_outcome(id, outcome, &mut failures, &mut timings)?;
-            while let Ok((id, outcome)) = done_rx.try_recv() {
+            self.apply_outcome(
+                id,
+                outcome,
+                start_offset,
+                worker_id,
+                &mut failures,
+                &mut timings,
+            )?;
+            while let Ok((id, outcome, start_offset, worker_id)) = done_rx.try_recv() {
                 in_flight -= 1;
-                self.apply_outcome(id, outcome, &mut failures, &mut timings)?;
+                self.apply_outcome(
+                    id,
+                    outcome,
+                    start_offset,
+                    worker_id,
+                    &mut failures,
+                    &mut timings,
+                )?;
             }
         }
 
-        // Close the queue so workers observe the channel shutdown and exit.
         drop(task_tx);
         for worker in workers {
             let _ = worker.join();
@@ -189,11 +198,11 @@ impl WorkStealingScheduler {
         &mut self,
         id: NodeId,
         outcome: TaskOutcome,
+        start_offset: Duration,
+        worker_id: usize,
         failures: &mut Vec<FailureRecord>,
         timings: &mut Vec<TaskTiming>,
     ) -> Result<(), SchedulerError> {
-        // A dependent that was already cancelled by a failure cascade must not
-        // be re-marked as Succeeded when its own worker finally reports back.
         if self.graph.state(id)? == TaskState::Cancelled {
             return Ok(());
         }
@@ -203,10 +212,10 @@ impl WorkStealingScheduler {
             timings.push(TaskTiming {
                 label: task.label.clone(),
                 description: task.description.clone(),
-                start_offset: Duration::ZERO,
+                start_offset,
                 duration: outcome.duration,
                 node_id: id,
-                worker_id: 0,
+                worker_id,
                 status: outcome.status,
             });
         }
@@ -305,7 +314,6 @@ mod tests {
 
     #[test]
     fn work_stealing_propagates_failures() {
-        // a -> b -> c with b failing: b fails, c is cancelled, a succeeds.
         let graph = chain_graph(&["a", "b", "c"]);
         let executor = Arc::new(SelectiveExecutor {
             fail: HashSet::from(["b".to_string()]),

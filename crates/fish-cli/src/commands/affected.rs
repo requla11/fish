@@ -99,8 +99,6 @@ pub fn run_affected(args: AffectedArgs) -> ExitCode {
             .map(|node| node.id)
             .collect(),
         None => {
-            // A file outside every package (workspace Cargo.toml, lockfile,
-            // fish.toml, ...) can affect anything.
             if !args.common.tui {
                 println!("Workspace-level file changed; all packages are affected.");
             }

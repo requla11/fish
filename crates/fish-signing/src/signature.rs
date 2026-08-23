@@ -1,5 +1,3 @@
-// Artifact signature creation and management
-
 use crate::error::{SigningError, SigningResult};
 use crate::keypair::SigningKeyPair;
 use crate::sbom::SbomMetadata;
@@ -45,16 +43,13 @@ pub async fn sign_artifact(
     algorithm: SignatureAlgorithm,
     metadata: &SbomMetadata,
 ) -> SigningResult<ArtifactSignature> {
-    // Read artifact content
     let artifact_content = fs::read(artifact_path).await?;
 
-    // Compute hash
     let mut hasher = Sha256::new();
     hasher.update(&artifact_content);
     let hash = hasher.finalize();
     let artifact_hash = general_purpose::STANDARD.encode(hash);
 
-    // Create signature based on algorithm
     let signature = match algorithm {
         SignatureAlgorithm::Ed25519 => {
             let signing_key = keypair.to_signing_key()?;

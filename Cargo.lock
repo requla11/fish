@@ -999,8 +999,10 @@ dependencies = [
  "fish-core",
  "serde",
  "serde_json",
+ "tempfile",
  "thiserror",
  "tokio",
+ "toml",
 ]
 
 [[package]]

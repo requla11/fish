@@ -1,6 +1,3 @@
-// Fish Notifications - Build Notification System
-// Slack/Discord/Email notifications for build status
-
 #![forbid(unsafe_code)]
 #![allow(missing_docs)]
 #![warn(clippy::all)]

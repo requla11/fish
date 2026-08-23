@@ -17,5 +17,9 @@ fish-cache = { workspace = true }
 thiserror = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+toml = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 chrono = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

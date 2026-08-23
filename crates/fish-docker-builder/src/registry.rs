@@ -1,5 +1,3 @@
-// Docker registry integration
-
 #[derive(Debug, Clone)]
 pub struct RegistryConfig {
     pub url: String,
@@ -17,8 +15,6 @@ impl Registry {
     }
 
     pub async fn push(&self, image: &crate::image::DockerImage) -> Result<(), anyhow::Error> {
-        // The registry push is not implemented yet. Failing loudly prevents a
-        // caller from believing an image was published when it was not.
         Err(anyhow::anyhow!(
             "Docker registry push is not implemented yet (image `{}` -> `{}`)",
             image.id,

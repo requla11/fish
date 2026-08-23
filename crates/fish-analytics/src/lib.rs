@@ -1,16 +1,18 @@
-// Fish Analytics - Build Cache Analytics Dashboard
-// Provides real-time analytics for cache performance
-
 #![forbid(unsafe_code)]
 #![allow(missing_docs)]
 #![warn(clippy::all)]
 
 pub mod aggregator;
+pub mod cost;
 pub mod dashboard;
 pub mod metrics;
 pub mod otel;
 
 pub use aggregator::MetricsAggregator;
+pub use cost::{
+    CloudCostCalculator, CostEstimate, EstimateInput, InstancePrice, PricingCatalog,
+    ProviderEstimates, ProviderPricing, SavingsReport, TaskDuration, Workload,
+};
 pub use dashboard::{AnalyticsDashboard, DashboardConfig};
 pub use metrics::{BuildMetrics, CacheMetrics};
 pub use otel::{

@@ -33,7 +33,7 @@ impl FromStr for DartTargetPlatform {
             "macos" => Ok(DartTargetPlatform::MacOS),
             "linux" => Ok(DartTargetPlatform::Linux),
             "all" => Ok(DartTargetPlatform::All),
-            _ => Ok(DartTargetPlatform::All), // Default to all platforms
+            _ => Ok(DartTargetPlatform::All),
         }
     }
 }
@@ -73,11 +73,9 @@ impl DartProjectConfig {
         let content = std::fs::read_to_string(&pubspec_path)
             .map_err(|e| format!("Failed to read pubspec.yaml: {}", e))?;
 
-        // Extract project name from pubspec.yaml
         let project_name =
             Self::extract_project_name(&content).unwrap_or_else(|| "dart_project".to_string());
 
-        // Detect if it's a Flutter project
         let is_flutter = Self::is_flutter_project(&content);
         let project_type = if is_flutter {
             DartProjectType::Flutter
@@ -85,7 +83,6 @@ impl DartProjectConfig {
             DartProjectType::Dart
         };
 
-        // Detect target platform
         let target_platform = if is_flutter {
             Self::detect_flutter_platform(&content)
         } else {
@@ -98,7 +95,7 @@ impl DartProjectConfig {
             target_platform,
             release: false,
             run_tests: true,
-            compile: !is_flutter, // Compile for pure Dart projects
+            compile: !is_flutter,
             is_flutter,
         })
     }
@@ -112,11 +109,9 @@ impl DartProjectConfig {
     }
 
     fn extract_project_name(content: &str) -> Option<String> {
-        // Try to extract name: "project_name" from pubspec.yaml
         let start_marker = "name:";
         if let Some(start) = content.find(start_marker) {
             let after_start = &content[start + start_marker.len()..];
-            // Skip whitespace
             let trimmed = after_start.trim_start();
             if trimmed.starts_with('"') {
                 if let Some(end) = trimmed.find('"') {
@@ -127,7 +122,6 @@ impl DartProjectConfig {
                     return Some(trimmed[1..end].to_string());
                 }
             } else {
-                // Take the first word
                 if let Some(end) = trimmed.find(char::is_whitespace) {
                     return Some(trimmed[..end].to_string());
                 }
@@ -137,14 +131,12 @@ impl DartProjectConfig {
     }
 
     fn is_flutter_project(content: &str) -> bool {
-        // Check for flutter SDK dependency
         content.contains("flutter:")
             || content.contains("sdk: flutter")
             || content.contains("flutter_sdk")
     }
 
     fn detect_flutter_platform(content: &str) -> DartTargetPlatform {
-        // Try to detect target platform from pubspec.yaml
         if content.contains("android") || content.contains("android_intent") {
             return DartTargetPlatform::APK;
         }
@@ -164,7 +156,6 @@ impl DartProjectConfig {
             return DartTargetPlatform::Linux;
         }
 
-        // Default to all platforms
         DartTargetPlatform::All
     }
 }

@@ -1,6 +1,3 @@
-// Fish Templates - Build Pipeline Templates
-// Shareable pipeline templates for common workflows
-
 #![forbid(unsafe_code)]
 #![allow(missing_docs)]
 #![warn(clippy::all)]

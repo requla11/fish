@@ -52,8 +52,6 @@ impl CriticalPathScheduler {
         adjacency: &HashMap<String, Vec<String>>,
     ) -> Result<HashMap<String, u64>, CriticalPathError> {
         let mut weights = HashMap::new();
-        // Memoize each task's longest downstream cost so shared sub-paths
-        // (diamonds) are only walked once instead of recomputed exponentially.
         let mut memo: HashMap<String, u64> = HashMap::new();
         let mut visiting: HashSet<String> = HashSet::new();
 
@@ -185,7 +183,6 @@ mod tests {
         scheduler.record_task_duration("left", 20);
         scheduler.record_task_duration("right", 30);
 
-        // Diamond: left -> leaf and right -> leaf share the `leaf` subtree.
         let mut adj = HashMap::new();
         adj.insert("left".to_string(), vec!["leaf".to_string()]);
         adj.insert("right".to_string(), vec!["leaf".to_string()]);

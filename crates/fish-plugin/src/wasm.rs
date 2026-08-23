@@ -3,7 +3,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 
@@ -81,11 +81,18 @@ impl WasmPluginEngine {
         };
 
         let wasm_file = plugin_dir.join(&manifest.entrypoint);
-        let wasm_bytes = if wasm_file.exists() {
-            fs::read(&wasm_file)?
-        } else {
-            vec![0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00]
-        };
+        if !wasm_file.exists() {
+            return Err(io::Error::new(
+                io::ErrorKind::NotFound,
+                format!(
+                    "WASM plugin `{}` is missing its entrypoint `{}` in {}",
+                    manifest.name,
+                    manifest.entrypoint,
+                    plugin_dir.display()
+                ),
+            ));
+        }
+        let wasm_bytes = fs::read(&wasm_file)?;
 
         Self::validate_wasm_bytecode(&wasm_bytes)?;
 
@@ -156,68 +163,29 @@ impl WasmPluginEngine {
         !str_rep.contains("..")
     }
 
+    /// Execute a declared plugin hook inside the WASM sandbox.
+    ///
+    /// Fish does not embed a WASM runtime yet, so this fails loudly with
+    /// `ErrorKind::Unsupported` instead of fabricating artifacts or a
+    /// successful exit code. Manifest validation, bytecode header checks, and
+    /// capability policy all run for real during [`Self::load_from_dir`];
+    /// execution itself arrives with the WebAssembly Plugin Engine milestone.
     pub fn execute_hook(
         &self,
         hook_name: &str,
-        workspace_root: &Path,
-        args: &[String],
-        env_vars: &HashMap<String, String>,
+        _workspace_root: &Path,
+        _args: &[String],
+        _env_vars: &HashMap<String, String>,
     ) -> io::Result<WasmExecutionResult> {
-        let start_time = Instant::now();
         self.execution_counter.fetch_add(1, Ordering::Relaxed);
-
-        let out_dir = workspace_root
-            .join("target")
-            .join("wasm_out")
-            .join(&self.manifest.name);
-        fs::create_dir_all(&out_dir)?;
-
-        let mut filtered_env = HashMap::new();
-        for allowed in &self.manifest.capabilities.allow_env_vars {
-            if let Some(val) = env_vars.get(allowed) {
-                filtered_env.insert(allowed.clone(), val.clone());
-            }
-        }
-
-        let mut generated = Vec::new();
-        for write_rule in &self.manifest.capabilities.allow_write_paths {
-            let artifact_path = if Path::new(write_rule).is_absolute() {
-                out_dir.join(Path::new(write_rule).file_name().unwrap_or_default())
-            } else {
-                out_dir.join(write_rule)
-            };
-
-            if let Some(parent) = artifact_path.parent() {
-                fs::create_dir_all(parent)?;
-            }
-
-            let content = format!(
-                "FISH_WASM_PLUGIN_OUTPUT\nname={}\nversion={}\nhook={}\nargs={}\n",
-                self.manifest.name,
-                self.manifest.version,
-                hook_name,
-                args.join(" ")
-            );
-            fs::write(&artifact_path, content)?;
-            generated.push(artifact_path);
-        }
-
-        let stdout = format!(
-            "WASM Plugin `{}` [{}] executed hook `{}` (memory: {} pages, duration: {:.2?})",
-            self.manifest.name,
-            self.manifest.version,
-            hook_name,
-            self.manifest.capabilities.max_memory_pages,
-            start_time.elapsed()
-        );
-
-        Ok(WasmExecutionResult {
-            exit_code: 0,
-            stdout,
-            stderr: String::new(),
-            duration: start_time.elapsed(),
-            generated_artifacts: generated,
-        })
+        Err(io::Error::new(
+            io::ErrorKind::Unsupported,
+            format!(
+                "WASM plugin `{}` cannot execute hook `{hook_name}`: fish does not embed a \
+                 WASM runtime yet (WebAssembly Plugin Engine milestone)",
+                self.manifest.name
+            ),
+        ))
     }
 }
 
@@ -306,7 +274,7 @@ mod tests {
     use tempfile::tempdir;
 
     #[test]
-    fn test_wasm_plugin_engine_lifecycle_and_execution() {
+    fn test_wasm_plugin_engine_lifecycle_and_refusal() {
         let temp = tempdir().unwrap();
         let plugin_dir = temp.path().join("codegen_wasm");
         fs::create_dir_all(&plugin_dir).unwrap();
@@ -326,6 +294,13 @@ mod tests {
             }
         }"#;
         fs::write(plugin_dir.join("plugin.json"), manifest).unwrap();
+
+        let missing_err = match WasmPluginEngine::load_from_dir(&plugin_dir) {
+            Err(e) => e,
+            Ok(_) => panic!("missing entrypoint must fail to load"),
+        };
+        assert_eq!(missing_err.kind(), io::ErrorKind::NotFound);
+
         fs::write(
             plugin_dir.join("codegen.wasm"),
             [0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00],
@@ -343,16 +318,27 @@ mod tests {
         env.insert("PROTOC_PATH".to_string(), "/usr/bin/protoc".to_string());
         env.insert("SECRET_KEY".to_string(), "hidden".to_string());
 
-        let res = engine
-            .execute_hook("build", &ws, &["--target=rust".to_string()], &env)
-            .unwrap();
-        assert_eq!(res.exit_code, 0);
-        assert!(res.stdout.contains("codegen_wasm"));
-        assert_eq!(res.generated_artifacts.len(), 1);
-        assert!(res.generated_artifacts[0].exists());
+        let res = engine.execute_hook("build", &ws, &["--target=rust".to_string()], &env);
+        let err = res.expect_err("hook execution must fail without an embedded runtime");
+        assert_eq!(err.kind(), io::ErrorKind::Unsupported);
+        assert!(err.to_string().contains("build"));
+        assert!(
+            !ws.join("target").join("wasm_out").exists(),
+            "no fabricated artifacts may be written"
+        );
 
-        let content = fs::read_to_string(&res.generated_artifacts[0]).unwrap();
-        assert!(content.contains("FISH_WASM_PLUGIN_OUTPUT"));
+        let invalid_header_engine = WasmPluginEngine::load_from_bytes(
+            engine.manifest().clone(),
+            vec![0xDE, 0xAD, 0xBE, 0xEF, 1, 0, 0, 0],
+            plugin_dir.clone(),
+        );
+        assert!(
+            matches!(
+                invalid_header_engine,
+                Err(ref e) if e.kind() == io::ErrorKind::InvalidData
+            ),
+            "invalid WASM header must be rejected"
+        );
     }
 
     #[test]

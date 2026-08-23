@@ -126,7 +126,6 @@ mod tests {
             ],
         );
 
-        // `removed` disappears from the new subtree list.
         let changed = cache.compute_changed_symbols(
             "src/lib.rs",
             &[AstSubTree {

@@ -466,7 +466,6 @@ pub(crate) fn execute_task_graph(
     }
 }
 
-// Helper functions for file detection
 pub(crate) fn has_file_with_extension(dir: &Path, extensions: &[&str]) -> bool {
     if let Ok(entries) = std::fs::read_dir(dir) {
         for entry in entries.flatten() {
@@ -560,7 +559,6 @@ mod tests {
     fn test_detect_and_load_plugins_no_directory() {
         let dir = tempdir().unwrap();
         let result = detect_and_load_plugins(dir.path());
-        // Should succeed even without directory
         assert!(result.is_ok());
         let manager = result.unwrap();
         assert!(manager.list_plugins().is_empty());

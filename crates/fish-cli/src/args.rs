@@ -55,6 +55,7 @@ pub enum Command {
     SuperOpt(SuperOptArgs),
     Plugin(PluginArgs),
     Fix(FixArgs),
+    CostEstimate(CostEstimateArgs),
     #[command(alias = "dashboard")]
     Ui(UiArgs),
     Query(QueryArgs),
@@ -78,6 +79,43 @@ pub struct FixArgs {
     pub apply: bool,
     #[arg(long)]
     pub ai: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct CostEstimateArgs {
+    /// Inline workload: comma-separated `label=seconds` pairs.
+    #[arg(long, conflicts_with = "tasks_json")]
+    pub durations: Option<String>,
+    /// JSON file with `{"tasks":[{"label":"...","duration_secs":1.0}]}`.
+    #[arg(long, conflicts_with = "durations")]
+    pub tasks_json: Option<PathBuf>,
+    /// Comma-separated providers to price (defaults to every provider in the catalog).
+    #[arg(long)]
+    pub providers: Option<String>,
+    /// Specific instance type to price instead of each provider's cheapest.
+    #[arg(long)]
+    pub instance: Option<String>,
+    /// Number of concurrent build jobs the cloud fleet must sustain. [default: 8]
+    #[arg(long, default_value_t = 8)]
+    pub parallelism: usize,
+    /// Artifact download volume per run, in GB (billed at egress rates).
+    #[arg(long, default_value_t = 0.0)]
+    pub egress_gb: f64,
+    /// Cache footprint stored in the cloud, in GB.
+    #[arg(long, default_value_t = 0.0)]
+    pub storage_gb: f64,
+    /// Months the cache storage is retained when computing storage cost. [default: 1]
+    #[arg(long, default_value_t = 1)]
+    pub retention_months: u32,
+    /// Task labels already served from cache; excluded from compute pricing.
+    #[arg(long = "cached")]
+    pub cached: Vec<String>,
+    /// Custom TOML pricing catalog overriding the embedded defaults.
+    #[arg(long)]
+    pub pricing_file: Option<PathBuf>,
+    /// Emit the machine-readable JSON report.
+    #[arg(long)]
+    pub json: bool,
 }
 
 #[derive(Debug, Args)]

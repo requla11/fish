@@ -189,10 +189,6 @@ impl<T> BuildGraph<T> {
         while let Some(current) = queue.pop_front() {
             let dependents = self.dependents(current)?.to_vec();
             for dependent in dependents {
-                // Only cancel work that is still active. Terminal states
-                // (Succeeded/Cached/Skipped/Failed) are left untouched so a
-                // dependent that already failed on its own keeps its `Failed`
-                // status instead of being silently downgraded to `Cancelled`.
                 if !self.state(dependent)?.is_terminal() {
                     self.set_state(dependent, TaskState::Cancelled)?;
                     queue.push_back(dependent);

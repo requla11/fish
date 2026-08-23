@@ -1,5 +1,3 @@
-// Secret manager trait
-
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Serialize, Deserialize)]

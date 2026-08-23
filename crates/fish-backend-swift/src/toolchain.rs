@@ -54,7 +54,6 @@ impl SwiftToolchain {
     }
 
     fn find_executable(name: &str) -> Option<String> {
-        // Check if executable exists in PATH
         if let Ok(output) = std::process::Command::new("where").arg(name).output()
             && output.status.success()
         {
@@ -62,7 +61,6 @@ impl SwiftToolchain {
             return paths.lines().next().map(|s| s.to_string());
         }
 
-        // Try direct execution
         if std::process::Command::new(name)
             .arg("--version")
             .output()
@@ -101,12 +99,10 @@ impl SwiftToolchain {
 
 impl SwiftCompiler {
     pub fn detect() -> Result<Self, SwiftBackendError> {
-        // Try swift first
         if let Some(swift) = SwiftToolchain::find_executable("swift") {
             return Ok(SwiftCompiler::Swift(swift));
         }
 
-        // Fall back to clang
         if let Some(clang) = SwiftToolchain::find_executable("clang") {
             return Ok(SwiftCompiler::Clang(clang));
         }
@@ -137,7 +133,6 @@ mod tests {
 
     #[test]
     fn test_swift_toolchain_detection() {
-        // This test will fail if Swift is not installed
         let result = SwiftToolchain::detect();
         if let Ok(toolchain) = result {
             assert!(!toolchain.executable.is_empty());

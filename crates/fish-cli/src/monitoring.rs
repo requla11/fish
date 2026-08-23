@@ -162,7 +162,7 @@ impl BuildMonitor {
             failed_tasks: failed,
             progress,
             elapsed,
-            tasks: vec![], // Omit task list for faster snapshot
+            tasks: vec![],
         }
     }
 }
@@ -254,6 +254,6 @@ mod tests {
         assert_eq!(snapshot.total_tasks, 1);
         assert_eq!(snapshot.completed_tasks, 1);
         assert_eq!(snapshot.progress, 1.0);
-        assert!(snapshot.tasks.is_empty()); // Snapshot should not include task list
+        assert!(snapshot.tasks.is_empty());
     }
 }

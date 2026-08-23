@@ -28,16 +28,13 @@ use std::process::ExitCode;
 
 use clap::Parser;
 
-// Re-export argument types for use in main.rs
 pub use args::{Cli, Command, CommonArgs};
 
 use fish_backend_rust::BuildMode;
 use fish_remote_cache::RemoteCacheServer;
 
-// Import utility functions from utils module
 use utils::resolve_start_dir;
 
-// Import all argument types from args module
 use args::CacheServerArgs;
 
 fn init_logging() {
@@ -46,7 +43,6 @@ fn init_logging() {
     let filter =
         EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("fish=info,warn"));
 
-    // Enable profiling if RUST_PROFILE environment variable is set
     if std::env::var("RUST_PROFILE").is_ok() {
         let (chrome_layer, _guard) = tracing_chrome::ChromeLayerBuilder::new()
             .include_args(true)
@@ -80,7 +76,6 @@ fn main() -> ExitCode {
 
     let cli = Cli::parse();
 
-    // Enable experimental features if flag is set
     if cli.experimental {
         experimental::enable();
     }
@@ -134,6 +129,7 @@ fn main() -> ExitCode {
         Command::SuperOpt(args) => commands::run_super_opt(args),
         Command::Plugin(args) => commands::run_plugin(args),
         Command::Fix(args) => commands::run_fix(args),
+        Command::CostEstimate(args) => commands::run_cost_estimate(args),
         Command::Ui(args) => match commands::run_ui(args.port, args.open, args.path) {
             Ok(_) => ExitCode::SUCCESS,
             Err(err) => {

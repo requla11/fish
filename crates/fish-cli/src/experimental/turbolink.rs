@@ -133,9 +133,6 @@ impl TurboLinker {
     pub fn strip_and_deduplicate_debug_sections(
         binary_path: &Path,
     ) -> io::Result<LinkerOptimizationStats> {
-        // Debug-section stripping is not implemented. Reporting fabricated
-        // sizes and symbol counts would mislead users about what the build
-        // actually produced.
         Err(io::Error::new(
             io::ErrorKind::Unsupported,
             format!(

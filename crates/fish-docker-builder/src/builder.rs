@@ -51,7 +51,6 @@ impl DockerBuilder {
             .map_err(|e| anyhow::anyhow!("failed to run `docker build`: {e}"))?;
 
         if !output.status.success() {
-            // A failed build must not masquerade as a successful DockerImage.
             let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(anyhow::anyhow!(
                 "docker build failed with {}: {}",
@@ -68,8 +67,6 @@ impl DockerBuilder {
             .map(|l| l.to_string())
             .unwrap_or_else(|| blake3::hash(stdout.as_bytes()).to_hex().to_string());
 
-        // `docker build` does not report the final image size; keep it at zero
-        // rather than fabricating a value from the length of the log output.
         Ok(DockerImage {
             id: image_id,
             tags: options.tags,

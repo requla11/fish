@@ -64,10 +64,6 @@ impl SecurityPolicy {
     pub fn is_path_allowed(&self, path: &Path) -> bool {
         match self.level {
             SecurityLevel::AllowAll => true,
-            // `Strict` and `Paranoid` both require an explicit allow-list.
-            // With no allowed paths configured, no path is allowed: this is
-            // deliberately fail-closed so a misconfigured policy can never
-            // silently admit arbitrary filesystem access.
             SecurityLevel::Strict | SecurityLevel::Paranoid => self
                 .allowed_paths
                 .iter()
@@ -107,7 +103,6 @@ impl SecurityValidator {
             .read()
             .map_err(|_| SecurityError::PolicyLockPoisoned)?;
 
-        // Extract executable from command
         let executable = command
             .split_whitespace()
             .next()
@@ -117,14 +112,12 @@ impl SecurityValidator {
             return Err(SecurityError::ExecutableNotAllowed(executable.to_string()));
         }
 
-        // Validate additional tokens embedded in the command string
         for token in command.split_whitespace().skip(1) {
             if self.is_suspicious_argument(token) {
                 return Err(SecurityError::SuspiciousArgument(token.to_string()));
             }
         }
 
-        // Validate arguments for suspicious patterns
         for arg in args {
             if self.is_suspicious_argument(arg) {
                 return Err(SecurityError::SuspiciousArgument(arg.clone()));
@@ -144,7 +137,6 @@ impl SecurityValidator {
             return Err(SecurityError::PathNotAllowed(path.to_path_buf()));
         }
 
-        // Check for path traversal attempts
         if path.components().any(|c| c == Component::ParentDir) {
             return Err(SecurityError::PathTraversalAttempt(path.to_path_buf()));
         }
@@ -166,18 +158,8 @@ impl SecurityValidator {
     }
 
     fn is_suspicious_argument(&self, arg: &str) -> bool {
-        // Improved validation using regex patterns with context awareness
-        // This reduces false positives by checking for actual injection patterns
-        // rather than simple substring matching
+        let cmd_substitution_patterns = [r"\$\([^)]*\)", r"`[^`]*`", r"\$\{[^}]*\}"];
 
-        // Check for command substitution patterns - always suspicious
-        let cmd_substitution_patterns = [
-            r"\$\([^)]*\)", // $(command)
-            r"`[^`]*`",     // `command`
-            r"\$\{[^}]*\}", // ${var}
-        ];
-
-        // Check for suspicious patterns
         for pattern in cmd_substitution_patterns.iter() {
             if let Ok(re) = regex::Regex::new(pattern)
                 && re.is_match(arg)
@@ -186,18 +168,11 @@ impl SecurityValidator {
             }
         }
 
-        // Check for shell injection characters with context
-        // Allow paths with backslashes (Windows)
-        // But flag suspicious chaining operators and redirections
         let suspicious_chars = [';', '&', '|', '<', '>'];
 
         for char in suspicious_chars {
-            if arg.contains(char) {
-                // If it contains a suspicious char, check if it's a path
-                // If it's not clearly a path, flag it
-                if !self.is_legitimate_path(arg) {
-                    return true;
-                }
+            if arg.contains(char) && !self.is_legitimate_path(arg) {
+                return true;
             }
         }
 
@@ -206,18 +181,11 @@ impl SecurityValidator {
 
     /// Helper to determine if an argument looks like a legitimate file path
     fn is_legitimate_path(&self, arg: &str) -> bool {
-        // Allow patterns like: /path/to/file, C:\path, file.txt
-        // But reject patterns like: ; rm -rf /, cmd && malicious, file > /dev/null
-
-        // If it has redirection operators, it's not a legitimate path
         if arg.contains('>') || arg.contains('<') {
             return false;
         }
 
-        // If it has path separators and looks like a path, allow it
         if arg.contains('/') || arg.contains('\\') {
-            // Check if it contains suspicious operators in addition to path chars
-            // If it has both path separators AND shell operators, it's suspicious
             let has_shell_operators = arg.contains(';') || arg.contains('&') || arg.contains('|');
             if has_shell_operators {
                 return false;
@@ -280,14 +248,12 @@ pub struct InputValidator;
 
 impl InputValidator {
     pub fn validate_filename(filename: &str) -> Result<(), SecurityError> {
-        // Prevent directory traversal
         if filename.contains("..") || filename.contains('/') || filename.contains('\\') {
             return Err(SecurityError::InvalidCommand(
                 "Invalid filename".to_string(),
             ));
         }
 
-        // Prevent shell injection characters
         let dangerous_chars = [';', '&', '|', '`', '$', '(', ')', '<', '>', ' '];
         if filename.chars().any(|c| dangerous_chars.contains(&c)) {
             return Err(SecurityError::InvalidCommand(
@@ -299,14 +265,12 @@ impl InputValidator {
     }
 
     pub fn validate_url(url: &str) -> Result<(), SecurityError> {
-        // Basic URL validation
         if !url.starts_with("http://") && !url.starts_with("https://") {
             return Err(SecurityError::InvalidCommand(
                 "URL must use http or https".to_string(),
             ));
         }
 
-        // Prevent loopback and private network access in some security contexts
         let host_part = url.split("://").nth(1).unwrap_or(url);
         let blocked_prefixes = [
             "localhost",
@@ -347,10 +311,6 @@ impl InputValidator {
     }
 
     pub fn sanitize_path(path: &str) -> String {
-        // Normalize a user-supplied path: convert backslashes, drop `.`
-        // components, and resolve `..` by popping the previous component.
-        // This is a normalization helper, not a security boundary by itself;
-        // combine it with `validate_path` for actual enforcement.
         let normalized = path.replace('\\', "/");
         let mut parts: Vec<&str> = Vec::new();
         for component in normalized.split('/') {
@@ -410,7 +370,6 @@ mod tests {
         policy.add_allowed_executable("rm".to_string());
         let validator = SecurityValidator::new(policy);
 
-        // Normal arguments should pass
         assert!(
             validator
                 .validate_command("echo", &["hello".to_string()])
@@ -421,14 +380,12 @@ mod tests {
                 .validate_command("rm", &["-rf".to_string(), "/tmp/test".to_string()])
                 .is_ok()
         );
-        // Windows paths with backslashes should pass
         assert!(
             validator
                 .validate_command("echo", &["C:\\Users\\test".to_string()])
                 .is_ok()
         );
 
-        // Shell injection attempts should be caught
         assert!(
             validator
                 .validate_command("rm", &["-rf".to_string(), "; rm -rf /".to_string()])
@@ -493,8 +450,6 @@ mod tests {
             InputValidator::sanitize_path("\\windows\\path"),
             "windows/path"
         );
-        // Regression: `..` inside a longer segment must not be stripped, and
-        // `..` past the root must not turn into an absolute path.
         assert_eq!(InputValidator::sanitize_path("....//"), "....");
         assert_eq!(InputValidator::sanitize_path("a/../../b"), "b");
         assert_eq!(InputValidator::sanitize_path("a/./b/"), "a/b");

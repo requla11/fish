@@ -104,12 +104,10 @@ pub fn estimate_compression_ratio(data: &[u8], algorithm: CompressionAlgorithm) 
         return None;
     }
 
-    // For small data, compression might not help
     if data.len() < 1024 {
         return None;
     }
 
-    // Sample a portion to estimate
     let sample_size = std::cmp::min(data.len(), 4096);
     let sample = &data[..sample_size];
 
@@ -135,7 +133,7 @@ mod tests {
 
     #[test]
     fn test_zstd_compression() {
-        let data = vec![0u8; 10000]; // Highly compressible data
+        let data = vec![0u8; 10000];
         let compressed = compress(&data, CompressionAlgorithm::Zstd).unwrap();
         assert!(compressed.len() < data.len());
 

@@ -121,7 +121,6 @@ impl FishDaemon {
         use std::os::unix::net::UnixListener;
 
         let sock = Self::socket_path(self.port);
-        // Clear a stale socket left behind by a previous unclean shutdown.
         let _ = std::fs::remove_file(&sock);
         let Ok(listener) = UnixListener::bind(&sock) else {
             return;

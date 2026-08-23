@@ -572,8 +572,6 @@ fn affected_builds_only_changed_packages_and_their_dependents() {
 
     let root = dir.path().to_path_buf();
     fs::write(dir.path().join(".gitignore"), "target/\n").expect("gitignore");
-    // `fish graph` runs cargo metadata, which writes Cargo.lock; commit it
-    // so it does not show up as an untracked workspace-level change later.
     let graph = run(fish().arg("graph").current_dir(dir.path()));
     assert!(graph.status.success(), "graph must load the workspace");
 

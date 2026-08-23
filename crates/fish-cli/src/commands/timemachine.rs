@@ -44,11 +44,14 @@ pub fn run_rewind(args: RewindArgs) -> ExitCode {
 
     let tm = timemachine::TimeMachine::new(&start_dir);
     let target_dir = start_dir.join("target");
+    let rewind_start = std::time::Instant::now();
     match tm.rewind_to_snapshot(&args.snapshot_id, &target_dir) {
         Ok(count) => {
             println!(
-                "⚡ Rewound build state to `{}` ({} artifacts restored in 0ms)",
-                args.snapshot_id, count
+                "⚡ Rewound build state to `{}` ({} artifacts restored in {:?})",
+                args.snapshot_id,
+                count,
+                rewind_start.elapsed()
             );
             ExitCode::SUCCESS
         }

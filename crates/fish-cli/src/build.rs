@@ -114,9 +114,6 @@ impl fish_executor::TaskMiddleware for SuperOptMiddleware {
         if outcome.status == fish_executor::TaskStatus::Executed {
             for artifact in &task.artifacts {
                 if artifact.exists() && artifact.is_file() {
-                    // Super-optimization is unimplemented; propagate the
-                    // failure instead of silently rewriting (or corrupting)
-                    // the artifact the build just produced.
                     crate::experimental::super_opt::SuperOptimizer::optimize_binary_simd(
                         artifact, artifact,
                     )
@@ -429,7 +426,6 @@ pub(crate) fn run_build_mode_with(
         return crate::backends::run_py_build(&start_dir, &merged);
     }
 
-    // Java/Kotlin detection
     if start_dir.join("pom.xml").exists()
         || start_dir.join("build.gradle").exists()
         || start_dir.join("build.gradle.kts").exists()
@@ -437,33 +433,26 @@ pub(crate) fn run_build_mode_with(
         return crate::backends::run_java_build(&start_dir, &merged);
     }
 
-    // .NET detection
     let has_dotnet_project =
         crate::backends::has_file_with_extension(&start_dir, &["csproj", "sln"]);
     if has_dotnet_project {
         return crate::backends::run_dotnet_build(&start_dir, &merged);
     }
 
-    // Swift/Objective-C detection
     let has_swift_project = start_dir.join("Package.swift").exists()
         || crate::backends::has_dir_with_extension(&start_dir, &["xcodeproj"]);
     if has_swift_project {
         return crate::backends::run_swift_build(&start_dir, &merged);
     }
 
-    // Dart/Flutter detection
     if start_dir.join("pubspec.yaml").exists() {
         return crate::backends::run_dart_build(&start_dir, &merged);
     }
 
-    // Zig detection
     if start_dir.join("build.zig").exists() {
         return crate::backends::run_zig_build(&start_dir, &merged);
     }
 
-    // Docker builds require a Dockerfile. A compose file by itself is often
-    // development infrastructure in another kind of repository (including a
-    // Cargo workspace), so it must not select the Docker backend.
     if start_dir.join("Dockerfile").exists() {
         return crate::backends::run_docker_build(&start_dir, &merged);
     }

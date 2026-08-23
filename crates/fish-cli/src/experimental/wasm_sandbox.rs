@@ -90,10 +90,6 @@ impl WasmPluginRunner {
         policy: &WasmIsolationPolicy,
         input_args: &[String],
     ) -> io::Result<WasmExecutionReport> {
-        // There is no WASM runtime embedded; actually running the module would
-        // require a wasmtime/wasmi dependency and a real sandbox. Failing
-        // loudly prevents fabricating output artifacts (and a fake exit code)
-        // for a plugin that never ran.
         let _ = (policy, input_args);
         Err(io::Error::new(
             io::ErrorKind::Unsupported,

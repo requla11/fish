@@ -24,7 +24,6 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use fish_executor::{CacheEntry, ExecutorError, Task, TaskExecutor, TaskOutcome, TaskStatus};
 use serde::{Deserialize, Serialize};
 
-// CAS-related types for future async integration
 #[allow(dead_code)]
 pub use fish_cas::{Artifact, ArtifactHash, CasStorage, CasStorageConfig};
 
@@ -288,7 +287,6 @@ impl LocalCache {
         let path = self.objects_dir().join(hash);
         let tmp = unique_tmp_path(&path);
 
-        // Use scoped buffer for better memory efficiency
         let _scoped_buffer = ScopedBuffer::new(bytes.len(), self.buffer_pool.clone());
 
         fs::write(&tmp, bytes).map_err(|source| CacheError::Write {
@@ -308,10 +306,8 @@ impl LocalCache {
         let path = self.objects_dir().join(hash);
         let metadata = fs::metadata(&path).ok()?;
 
-        // Use buffer pool for reading large files efficiently
         let file_size = metadata.len() as usize;
         if file_size < 4096 {
-            // For small files, use standard read
             return fs::read(&path).ok();
         }
 
@@ -382,8 +378,6 @@ impl LocalCache {
                 continue;
             };
             let key = record.key.unwrap_or_else(|| {
-                // Legacy records: raw nested layout (v1/ns/...) or
-                // percent-encoded key.
                 let raw = path
                     .strip_prefix(&root)
                     .ok()
@@ -427,7 +421,6 @@ impl LocalCache {
             })
             .collect();
 
-        // Single-pass computation for better performance
         let (object_count, objects_bytes) = objects
             .iter()
             .filter_map(|p| fs::metadata(p).ok())
@@ -463,15 +456,11 @@ impl LocalCache {
             .map(|d| d.as_secs())
             .unwrap_or(0);
 
-        // Path strings of files already removed this pass, so later phases
-        // neither count nor re-remove them.
         let mut removed: HashSet<String> = HashSet::new();
 
         let objects_dir = self.objects_dir();
         let fingerprints_dir = self.root.join("metadata").join("fingerprints");
 
-        // Phase 1: age-based eviction of records, orphaned objects and stale
-        // temporary files.
         if let Some(age) = older_than {
             let age_secs = age.as_secs();
             let mut ref_counts = self.ref_counts();
@@ -488,9 +477,6 @@ impl LocalCache {
                 }
             }
 
-            // Orphaned objects and stale temporary files. Only files older
-            // than `older_than` are touched, so concurrent writers are never
-            // interrupted.
             let mut objects = walk_files(&objects_dir).unwrap_or_default();
             objects.sort_unstable_by_key(|p| {
                 fs::metadata(p)
@@ -532,13 +518,9 @@ impl LocalCache {
                 }
             }
 
-            // Stale temporary fingerprint files, also age-gated.
             report.freed_bytes += cleanup_tmp_files(&fingerprints_dir, now, age_secs, &mut removed);
         }
 
-        // Phase 2: capacity-based eviction. Oldest records first (cascading to
-        // their objects), then the oldest objects by mtime, even when still
-        // referenced.
         let max = max_size.unwrap_or(u64::MAX);
 
         let mut records = self.records();
@@ -801,8 +783,6 @@ fn atomic_rename(src: &Path, dst: &Path) -> io::Result<()> {
             }
         }
     }
-    // The rename never succeeded after exhausting the retry budget; report the
-    // last observed error instead of pretending the file was moved.
     Err(last_err.unwrap_or_else(|| io::Error::other("atomic rename exhausted retries")))
 }
 
@@ -831,8 +811,6 @@ impl<I: TaskExecutor> TaskExecutor for CachingExecutor<I> {
         if let Some(CacheEntry { key, fingerprint }) = &task.cache
             && self.cache.matches(key, fingerprint)
         {
-            // Note: CAS artifact restoration will be handled by the caller/CLI
-            // for now, we just return cached status
             return Ok(TaskOutcome::cached(task));
         }
         let outcome = self.inner.execute(task)?;
@@ -841,9 +819,6 @@ impl<I: TaskExecutor> TaskExecutor for CachingExecutor<I> {
             && let Err(_error) = self.cache.put(key, fingerprint)
         {
             self.cache.stats().record_error();
-
-            // Note: CAS artifact storage will be handled by the caller/CLI
-            // for now, we skip async operations in sync context
         }
         Ok(outcome)
     }

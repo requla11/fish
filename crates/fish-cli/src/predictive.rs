@@ -12,7 +12,6 @@ use std::time::Instant;
 pub struct PredictiveStats {
     pub touch_counts: HashMap<PathBuf, usize>,
     pub last_touch: HashMap<PathBuf, Instant>,
-    // Transition matrix mapping: Package A -> (Package B -> Frequency)
     pub markov_transitions: HashMap<String, HashMap<String, usize>>,
     pub last_modified_pkg: Option<String>,
     pub speculative_hits: usize,
@@ -30,7 +29,7 @@ impl PredictiveEngine {
         Self {
             stats: Arc::new(Mutex::new(PredictiveStats::default())),
             enabled,
-            confidence_threshold: 0.35, // 35% probability threshold to trigger speculative warmup
+            confidence_threshold: 0.35,
         }
     }
 
@@ -72,7 +71,6 @@ impl PredictiveEngine {
             for (pkg_name, root) in package_roots {
                 if path.starts_with(root) {
                     affected.insert(pkg_name.clone());
-                    // Also record to feed the Markov Chain during normal execution
                     self.record_touch(path, Some(pkg_name.clone()));
                 }
             }
@@ -110,7 +108,6 @@ impl PredictiveEngine {
             }
         }
 
-        // Deduplicate and filter candidates that actually exist in the workspace
         let mut unique_candidates: Vec<String> = candidates
             .into_iter()
             .filter(|p| all_packages.contains(p))
@@ -118,7 +115,7 @@ impl PredictiveEngine {
             .into_iter()
             .collect();
 
-        unique_candidates.sort(); // Stable output
+        unique_candidates.sort();
         unique_candidates
     }
 
@@ -150,7 +147,6 @@ mod tests {
         let engine = PredictiveEngine::new(true);
         assert!(engine.is_enabled());
 
-        // Simulate developer workflow: core -> utils -> cli
         engine.record_touch(
             &PathBuf::from("crates/core/src/lib.rs"),
             Some("core".to_string()),
@@ -164,7 +160,6 @@ mod tests {
             Some("cli".to_string()),
         );
 
-        // Simulate a second time to build probability weight
         engine.record_touch(
             &PathBuf::from("crates/core/src/lib.rs"),
             Some("core".to_string()),
@@ -184,7 +179,6 @@ mod tests {
             "backend".to_string(),
         ];
 
-        // Because core -> utils happened twice, probability is 1.0 > threshold (0.35)
         let candidates = engine.speculative_warmup_candidates(&all_pkgs, &changed);
         assert_eq!(candidates, vec!["utils".to_string()]);
     }

@@ -94,7 +94,6 @@ impl CIMatrix {
         for job_id in &sorted {
             let deps = self.dependencies.get(job_id).cloned().unwrap_or_default();
 
-            // Check if all dependencies are completed
             let can_run = deps.iter().all(|dep| completed.contains(dep));
 
             if can_run {

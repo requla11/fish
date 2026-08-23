@@ -4,6 +4,17 @@ use std::time::Duration;
 
 use fish_executor::{ExecutorError, Task, TaskExecutor, TaskOutcome};
 
+/// Race the same task on a local and a remote executor and keep whichever
+/// outcome arrives first.
+///
+/// # Semantics
+///
+/// Both sides are started unless the race has already been decided, and
+/// neither execution is aborted mid-flight: `TaskExecutor` offers no
+/// cancellation hook, so the losing side simply has its result discarded.
+/// Racing therefore duplicates work and doubles the side effects of the task;
+/// only use it for tasks whose repeated execution is safe (for example,
+/// cache-friendly compilations writing atomic outputs).
 pub struct DynamicRacingExecutor<L, R> {
     local_executor: Arc<L>,
     remote_executor: Arc<R>,
@@ -38,8 +49,11 @@ where
         let grace = self.remote_grace_period;
 
         std::thread::spawn(move || {
+            if cancelled_local.load(Ordering::SeqCst) {
+                return;
+            }
             let res = local_exec.execute(&task_local);
-            if !cancelled_local.load(Ordering::Relaxed) {
+            if !cancelled_local.load(Ordering::SeqCst) {
                 let _ = tx_local.send(res);
             }
         });
@@ -48,11 +62,12 @@ where
             if !grace.is_zero() {
                 std::thread::sleep(grace);
             }
-            if !cancelled_remote.load(Ordering::Relaxed) {
-                let res = remote_exec.execute(&task_remote);
-                if !cancelled_remote.load(Ordering::Relaxed) {
-                    let _ = tx_remote.send(res);
-                }
+            if cancelled_remote.load(Ordering::SeqCst) {
+                return;
+            }
+            let res = remote_exec.execute(&task_remote);
+            if !cancelled_remote.load(Ordering::SeqCst) {
+                let _ = tx_remote.send(res);
             }
         });
 

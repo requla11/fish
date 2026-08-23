@@ -110,8 +110,6 @@ impl BackgroundCacheGc {
                         file_entries.sort_by_key(|(_, _, mtime)| *mtime);
                     }
                     EvictionPolicy::SmallestFirst => {
-                        // Ascending size: the eviction loop below removes from
-                        // the front, i.e. smallest files first.
                         file_entries.sort_by_key(|(_, sz, _)| *sz);
                     }
                     EvictionPolicy::TtlOnly => {}
@@ -189,7 +187,7 @@ mod tests {
             max_size_bytes: 200,
             high_watermark_ratio: 0.90,
             low_watermark_ratio: 0.70,
-            ttl: Duration::from_secs(365 * 86400), // TTL must not interfere
+            ttl: Duration::from_secs(365 * 86400),
             policy: EvictionPolicy::SmallestFirst,
             ..GcConfig::default()
         };
@@ -197,7 +195,6 @@ mod tests {
 
         gc.scan_and_evict();
 
-        // Total 230 > threshold 180; evicting 10 + 100 reaches 120 <= target 140.
         assert!(!small.exists(), "smallest file evicted first");
         assert!(!medium.exists(), "next smallest evicted to reach target");
         assert!(large.exists(), "largest file survives");

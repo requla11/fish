@@ -47,7 +47,7 @@ impl WorkerServer {
             active_jobs: Arc::new(AtomicUsize::new(0)),
             start_time: Instant::now(),
             running: Arc::new(AtomicBool::new(false)),
-            vfs: Arc::new(VirtualFileSystem::new(1024 * 1024 * 100)), // 100MB cache
+            vfs: Arc::new(VirtualFileSystem::new(1024 * 1024 * 100)),
         }
     }
 
@@ -210,8 +210,6 @@ impl WorkerServer {
                 spec.env.insert(k, v);
             }
 
-            // Materialize the packed source snapshot, if any, and re-resolve
-            // the requested working directory inside it.
             let source_dir = req
                 .source
                 .as_ref()

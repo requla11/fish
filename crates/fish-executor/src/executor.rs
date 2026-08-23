@@ -67,10 +67,6 @@ fn kill_process_tree(child: &mut std::process::Child) {
 fn kill_process_tree(child: &mut std::process::Child) {
     let pid = child.id();
 
-    // Kill the whole descendant tree (not just the direct child), so a build
-    // command that spawned subprocesses (make -> gcc) cannot leave orphans
-    // behind after a timeout. `/proc/<pid>/task/<pid>/children` lists direct
-    // children; walk it depth-first and signal leaves first.
     fn kill_descendants(pid: u32) {
         let children_path = format!("/proc/{pid}/task/{pid}/children");
         if let Ok(contents) = std::fs::read_to_string(&children_path) {
@@ -110,9 +106,6 @@ fn run_with_timeout(
     let mut stdout = child.stdout.take().expect("piped stdout is present");
     let mut stderr = child.stderr.take().expect("piped stderr is present");
 
-    // Drain both pipes on background threads. `wait_timeout` does not read the
-    // pipes, so a child that writes more than the pipe buffer (64 KiB) would
-    // otherwise block forever on `write`, triggering a spurious timeout.
     let stdout_reader = std::thread::spawn(move || {
         let mut buf = Vec::new();
         let _ = stdout.read_to_end(&mut buf);

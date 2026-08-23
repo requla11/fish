@@ -1,6 +1,3 @@
-// Fish Secrets - Secret Management Integration
-// Secure secret injection for builds with Vault, AWS Secrets Manager, K8s secrets
-
 #![forbid(unsafe_code)]
 #![allow(missing_docs)]
 #![warn(clippy::all)]

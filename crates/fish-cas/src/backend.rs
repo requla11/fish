@@ -52,7 +52,6 @@ impl LocalCasBackend {
     fn hash_path(&self, hash: &ArtifactHash) -> Result<std::path::PathBuf> {
         let hash_str = hash.as_str();
         validate_hash(hash_str)?;
-        // Use first 2 characters as directory for better file system performance
         let dir = &hash_str[..2];
         let filename = &hash_str[2..];
         Ok(self.base_path.join(dir).join(filename))
@@ -92,14 +91,12 @@ impl CasBackend for LocalCasBackend {
         let data_path = self.hash_path(hash)?;
         let metadata_path = self.metadata_path(hash)?;
 
-        // Create parent directory
         if let Some(parent) = data_path.parent() {
             tokio::fs::create_dir_all(parent)
                 .await
                 .map_err(CasError::Io)?;
         }
 
-        // Compress data if configured
         let (data_to_store, compressed_size) =
             if self.compression != crate::compression::CompressionAlgorithm::None {
                 let compressed = crate::compression::compress(artifact.data(), self.compression)?;
@@ -140,12 +137,10 @@ impl CasBackend for LocalCasBackend {
         let data_path = self.hash_path(hash)?;
         let metadata_path = self.metadata_path(hash)?;
 
-        // Check if files exist
         if !data_path.exists() || !metadata_path.exists() {
             return Err(CasError::ArtifactNotFound(hash.to_string()));
         }
 
-        // Read metadata
         let metadata_json = tokio::fs::read_to_string(&metadata_path)
             .await
             .map_err(CasError::Io)?;
@@ -153,7 +148,6 @@ impl CasBackend for LocalCasBackend {
         let mut metadata: crate::artifact::ArtifactMetadata = serde_json::from_str(&metadata_json)
             .map_err(|e| CasError::Serialization(e.to_string()))?;
 
-        // Read and decompress data
         let data = tokio::fs::read(&data_path).await.map_err(CasError::Io)?;
 
         let decompressed_data = if metadata.compression.is_some() {
@@ -175,8 +169,6 @@ impl CasBackend for LocalCasBackend {
             )));
         }
 
-        // Record the access so `CleanupPolicy::NotAccessedIn` can act on real
-        // usage. A failed write must not fail the retrieve itself.
         metadata.last_accessed = Some(
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -276,11 +268,6 @@ impl CasBackend for LocalCasBackend {
         let mut artifact_count = 0usize;
 
         for hash in &hashes {
-            // Statistics are requested on every cache inspection and quota
-            // check. Reading and decompressing each object here makes those
-            // operations scale with the full artifact payload. Metadata holds
-            // the original size, while filesystem metadata provides the exact
-            // compressed on-disk size without loading the object.
             let data_path = self.hash_path(hash)?;
             let metadata_path = self.metadata_path(hash)?;
             let (data_info, metadata_json) = match (
@@ -288,8 +275,6 @@ impl CasBackend for LocalCasBackend {
                 tokio::fs::read_to_string(&metadata_path).await,
             ) {
                 (Ok(data_info), Ok(metadata_json)) => (data_info, metadata_json),
-                // Match the previous best-effort behaviour for partial or
-                // corrupt entries, but do not count them as healthy artifacts.
                 _ => continue,
             };
             let metadata: crate::artifact::ArtifactMetadata =
@@ -442,9 +427,15 @@ impl CasBackend for RemoteCasBackendImpl {
             .await
             .map_err(|e| CasError::Network(e.to_string()))?;
         if !resp.status().is_success() {
-            return Ok(Vec::new());
+            return Err(CasError::BackendError(format!(
+                "remote CAS artifact listing failed: HTTP {}",
+                resp.status()
+            )));
         }
-        let hashes: Vec<ArtifactHash> = resp.json().await.unwrap_or_default();
+        let hashes: Vec<ArtifactHash> = resp
+            .json()
+            .await
+            .map_err(|e| CasError::Serialization(format!("invalid artifact listing: {e}")))?;
         Ok(hashes)
     }
 
@@ -452,18 +443,19 @@ impl CasBackend for RemoteCasBackendImpl {
         let base = self.config.endpoint.trim_end_matches('/');
         let url = format!("{}/{}/stats", base, self.config.bucket);
         let req = self.apply_auth(self.client.get(&url));
-        if let Ok(resp) = req.send().await
-            && resp.status().is_success()
-            && let Ok(stats) = resp.json::<CasStats>().await
-        {
-            return Ok(stats);
+        let resp = req
+            .send()
+            .await
+            .map_err(|e| CasError::Network(e.to_string()))?;
+        if !resp.status().is_success() {
+            return Err(CasError::BackendError(format!(
+                "remote CAS stats request failed: HTTP {}",
+                resp.status()
+            )));
         }
-        Ok(CasStats {
-            artifact_count: 0,
-            total_bytes: 0,
-            compressed_bytes: 0,
-            backend_type: "remote".to_string(),
-        })
+        resp.json::<CasStats>()
+            .await
+            .map_err(|e| CasError::Serialization(format!("invalid CAS stats payload: {e}")))
     }
 }
 
@@ -553,6 +545,13 @@ impl RemoteCasBackend for RemoteCasBackendImpl {
         } else {
             data
         };
+        let computed_hash = ArtifactHash::from_bytes(&decompressed)?;
+        if &computed_hash != hash {
+            return Err(CasError::Hash(format!(
+                "remote artifact content does not match declared hash `{hash}`; \
+                 the stored blob is corrupt or was tampered with"
+            )));
+        }
 
         Ok(Artifact {
             metadata,
@@ -590,20 +589,15 @@ impl HybridCasBackend {
 #[async_trait]
 impl CasBackend for HybridCasBackend {
     async fn store(&self, artifact: &Artifact) -> Result<()> {
-        // Store locally first
         self.local.store(artifact).await?;
-        // Then upload to remote
         self.remote.upload(artifact).await
     }
 
     async fn retrieve(&self, hash: &ArtifactHash) -> Result<Artifact> {
-        // Try local first
         if self.local.exists(hash).await? {
             return self.local.retrieve(hash).await;
         }
-        // Fall back to remote
         let artifact = self.remote.download(hash).await?;
-        // Cache locally
         self.local.store(&artifact).await?;
         Ok(artifact)
     }
@@ -628,11 +622,9 @@ impl CasBackend for HybridCasBackend {
     }
 
     async fn list(&self) -> Result<Vec<ArtifactHash>> {
-        // Combine local and remote listings
         let mut local_hashes = self.local.list().await?;
         let remote_hashes = self.remote.list().await?;
 
-        // Deduplicate
         local_hashes.extend(remote_hashes);
         local_hashes.sort();
         local_hashes.dedup();
@@ -674,22 +666,17 @@ mod tests {
         )
         .unwrap();
 
-        // Store artifact
         backend.store(&artifact).await.unwrap();
 
-        // Check existence
         assert!(backend.exists(artifact.hash()).await.unwrap());
 
-        // Retrieve artifact
         let retrieved = backend.retrieve(artifact.hash()).await.unwrap();
         assert_eq!(retrieved.data(), artifact.data());
 
-        // List artifacts
         let hashes = backend.list().await.unwrap();
         assert_eq!(hashes.len(), 1);
         assert_eq!(hashes[0], *artifact.hash());
 
-        // Delete artifact
         backend.delete(artifact.hash()).await.unwrap();
         assert!(!backend.exists(artifact.hash()).await.unwrap());
     }
@@ -703,7 +690,7 @@ mod tests {
         )
         .unwrap();
 
-        let data = vec![0u8; 10000]; // Highly compressible
+        let data = vec![0u8; 10000];
         let artifact =
             Artifact::from_bytes(data.clone(), "binary".to_string(), "test".to_string()).unwrap();
 
@@ -760,8 +747,6 @@ mod tests {
             Artifact::from_bytes(data.clone(), "binary".to_string(), "test".to_string()).unwrap();
         backend.store(&artifact).await.unwrap();
 
-        // Invalid compressed bytes cannot be retrieved, but computing stats
-        // must remain cheap and use the persisted metadata plus file length.
         let data_path = backend.hash_path(artifact.hash()).unwrap();
         let stored_len = tokio::fs::metadata(&data_path).await.unwrap().len();
         tokio::fs::write(&data_path, vec![0xff; stored_len as usize])

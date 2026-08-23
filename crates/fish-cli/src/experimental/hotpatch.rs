@@ -133,9 +133,6 @@ impl HotPatchEngine {
         delta: &PatchDelta,
         process_id: u32,
     ) -> io::Result<LivePatchReport> {
-        // Live patching a running process requires ptrace/mprotect plus
-        // unsafe code, none of which is implemented (`fish-cli` forbids
-        // unsafe). Report failure instead of claiming a patch was injected.
         let _ = delta;
         Err(io::Error::new(
             io::ErrorKind::Unsupported,
@@ -189,8 +186,6 @@ mod tests {
         assert!(!delta.trampoline_payload.is_empty());
         assert!(!delta.rollback_image.is_empty());
 
-        // Applying and rolling back must fail loudly instead of pretending a
-        // patch was injected into a real process.
         assert!(HotPatchEngine::apply_live_patch_detailed(&delta, 1337).is_err());
         assert!(HotPatchEngine::rollback_patch(&delta, 1337).is_err());
     }

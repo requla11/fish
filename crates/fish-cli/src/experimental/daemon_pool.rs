@@ -68,9 +68,6 @@ impl CompilerDaemonPool {
         &self,
         payload: DaemonTaskPayload,
     ) -> io::Result<DaemonExecutionSummary> {
-        // There is no compiler daemon here; the previous implementation
-        // returned a fabricated `exit_code: 0` summary without compiling
-        // anything. Fail loudly instead of reporting a successful build.
         Err(io::Error::new(
             io::ErrorKind::Unsupported,
             format!(

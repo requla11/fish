@@ -23,7 +23,7 @@ impl FromStr for SwiftPlatform {
             "tvos" => Ok(SwiftPlatform::TVOS),
             "watchos" => Ok(SwiftPlatform::WatchOS),
             "linux" => Ok(SwiftPlatform::Linux),
-            _ => Ok(SwiftPlatform::MacOS), // Default to macOS
+            _ => Ok(SwiftPlatform::MacOS),
         }
     }
 }
@@ -58,11 +58,9 @@ impl SwiftProjectConfig {
         let content = std::fs::read_to_string(&package_path)
             .map_err(|e| format!("Failed to read Package.swift: {}", e))?;
 
-        // Extract package name from Package.swift
         let package_name =
             Self::extract_package_name(&content).unwrap_or_else(|| "SwiftPackage".to_string());
 
-        // Detect platform based on available SDKs
         let platform = Self::detect_platform();
 
         Ok(SwiftProjectConfig {
@@ -97,12 +95,10 @@ impl SwiftProjectConfig {
     }
 
     pub fn detect(project_dir: &Path) -> Result<Self, String> {
-        // Try Package.swift first (Swift Package Manager)
         if project_dir.join("Package.swift").exists() {
             return Self::from_package_swift(project_dir);
         }
 
-        // Try Xcode project
         if !Self::find_xcodeproj_files(project_dir).is_empty() {
             return Self::from_xcode_project(project_dir);
         }

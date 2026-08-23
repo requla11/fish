@@ -30,8 +30,6 @@ impl LocklessDependencyGraph {
     }
 
     pub fn insert_node(&mut self, id: &str, dependencies: &[String], weight: u64) {
-        // Drop stale reverse edges left behind by a previous insertion of
-        // `id` with a different dependency set.
         let previous_deps: Option<Vec<String>> =
             self.nodes.get(id).map(|node| node.dependencies.clone());
         if let Some(previous_deps) = previous_deps {
@@ -124,8 +122,6 @@ impl LocklessDependencyGraph {
         let mut best_path = Vec::new();
         let mut max_weight = 0;
 
-        // Iterate in sorted order so the result is deterministic even when
-        // several paths share the same total weight.
         let mut ids: Vec<&String> = self.nodes.keys().collect();
         ids.sort();
 
@@ -175,7 +171,6 @@ mod tests {
         graph.insert_node("e", &deps(&["c", "d"]), 1);
 
         let path = graph.compute_critical_path().unwrap();
-        // The chain b -> d -> e (weight 102) dominates a -> c -> e (weight 3).
         assert_eq!(path, vec!["b", "d", "e"]);
     }
 
@@ -224,7 +219,6 @@ mod tests {
             deps(&["a"])
         );
 
-        // Re-insert `a` with a different dependency set.
         graph.insert_node("a", &deps(&["c"]), 1);
 
         assert!(graph.get_node("b").unwrap().reverse_dependencies.is_empty());

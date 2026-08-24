@@ -56,6 +56,8 @@ pub enum Command {
     Plugin(PluginArgs),
     Fix(FixArgs),
     SigningKey,
+    /// Bisect recent commits after a failed build and prepare a revert branch.
+    Heal(HealArgs),
     CostEstimate(CostEstimateArgs),
     #[command(alias = "dashboard")]
     Ui(UiArgs),
@@ -80,6 +82,20 @@ pub struct FixArgs {
     pub apply: bool,
     #[arg(long)]
     pub ai: bool,
+
+/// Arguments for `fish heal`.
+#[derive(Debug, Args)]
+pub struct HealArgs {
+    /// Project directory (defaults to cwd).
+    #[arg(long, short)]
+    pub path: Option<PathBuf>,
+    /// How many recent commits to scan.
+    #[arg(long, default_value_t = 10)]
+    pub depth: usize,
+    /// Build command words to test at each commit (default: cargo build).
+    #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+    pub cmd: Vec<String>,
+}
 }
 
 #[derive(Debug, Args)]

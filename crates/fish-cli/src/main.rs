@@ -3,6 +3,7 @@
 mod ai_bridge;
 mod args;
 mod attestation;
+mod bisect;
 mod backends;
 mod build;
 mod commands;
@@ -26,6 +27,7 @@ mod tui;
 mod utils;
 mod watch;
 
+use std::path::PathBuf;
 use std::process::ExitCode;
 
 use clap::Parser;
@@ -132,6 +134,39 @@ fn main() -> ExitCode {
         Command::Plugin(args) => commands::run_plugin(args),
         Command::Fix(args) => commands::run_fix(args),
         Command::SigningKey => commands::signing_key::run_signing_key(),
+        Command::Heal(args) => {
+            let repo = args.path.unwrap_or_else(|| PathBuf::from("."));
+            let words: Vec<String> = if args.cmd.is_empty() {
+                vec!["cargo".into(), "build".into()]
+            } else {
+                args.cmd
+            };
+            match bisect::heal(&repo, args.depth, &words) {
+                Ok(bisect::HealOutcome::NothingBroken) => {
+                    println!("✅ Newest commit builds fine — nothing to heal.");
+                    ExitCode::SUCCESS
+                }
+                Ok(bisect::HealOutcome::NoGoodCommitWithinDepth { depth }) => {
+                    println!("❌ All {depth} scanned commits failed. Increase --depth or fix forward.");
+                    ExitCode::FAILURE
+                }
+                Ok(bisect::HealOutcome::RevertPrepared(plan)) => {
+                    println!(
+                        "🔧 Culprit: `{}` — {}\n",
+                        plan.culprit.hash, plan.culprit.subject
+                    );
+                    println!("Revert branch ready locally: {}\n", plan.branch);
+                    println!("PR title: {}", plan.pr_title);
+                    println!("\n{}\n", plan.pr_body);
+                    println!("Review, push, and open the PR yourself — fish never pushes.");
+                    ExitCode::SUCCESS
+                }
+                Err(e) => {
+                    eprintln!("error: {e}");
+                    ExitCode::FAILURE
+                }
+            }
+        }
         Command::CostEstimate(args) => commands::run_cost_estimate(args),
         Command::Ui(args) => match commands::run_ui(args.port, args.open, args.path) {
             Ok(_) => ExitCode::SUCCESS,

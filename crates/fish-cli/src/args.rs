@@ -82,6 +82,7 @@ pub struct FixArgs {
     pub apply: bool,
     #[arg(long)]
     pub ai: bool,
+}
 
 /// Arguments for `fish heal`.
 #[derive(Debug, Args)]
@@ -95,7 +96,6 @@ pub struct HealArgs {
     /// Build command words to test at each commit (default: cargo build).
     #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
     pub cmd: Vec<String>,
-}
 }
 
 #[derive(Debug, Args)]

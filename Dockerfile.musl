@@ -1,5 +1,8 @@
 # Static musl build for maximum portability on Linux.
 #
+# NOTE: Releases build this automatically in .github/workflows/release.yaml
+# (build-musl-static job). Use this file only for local reproduction:
+#
 # Build: docker build -f Dockerfile.musl -t fish:musl .
 # Extract binary:
 #   docker create --name tmp fish:musl && \

@@ -284,16 +284,40 @@ mod tests {
         run(&["commit", "-m", "base with canary"]);
     }
 
-    fn build_cmd_for(platform_marker: &Path) -> Vec<String> {
-        if platform_marker.exists() {
-            vec![
-                "cmd".into(),
-                "/c".into(),
-                "if exist canary.txt (exit 0) else (exit 1)".into(),
-            ]
-        } else {
-            vec!["sh".into(), "-c".into(), "test -f canary.txt".into()]
-        }
+    /// Same as above but without committing the canary, so every commit
+    /// fails the probe command (depth-exhaustion scenario).
+    fn git_init_without_canary(dir: &Path) {
+        Command::new("git")
+            .args(["-c", "user.email=fish@test", "-c", "user.name=fish"])
+            .args(["init"])
+            .current_dir(dir)
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .expect("git");
+        std::fs::write(dir.join("readme.md"), "x").unwrap();
+        Command::new("git")
+            .args(["-c", "user.email=fish@test", "-c", "user.name=fish"])
+            .args(["add", "."])
+            .current_dir(dir)
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .expect("git");
+        Command::new("git")
+            .args(["-c", "user.email=fish@test", "-c", "user.name=fish"])
+            .args(["commit", "-m", "base without canary"])
+            .current_dir(dir)
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .expect("git");
+    }
+
+    /// Probe succeeds iff `canary.txt` is tracked at the checked-out
+    /// commit. Pure git — identical behaviour on every platform.
+    fn build_cmd_for() -> Vec<String> {
+        vec!["git".into(), "show".into(), "HEAD:canary.txt".into()]
     }
 
     fn remove_canary_commit(dir: &Path, msg: &str) {
@@ -328,11 +352,7 @@ mod tests {
         remove_canary_commit(repo, "delete canary");
         add_empty_commit(repo, "unrelated work");
 
-        let build = build_cmd_for(Path::new(if cfg!(windows) {
-            "C:/Windows/System32/cmd.exe"
-        } else {
-            "/bin/sh"
-        }));
+        let build = build_cmd_for();
         let outcome = heal(repo, 10, &build).expect("heal");
 
         let HealOutcome::RevertPrepared(plan) = outcome else {
@@ -356,11 +376,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let repo = dir.path();
         git_init_with_canary(repo);
-        let build = build_cmd_for(Path::new(if cfg!(windows) {
-            "C:/Windows/System32/cmd.exe"
-        } else {
-            "/bin/sh"
-        }));
+        let build = build_cmd_for();
         assert_eq!(heal(repo, 10, &build).unwrap(), HealOutcome::NothingBroken);
     }
 
@@ -368,13 +384,10 @@ mod tests {
     fn heal_all_fail_reports_depth_exhausted() {
         let dir = tempfile::tempdir().unwrap();
         let repo = dir.path();
-        git_init_with_canary(repo);
-        remove_canary_commit(repo, "delete canary");
-        let build = build_cmd_for(Path::new(if cfg!(windows) {
-            "C:/Windows/System32/cmd.exe"
-        } else {
-            "/bin/sh"
-        }));
+        // No canary ever committed → the probe fails at every commit.
+        git_init_without_canary(repo);
+        add_empty_commit(repo, "more work without canary");
+        let build = build_cmd_for();
         assert_eq!(
             heal(repo, 5, &build).unwrap(),
             HealOutcome::NoGoodCommitWithinDepth { depth: 5 }

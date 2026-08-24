@@ -3,8 +3,8 @@
 mod ai_bridge;
 mod args;
 mod attestation;
-mod bisect;
 mod backends;
+mod bisect;
 mod build;
 mod commands;
 mod config;
@@ -147,7 +147,9 @@ fn main() -> ExitCode {
                     ExitCode::SUCCESS
                 }
                 Ok(bisect::HealOutcome::NoGoodCommitWithinDepth { depth }) => {
-                    println!("❌ All {depth} scanned commits failed. Increase --depth or fix forward.");
+                    println!(
+                        "❌ All {depth} scanned commits failed. Increase --depth or fix forward."
+                    );
                     ExitCode::FAILURE
                 }
                 Ok(bisect::HealOutcome::RevertPrepared(plan)) => {

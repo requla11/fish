@@ -1,7 +1,6 @@
 pub mod affected;
 pub mod ai;
 pub mod attestation;
-pub mod signing_key;
 pub mod cache;
 pub mod ci;
 pub mod clean;
@@ -15,6 +14,7 @@ pub mod lsp;
 pub mod new;
 pub mod plugin;
 pub mod run;
+pub mod signing_key;
 pub mod timemachine;
 pub mod ui;
 pub mod worker;

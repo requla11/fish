@@ -102,7 +102,9 @@ pub fn plan_revert(culprit: &CommitInfo) -> RevertPlan {
          later work.\n\nPublish with:\n\n    \
          git push -u origin {branch}\n    \
          gh pr create --fill",
-        culprit.hash, culprit.subject, branch = branch
+        culprit.hash,
+        culprit.subject,
+        branch = branch
     );
     RevertPlan {
         branch,
@@ -114,6 +116,29 @@ pub fn plan_revert(culprit: &CommitInfo) -> RevertPlan {
 
 fn checkout_detached(repo: &Path, hash: &str) -> std::io::Result<()> {
     git(repo, &["checkout", "-q", "--detach", hash]).map(|_| ())
+}
+
+/// `git -c user.name=… -c user.email=…` flags injected only when the
+/// repository has no committer identity configured (fresh CI runners).
+fn git_author_flags(repo: &Path) -> Vec<String> {
+    let configured = Command::new("git")
+        .args(["config", "user.email"])
+        .current_dir(repo)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .output()
+        .map(|o| o.status.success() && !String::from_utf8_lossy(&o.stdout).trim().is_empty())
+        .unwrap_or(false);
+    if configured {
+        Vec::new()
+    } else {
+        vec![
+            "-c".into(),
+            "user.name=fish-heal".into(),
+            "-c".into(),
+            "user.email=fish@localhost".into(),
+        ]
+    }
 }
 
 fn restore_ref(repo: &Path, reference: &str) -> std::io::Result<()> {
@@ -172,7 +197,10 @@ pub fn heal(repo: &Path, depth: usize, build_words: &[String]) -> std::io::Resul
     let plan = Box::new(plan_revert(&culprit));
 
     git(repo, &["checkout", "-q", "-b", &plan.branch])?;
-    let reverted = git(repo, &["revert", "--no-edit", &culprit.hash]);
+    let mut rev_args: Vec<String> = git_author_flags(repo);
+    rev_args.extend(["revert".into(), "--no-edit".into(), culprit.hash.clone()]);
+    let rev_refs: Vec<&str> = rev_args.iter().map(String::as_str).collect();
+    let reverted = git(repo, &rev_refs);
     if let Err(e) = reverted {
         // Clean up the conflicted branch attempt and get out safely.
         let _ = git(repo, &["revert", "--abort"]);
@@ -205,7 +233,10 @@ mod tests {
         assert_eq!(plan.branch, "fish/revert-abcdef12");
         assert_eq!(plan.pr_title, "Revert \"break the build\"");
         assert!(plan.pr_body.contains("`abcdef1234567890`"));
-        assert!(plan.pr_body.contains("git push -u origin fish/revert-abcdef12"));
+        assert!(
+            plan.pr_body
+                .contains("git push -u origin fish/revert-abcdef12")
+        );
     }
 
     #[test]
@@ -297,7 +328,11 @@ mod tests {
         remove_canary_commit(repo, "delete canary");
         add_empty_commit(repo, "unrelated work");
 
-        let build = build_cmd_for(Path::new(if cfg!(windows) { "C:/Windows/System32/cmd.exe" } else { "/bin/sh" }));
+        let build = build_cmd_for(Path::new(if cfg!(windows) {
+            "C:/Windows/System32/cmd.exe"
+        } else {
+            "/bin/sh"
+        }));
         let outcome = heal(repo, 10, &build).expect("heal");
 
         let HealOutcome::RevertPrepared(plan) = outcome else {
@@ -321,11 +356,12 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let repo = dir.path();
         git_init_with_canary(repo);
-        let build = build_cmd_for(Path::new(if cfg!(windows) { "C:/Windows/System32/cmd.exe" } else { "/bin/sh" }));
-        assert_eq!(
-            heal(repo, 10, &build).unwrap(),
-            HealOutcome::NothingBroken
-        );
+        let build = build_cmd_for(Path::new(if cfg!(windows) {
+            "C:/Windows/System32/cmd.exe"
+        } else {
+            "/bin/sh"
+        }));
+        assert_eq!(heal(repo, 10, &build).unwrap(), HealOutcome::NothingBroken);
     }
 
     #[test]
@@ -334,7 +370,11 @@ mod tests {
         let repo = dir.path();
         git_init_with_canary(repo);
         remove_canary_commit(repo, "delete canary");
-        let build = build_cmd_for(Path::new(if cfg!(windows) { "C:/Windows/System32/cmd.exe" } else { "/bin/sh" }));
+        let build = build_cmd_for(Path::new(if cfg!(windows) {
+            "C:/Windows/System32/cmd.exe"
+        } else {
+            "/bin/sh"
+        }));
         assert_eq!(
             heal(repo, 5, &build).unwrap(),
             HealOutcome::NoGoodCommitWithinDepth { depth: 5 }

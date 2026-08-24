@@ -181,7 +181,9 @@ pub fn run_init(path: Option<PathBuf>, force: bool, describe: Option<String>) ->
         println!("  [info] Description: \"{description}\"");
         let parsed = crate::nl_authoring::parse_description(description);
         if parsed.languages.is_empty() {
-            println!("  [warn] No recognized languages in the description; generating default config.");
+            println!(
+                "  [warn] No recognized languages in the description; generating default config."
+            );
         } else {
             println!(
                 "  [ok] Parsed {} language(s) and archetype {:?}:",

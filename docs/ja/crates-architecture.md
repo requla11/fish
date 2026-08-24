@@ -10,7 +10,7 @@ Fish は 36 個の高機能 Rust クレートで構成され、階層ごとに�
 2. **ストレージ & キャッシュ層 (Storage Tier)**:
    - `fish-cas`: ZSTD 圧縮と FastCDC チャンキングを備えた CAS ストレージ。
    - `fish-cache`: 2 フェーズ Fingerprint キャッシュと GC。
-   - `fish-remote-cache`: gRPC REAPI v2 クライアントと TCP ストリーミングキャッシュ。
+   - `fish-remote-cache`: HTTP リモートキャッシュ、Ed25519 署名ゲート、REAPI v2 データモデル。
 3. **スケジューリング層 (Scheduling Tier)**:
    - `fish-scheduler`: クリティカルパス予測スケジューラ、ワークスティーリング、GNU Jobserver。
    - `fish-worker`: リモートワーカークラスター実行と Daemon IPC。

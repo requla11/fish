@@ -10,7 +10,7 @@ Fish 由 36 個高度模組化的 Rust Crates 組成，分層嚴謹且高內聚�
 2. **儲存與快取層 (Storage & Cache Tier)**:
    - `fish-cas`: ZSTD 壓縮與 FastCDC 分塊的 CAS 儲存。
    - `fish-cache`: 雙階段 Fingerprint 快取與 GC 清理。
-   - `fish-remote-cache`: gRPC REAPI v2 客戶端與 TCP 串流快取。
+   - `fish-remote-cache`: HTTP 遠端快取、Ed25519 簽名門控與 REAPI v2 資料模型。
 3. **調度與執行層 (Scheduling Tier)**:
    - `fish-scheduler`: 關鍵路徑動態預測調度器、Chase-Lev 工作竊取隊列、GNU Jobserver。
    - `fish-worker`: 遠端 Worker 叢集執行與 Daemon IPC。

@@ -8,16 +8,16 @@
 
 ## 🎯 プロジェクトのビジョン
 
-Fish は、多言語モノレポ（Polyglot Monorepo）および分散開発環境において、最も効率的で堅牢かつ開発者に優しいビルドオーケストレーションシステムを目指しています。独自の **Tri-Engine アーキテクチャ (Rust 75% + Python 15% + Go 10%)** によって駆動されます。
+Fish は、多言語モノレポ（Polyglot Monorepo）および分散開発環境において、最も効率的で堅牢かつ開発者に優しいビルドオーケストレーションシステムを目指しています。現時点の Fish は **Rust 単一のワークスペース** です。初期の改訂版で説明されていた Python および Go サービス層は将来の計画であり、現在リリースされているコードではありません。
 
 ---
 
 ## 🚀 現在のマイルストーン (v0.2.x) — 完了
 
 ### フェーズ 1: コアエンジンと多言語基盤
-- [x] **Tri-Engine アーキテクチャ**: Rust 高速実行コア (75%)、Python AI インテリジェンス層 (15%)、Go クラウドネットワーク (10%)。
+- [ ] **Tri-Engine アーキテクチャ**: *計画中、未実装。* 現在は Rust 高パフォーマンスコアのみが存在し、リポジトリ内に Python AI や Go クラウドサービスはありません。
 - [x] **11 種類の言語バックエンド**: Rust、Go、TypeScript/Node.js、Python、C/C++、Docker、Java、.NET、Swift、Dart、Zig。
-- [x] **共通 Protobuf スキーマ**: `build.proto`、`ai.proto`、`coordinator.proto` による RPC 定義。
+- [ ] **共通 Protobuf スキーマ**: *ドラフトのみ。* `build.proto`、`ai.proto`、`coordinator.proto` が `proto/` 下に存在しますが、どの crate からも参照されていません（ワークスペースに gRPC 依存関係はありません）。
 - [x] **Blake3 CAS & 2段階プルーニング**: Zstandard 圧縮対応の高速コンテンツアドレス指定ストレージ。
 - [x] **GNU Jobserver 統合**: クロスコンパイラ全域のスレッドトークン調停により CPU/メモリ過負荷を防止。
 - [x] **CI/CD 自動ジェネレータ**: GitHub Actions、GitLab CI、CircleCI、Bitbucket 構成の自動生成。

@@ -73,7 +73,7 @@ inputs = ["tests/**/*", "src/**/*"]
 
 | Khóa | Kiểu | Mặc định | Mô tả |
 | :--- | :--- | :--- | :--- |
-| `cache_url` | chuỗi | None | Địa chỉ máy chủ cache từ xa (HTTP/gRPC). |
+| `cache_url` | chuỗi | None | Địa chỉ máy chủ cache từ xa (HTTP). |
 | `token` | chuỗi | None | Mã xác thực Bearer token cho các thao tác từ xa. |
 | `workers` | danh sách chuỗi | `[]` | Danh sách địa chỉ cluster worker từ xa (ví dụ: `["worker1:9000", "worker2:9000"]`). |
 | `send_source` | boolean | `false` | Nén và truyền snapshot mã nguồn tới các worker không dùng chung filesystem. |

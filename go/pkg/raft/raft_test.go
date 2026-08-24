@@ -7,13 +7,14 @@ import (
 
 func TestFollowerBecomesCandidateOnTimeout(t *testing.T) {
 	node := NewRaftNode("node-1", []string{"node-2", "node-3"}, nil)
+	node.SetElectionTimeout(50 * time.Millisecond)
 
 	if node.State() != Follower {
 		t.Fatal("new node must start as Follower")
 	}
 
 	// Simulate timeout
-	time.Sleep(200 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 	if !node.ShouldStartElection() {
 		t.Fatal("election should trigger after timeout")
 	}

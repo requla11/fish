@@ -8,6 +8,7 @@ pub mod executor;
 pub mod hermetic;
 pub mod isolation;
 pub mod microvm;
+pub mod microvm_config;
 pub mod tracer;
 
 pub use env::{EnvPolicy, sanitize_env};

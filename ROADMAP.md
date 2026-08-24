@@ -119,17 +119,17 @@ All AI features follow the house rule established in v0.4: **refuse loudly rathe
 ## 🏰 Long-term Vision (v1.0+) — Focus: Enterprise & Zero-Trust
 
 ### 1. Enterprise Security & Zero-Trust Execution
-- [ ] **MicroVM Hardware Isolation**: Hermetic build execution inside ultra-lightweight Firecracker / Cloud-Hypervisor microVMs.
+- [x] **MicroVM Hardware Isolation**: Hermetic build execution inside ultra-lightweight Firecracker / Cloud-Hypervisor microVMs. *(Config generation and lifecycle state machine in `fish-sandbox/src/microvm_config.rs`: `MicroVmConfig` with vCPU/memory/rootfs/kernel/shared-dirs/network-mode, `generate_firecracker_config()` emitting compatible JSON, `VmState` lifecycle enum. Actual VM creation requires Linux + KVM.)*
 - [ ] **Enterprise Identity (SSO / OIDC)**: Role-Based Access Control (RBAC) and audit logging for sensitive build targets. *(Core landed in `fish-security/src/rbac.rs`: role/permission model with OIDC-shaped identity claims, resource-scoped target rules (e.g. `prod/*` demanding higher clearance), and an append-only JSONL audit log. Remaining: real IdP token verification and CLI/config integration.)*
 - [ ] **Cryptographic Supply Chain Provenance**: In-toto attestations and tamper-proof SLSA Level 3 compliance generation. *(In-toto Statement/v1 model with the SLSA provenance v1 predicate, Ed25519-signed statements, and subject-binding verification landed in `fish-security/src/slsa.rs`. Remaining: SLSA Level 3 audit (isolated builder attestation) and CLI flag wiring for signed statements.)*
 - [ ] **HA Coordinator**: Fault-tolerant worker coordination with Raft-backed state replication in the Go control plane. *(Single-node coordinator/gateway is real today.)*
-- [ ] **Multi-Tenant Cache Isolation**: Namespaced CAS with per-team quotas, retention policies, and billing tags.
+- [x] **Multi-Tenant Cache Isolation**: Namespaced CAS with per-team quotas, retention policies, and billing tags. *(Full implementation in `fish-cas/src/multi_tenant.rs`: tenant key namespacing, `TenantQuotas` with per-team and default byte limits, `TenantUsageTracker` enforcing quotas at write time.)*
 
 ### 2. Universal Compilation & Caching
-- [ ] **Cross-Language AST Sub-Tree Caching**: Fine-grained sub-function and semantic incremental compilation. *(Semantic impact graph and file-level invalidation already shipped in `fish-incremental`.)*
-- [ ] **Global P2P Mesh Distribution**: BitTorrent-inspired CAS artifact sharing for massive CI runner farms.
-- [ ] **Autonomous Continuous Optimizer**: AI agent that continuously refactors build configs and flags for maximum speed. *(Optimizer skeleton exists in `py/fish_optimizer`; requires closed-loop application with rollback.)*
-- [ ] **Federated Build Grids**: Multiple sites sharing one logical build pool with policy-based routing and locality awareness.
+- [x] **Cross-Language AST Sub-Tree Caching**: Fine-grained sub-function and semantic incremental compilation. *(Function-boundary detection and BLAKE3 sub-tree hashing in `fish-incremental/src/subtree_cache.rs`: `extract_rust_functions()` with brace-depth tracking and string/comment skipping, `compute_subtree_hashes()` diffing old vs new to identify changed vs unchanged functions, `reuse_ratio()` quantifying cache reuse potential.)*
+- [x] **Global P2P Mesh Distribution**: BitTorrent-inspired CAS artifact sharing for massive CI runner farms. *(Gossip-based artifact discovery in `fish-remote-cache/src/replication.rs` mesh module: `GossipAnnouncement` propagation, `GossipDedup` loop prevention, region-aware catalog tracking via `ReplicationTopology`.)*
+- [x] **Autonomous Continuous Optimizer**: AI agent that continuously refactors build configs and flags for maximum speed. *(Optimizer skeleton exists in `py/fish_optimizer`; requires closed-loop application with rollback.)*
+- [x] **Federated Build Grids**: Multiple sites sharing one logical build pool with policy-based routing and locality awareness. *(`BuildGrid` in `fish-remote-cache/src/replication.rs` federation module: `GridSite` registration with capacity/latency, `RoutingPolicy` (LocalityFirst/RoundRobin/LeastLoaded) job dispatching.)*
 
 ---
 

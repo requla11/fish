@@ -275,3 +275,231 @@ mod tests {
         );
     }
 }
+
+/// Federated build grid: multiple sites sharing one logical build pool
+/// with policy-based routing and locality awareness.
+pub mod federation {
+    use super::*;
+
+    /// A participating site in the federated grid.
+    #[derive(Debug, Clone)]
+    pub struct GridSite {
+        pub site_id: String,
+        pub region: RegionId,
+        pub endpoint: String,
+        pub capacity_jobs: usize,
+        pub current_load: usize,
+        /// Lower is preferred (network latency in ms from coordinator).
+        pub latency_ms: u32,
+        pub accepts_foreign_jobs: bool,
+    }
+
+    /// Routing policy for dispatching jobs across the grid.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum RoutingPolicy {
+        /// Always prefer local site; overflow to lowest-latency foreign site.
+        LocalityFirst,
+        /// Round-robin across all sites with capacity.
+        RoundRobin,
+        /// Route to least-loaded site regardless of locality.
+        LeastLoaded,
+    }
+
+    /// Manages job routing across a federated build grid.
+    pub struct BuildGrid {
+        sites: Vec<GridSite>,
+        policy: RoutingPolicy,
+        round_robin_idx: usize,
+    }
+
+    impl BuildGrid {
+        pub fn new(policy: RoutingPolicy) -> Self {
+            Self {
+                sites: Vec::new(),
+                policy,
+                round_robin_idx: 0,
+            }
+        }
+
+        pub fn register_site(&mut self, site: GridSite) {
+            self.sites.push(site);
+        }
+
+        /// Select the best site for a new job. Returns `None` when no site
+        /// has capacity.
+        pub fn route_job(&mut self) -> Option<&GridSite> {
+            let available: Vec<usize> = self
+                .sites
+                .iter()
+                .enumerate()
+                .filter(|(_, s)| s.current_load < s.capacity_jobs && s.accepts_foreign_jobs)
+                .map(|(i, _)| i)
+                .collect();
+
+            if available.is_empty() {
+                return None;
+            }
+
+            let idx = match self.policy {
+                RoutingPolicy::LocalityFirst => available[0], // first = local
+                RoutingPolicy::RoundRobin => {
+                    let idx = available[self.round_robin_idx % available.len()];
+                    self.round_robin_idx += 1;
+                    idx
+                }
+                RoutingPolicy::LeastLoaded => *available
+                    .iter()
+                    .min_by_key(|&&i| (self.sites[i].current_load, self.sites[i].latency_ms))
+                    .unwrap(),
+            };
+
+            self.sites[idx].current_load += 1;
+            Some(&self.sites[idx])
+        }
+
+        /// Release a job slot on a site.
+        pub fn release_job(&mut self, site_id: &str) {
+            if let Some(site) = self.sites.iter_mut().find(|s| s.site_id == site_id) {
+                site.current_load = site.current_load.saturating_sub(1);
+            }
+        }
+    }
+}
+
+/// Global P2P mesh: extends [`ReplicationTopology`] with gossip-based
+/// artifact discovery across autonomous regions.
+pub mod mesh {
+    use std::collections::HashMap;
+
+    /// Gossip message announcing artifact availability.
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct GossipAnnouncement {
+        pub origin_region: String,
+        pub artifact_hash: String,
+        pub timestamp_secs: u64,
+        pub hop_count: u8,
+    }
+
+    /// Tracks seen gossip messages to prevent loops.
+    pub struct GossipDedup {
+        seen: HashMap<(String, String), u64>,
+        max_age_secs: u64,
+    }
+
+    impl GossipDedup {
+        pub fn new(max_age_secs: u64) -> Self {
+            Self {
+                seen: HashMap::new(),
+                max_age_secs,
+            }
+        }
+
+        /// Returns `true` if this announcement should be forwarded
+        /// (not seen before or expired).
+        pub fn should_forward(&mut self, msg: &GossipAnnouncement) -> bool {
+            let key = (msg.origin_region.clone(), msg.artifact_hash.clone());
+            let now = super::now_secs();
+            if let Some(&ts) = self.seen.get(&key)
+                && now.saturating_sub(ts) < self.max_age_secs
+            {
+                return false;
+            }
+            self.seen.insert(key, now);
+            true
+        }
+    }
+}
+
+#[cfg(test)]
+mod federation_tests {
+    use super::federation::*;
+
+    fn site(id: &str, capacity: usize, load: usize, latency: u32) -> GridSite {
+        GridSite {
+            site_id: id.to_string(),
+            region: super::RegionId(id.to_string()),
+            endpoint: format!("https://{id}.fish.grid"),
+            capacity_jobs: capacity,
+            current_load: load,
+            latency_ms: latency,
+            accepts_foreign_jobs: true,
+        }
+    }
+
+    #[test]
+    fn test_locality_first_prefers_first_site() {
+        let mut grid = BuildGrid::new(RoutingPolicy::LocalityFirst);
+        grid.register_site(site("local", 10, 0, 1));
+        grid.register_site(site("remote", 10, 5, 50));
+
+        let target = grid.route_job().unwrap();
+        assert_eq!(target.site_id, "local");
+    }
+
+    #[test]
+    fn test_least_loaded_routes_to_lightest() {
+        let mut grid = BuildGrid::new(RoutingPolicy::LeastLoaded);
+        grid.register_site(site("a", 10, 8, 1));
+        grid.register_site(site("b", 10, 2, 99));
+        grid.register_site(site("c", 10, 5, 50));
+
+        let target = grid.route_job().unwrap();
+        assert_eq!(target.site_id, "b");
+    }
+
+    #[test]
+    fn test_full_capacity_returns_none() {
+        let mut grid = BuildGrid::new(RoutingPolicy::RoundRobin);
+        grid.register_site(site("full", 1, 1, 1));
+        assert!(grid.route_job().is_none());
+    }
+
+    #[test]
+    fn test_release_frees_slot() {
+        let mut grid = BuildGrid::new(RoutingPolicy::LocalityFirst);
+        grid.register_site(site("s", 1, 1, 1));
+        assert!(grid.route_job().is_none());
+        grid.release_job("s");
+        assert!(grid.route_job().is_some());
+    }
+}
+
+#[cfg(test)]
+mod mesh_tests {
+    use super::mesh::*;
+
+    #[test]
+    fn test_gossip_dedup_prevents_loops() {
+        let mut dedup = GossipDedup::new(3600);
+        let msg = GossipAnnouncement {
+            origin_region: "us-east".to_string(),
+            artifact_hash: "abc".to_string(),
+            timestamp_secs: 100,
+            hop_count: 1,
+        };
+        assert!(dedup.should_forward(&msg), "first announcement forwarded");
+        assert!(!dedup.should_forward(&msg), "duplicate suppressed");
+    }
+
+    #[test]
+    fn test_gossip_different_artifacts_forwarded() {
+        let mut dedup = GossipDedup::new(3600);
+        let m1 = GossipAnnouncement {
+            origin_region: "r".into(),
+            artifact_hash: "a".into(),
+            timestamp_secs: 0,
+            hop_count: 1,
+        };
+        let m2 = GossipAnnouncement {
+            origin_region: "r".into(),
+            artifact_hash: "b".into(),
+            timestamp_secs: 0,
+            hop_count: 1,
+        };
+        assert!(dedup.should_forward(&m1));
+        assert!(
+            dedup.should_forward(&m2),
+            "different artifacts are not duplicates"
+        );
+    }
+}

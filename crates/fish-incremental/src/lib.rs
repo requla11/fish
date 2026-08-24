@@ -134,3 +134,5 @@ mod tests {
         assert_eq!(analysis.rebuild_frequency, 0.5);
     }
 }
+
+pub mod subtree_cache;

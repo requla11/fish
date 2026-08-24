@@ -1,19 +1,33 @@
 #![forbid(unsafe_code)]
 
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use crate::flamegraph::FlamegraphGenerator;
 use crate::metrics::{BuildMetrics, MetricsStore};
+use crate::persistence::{PersistentMetricsStore, compute_team_stats};
 
 pub struct ApiState {
     pub metrics_store: Mutex<MetricsStore>,
+    pub persistent: PersistentMetricsStore,
 }
 
 impl ApiState {
     pub fn new() -> Self {
+        Self::with_persistence(PathBuf::from(".fish/metrics/builds.jsonl"))
+    }
+
+    pub fn with_persistence(path: PathBuf) -> Self {
+        let store = PersistentMetricsStore::new(path);
+        // Rehydrate in-memory store from disk on startup.
+        let mut inner = MetricsStore::new(100);
+        for build in store.load_recent(100) {
+            inner.add_build(build);
+        }
         Self {
-            metrics_store: Mutex::new(MetricsStore::new(100)),
+            metrics_store: Mutex::new(inner),
+            persistent: store,
         }
     }
 }
@@ -70,6 +84,10 @@ pub fn handle_api_request(
         }
         ("POST", "/api/builds") => {
             if let Ok(metrics) = serde_json::from_slice::<BuildMetrics>(body) {
+                // Persist to JSONL so the dashboard survives restarts.
+                if let Err(e) = state.persistent.append(&metrics) {
+                    eprintln!("warning: failed to persist build metrics: {e}");
+                }
                 let mut store = state.metrics_store.lock().unwrap();
                 store.add_build(metrics);
                 let res = ApiResponse::success("Build metrics stored".to_string());
@@ -79,6 +97,25 @@ pub fn handle_api_request(
                 let res = ApiResponse::<()>::error("Invalid JSON body".to_string());
                 let json = serde_json::to_vec(&res).unwrap_or_default();
                 (400, "application/json", json)
+            }
+        }
+        ("GET", "/api/team-stats") => {
+            let builds = state.persistent.load_recent(200);
+            match compute_team_stats(&builds) {
+                Some(stats) => {
+                    let res = ApiResponse::success(stats);
+                    let json = serde_json::to_vec(&res).unwrap_or_default();
+                    (200, "application/json", json)
+                }
+                None => {
+                    let res =
+                        ApiResponse::<()>::error("No build history available yet".to_string());
+                    (
+                        404,
+                        "application/json",
+                        serde_json::to_vec(&res).unwrap_or_default(),
+                    )
+                }
             }
         }
         ("GET", p) if p.starts_with("/api/builds/") && p.ends_with("/flamegraph") => {

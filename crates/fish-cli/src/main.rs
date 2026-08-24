@@ -1,4 +1,4 @@
-﻿#![forbid(unsafe_code)]
+#![forbid(unsafe_code)]
 
 mod ai_bridge;
 mod args;
@@ -9,6 +9,7 @@ mod build;
 mod commands;
 mod config;
 mod critical_path;
+mod cross_deps;
 pub mod daemon;
 pub mod experimental;
 mod nl_authoring;

@@ -1,16 +1,17 @@
 #![forbid(unsafe_code)]
 
+pub mod artifact;
+pub mod client;
 pub mod p2p_lan;
+pub mod protocol;
+pub mod reapi;
+pub mod server;
+pub mod signature_gate;
+
 pub use p2p_lan::{
     ArtifactChunk, ChunkBitfield, ChunkManifest, LanPeerNode, LanPeerRegistry,
     P2PArtifactReassembler,
 };
-
-pub mod artifact;
-pub mod client;
-pub mod protocol;
-pub mod reapi;
-pub mod server;
 
 use std::collections::HashMap;
 use std::fmt::Debug;

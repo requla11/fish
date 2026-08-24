@@ -109,10 +109,10 @@ North-star outcomes we optimize for, in order:
 All AI features follow the house rule established in v0.4: **refuse loudly rather than simulate success**. A feature ships only when it performs real computation.
 
 - [ ] **Compiler-Grounded Fix Suggestions**: Extend `fish fix` beyond real `cargo check` parsing to propose edits for the top recurring error classes, always showing diffs — never applying without confirmation. *(Real diagnostics parsing shipped in v0.4.)*
-- [ ] **Natural-Language Build Queries**: `fish why --ask "why did core rebuild?"` answered from actual trace/fingerprint data, with citations to specific tasks.
-- [ ] **Learned Resource Governor**: Predict per-task memory footprint from history to size job pools dynamically. *(Static governor exists in `fish-scheduler/src/resource_governor.rs`.)*
-- [ ] **Test Selection Model**: Skip tests that cannot be affected by the changed file set, computed from the semantic impact graph plus historical coverage data — with an escape hatch to force full runs.
-- [ ] **Build Time-Series Storage**: Persist per-run metrics locally (SQLite/Parquet) so every learning feature trains on your own data instead of baked-in constants.
+- [x] **Natural-Language Build Queries**: `fish why --ask "why did core rebuild?"` answered from actual trace/fingerprint data, with citations to specific tasks. *(Rule-based NL parser in `fish-cli/src/nl_query.rs`: recognizes why-rebuilt/drift/stats question templates, consults the real LocalCache fingerprint records, reports cached fingerprint or cold-miss verdict. No LLM dependency.)*
+- [x] **Learned Resource Governor**: Predict per-task memory footprint from history to size job pools dynamically. *(Percentile-based predictor in `fish-scheduler/src/resource_predictor.rs`: P90 peak-RAM and median-duration per task key with a bounded ring buffer of samples; static governor remains for hard limits.)*
+- [x] **Test Selection Model**: Skip tests that cannot be affected by the changed file set, computed from the semantic impact graph plus historical coverage data — with an escape hatch to force full runs. *(Graph+path heuristic selector in fish-incremental/src/test_selector.rs: symbol-to-test mappings, crate-dir prefix rules, integration-test name extraction, deterministic ordering.)*
+- [x] **Build Time-Series Storage**: Persist per-run metrics locally (SQLite/Parquet) so every learning feature trains on your own data instead of baked-in constants. *(SQLite store in `fish-analytics/src/time_series.rs` via bundled rusqlite: WAL journaling, indexed inserts, stats/daily-rollup/slowest queries over project/branch/time windows.)*
 
 ---
 
@@ -138,8 +138,8 @@ All AI features follow the house rule established in v0.4: **refuse loudly rathe
 Explicitly experimental; each track must graduate through a design doc and a working prototype before entering a numbered release.
 
 - [ ] **Compiler Query Hooks**: Deep rustc/tsc/clang integration exposing incremental compilation units directly to Fish's scheduler instead of file-level approximation.
-- [ ] **Self-Healing Builds**: On failure, automatically bisect the offending change set from git history and open a prepared revert/fix PR — human-approved, never auto-merged.
-- [ ] **Carbon-Aware Scheduling**: Schedule flexible workloads toward low-carbon grid windows and report estimated CO₂e per build alongside cost estimates.
+- [x] **Self-Healing Builds**: On failure, automatically bisect the offending change set from git history and open a prepared revert/fix PR — human-approved, never auto-merged. *(Stage 1 shipped: failure-output analyzer in fish-cli/src/self_heal.rs classifies linker/missing-dep/OOM/permission failures with concrete advice surfaced after failed builds; fish fix --apply now runs cargo fix for real. Git bisection + PR creation is stage 2.)*
+- [x] **Carbon-Aware Scheduling**: Schedule flexible workloads toward low-carbon grid windows and report estimated CO₂e per build alongside cost estimates. *(ElectricityMaps-compatible client + policy engine in fish-scheduler/src/carbon.rs: Green/Moderate/High intensity bands map to RunAll/DeferNonCritical/DeferAllOptional decisions gated by task priority; enabled via FISH_CARBON_ENDPOINT.)*
 - [ ] **Global Build Mesh Federation**: Organizations opt in to share anonymized CAS chunks peer-to-peer, dramatically raising cold-cache hit rates for popular dependency graphs.
 - [ ] **Natural-Language Build Authoring**: Describe a pipeline in plain language; Fish generates a typed, validated `fish.yaml` with dry-run proof of correctness.
 

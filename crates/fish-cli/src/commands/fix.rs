@@ -99,10 +99,25 @@ pub fn run_fix(args: FixArgs) -> ExitCode {
     }
 
     if args.apply {
-        println!(
-            "--apply requested, but fish does not bundle an automated remediation engine yet; \
-             no files were modified."
-        );
+        println!("Applying `cargo fix --allow-dirty --allow-staged`…");
+        match crate::self_heal::attempt_cargo_auto_fix(&target_path) {
+            Some(Ok(output)) => {
+                if output.trim().is_empty() {
+                    println!("cargo fix completed with no output (nothing to change).");
+                } else {
+                    for line in output.lines().take(20) {
+                        println!("  {line}");
+                    }
+                }
+                println!("Applied. Re-run `fish fix` to confirm zero diagnostics remain.");
+            }
+            Some(Err(err)) => {
+                eprintln!("error: cargo fix failed to spawn: {err}");
+            }
+            None => {
+                eprintln!("error: no Cargo.toml found; --apply requires a Cargo project.");
+            }
+        }
     }
 
     if args.ai {

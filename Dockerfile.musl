@@ -1,0 +1,31 @@
+# Static musl build for maximum portability on Linux.
+#
+# NOTE: Releases build this automatically in .github/workflows/release.yaml
+# (build-musl-static job). Use this file only for local reproduction:
+#
+# Build: docker build -f Dockerfile.musl -t fish:musl .
+# Extract binary:
+#   docker create --name tmp fish:musl && \
+#   docker cp tmp:/out/fish ./fish && docker rm tmp
+
+FROM rust:1.88-alpine AS builder
+
+RUN apk add --no-cache musl-dev musl-tools upx
+
+WORKDIR /build
+COPY Cargo.toml Cargo.lock ./
+COPY crates ./crates
+COPY proto ./proto
+
+ENV CARGO_NET_GIT_FETCH_WITH_CLI=true \
+    RUSTFLAGS="-C target-feature=+crt-static" \
+    CC=musl-gcc
+
+RUN cargo build --release --target x86_64-unknown-linux-musl -p fish-cli --locked
+
+# Strip and compress the final binary.
+RUN strip target/x86_64-unknown-linux-musl/release/fish \
+    && upx --best --lzma target/x86_64-unknown-linux-musl/release/fish || true
+
+FROM scratch AS export
+COPY --from=builder /build/target/x86_64-unknown-linux-musl/release/fish /out/fish

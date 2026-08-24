@@ -9,7 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-08-24
+
 ### Added
+#### Mid-term (v0.4–v0.5)
 - Cloud Cost Calculator (`fish cost-estimate`) — TOML pricing catalogs for AWS/GCP/Azure with LPT bin-packing, spot/ondemand comparison, egress/storage pricing, and ranked savings reports.
 - OpenTelemetry OTLP/HTTP+JSON exporter (`OtlpExporter`) honoring `OTEL_EXPORTER_OTLP_ENDPOINT`; `fish build` exports root + per-task spans at completion.
 - Distributed Trace Aggregation (`merge_worker_traces`) — dedup, trace-id adoption, orphan re-parenting across workers.
@@ -17,9 +20,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Spot Instance Optimization (`PreemptionRetryExecutor`) — retries infrastructure-shaped failures then migrates to an on-demand fallback.
 - Plugin Capability Auditor — risk-ranked static analysis of wasm plugin manifests.
 - Live OSV advisory feed (`OsvClient`, `FISH_OSV_ENDPOINT`) — batched querybatch lookups replacing the stale embedded snapshot for Cargo and npm.
-- In-toto Statement/v1 SLSA provenance model with Ed25519-signed statements and subject-binding verification.
 - RBAC resource-scoped target rules (e.g. `prod/*` requiring higher clearance) and append-only JSONL audit log.
-- CAS synchronous reader (`with_artifact_bytes`) for hashing/streaming without async overhead.
+- CAS synchronous reader (`with_artifact_bytes`).
+- Web Dashboard JSONL persistence (`PersistentMetricsStore`) and `/api/team-stats`.
+- K8s FishCluster CRD manifests, reconciler, and spot-node handling in the Go control plane.
+- Cross-region replication topology (`ReplicationTopology`) with region-aware catalog tracking and TTL eviction.
+- Signature Gate (`SignedArtifactGate`) — Ed25519 verify-on-read for remote artifacts, wired into `fish build` via `FISH_SIGNING_SEED`.
+
+#### v0.6
+- Toolchain provisioning: hermetic downloader with network fetch, SHA-256 checksums, tar/zip extraction; `fish.lock` lockfile with drift verification.
+- Sandbox presets (`strict`/`default`/`trusted`), drift detector over BLAKE3 fingerprints.
+- Build reproducibility: trace replay certification (`ExecutionTrace` save/load/replay), bit-for-bit output comparison (`certify_reproducible`).
+- SLSA in-toto CLI (`fish attest`) generating Statement/v1 per output artifact.
+- Multi-tenant CAS with tenant namespacing and per-team byte quotas.
+- Plugin Marketplace: registry fetch/search/sign/install with Ed25519 verification.
+
+#### Long-term (v1.0+)
+- MicroVM hardware isolation config generator (`MicroVmConfig`, Firecracker JSON emission, VM lifecycle state machine) in `fish-sandbox`.
+- HA Coordinator Raft consensus in Go (`go/pkg/raft`): leader election, log replication, conflict truncation, committed-entry application.
+- Cross-language AST sub-tree caching: Rust function boundary detection, BLAKE3 per-function hashing, changed-vs-unchanged diffing (`fish-incremental/src/subtree_cache.rs`).
+- Global P2P mesh gossip discovery with dedup loop prevention on top of the replication topology.
+- Federated build grids (`BuildGrid`) with LocalityFirst/RoundRobin/LeastLoaded routing policies.
+
+### Changed
+- Wasm plugin engine embeds a real wasmi runtime behind the `wasm` feature flag; hooks compile, instantiate, and call exported functions instead of fabricating results.
 
 ### Fixed
 - Remote CAS downloads now verify BLAKE3 integrity; `stats()`/`list()` propagate errors instead of fabricating zeros.
@@ -28,6 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Response files follow MSVC backslash/quote escaping rules and reject embedded newlines.
 - Work-stealing scheduler records real start offsets and worker ids in Chrome traces.
 - Racing executor checks cancellation before starting each side and documents duplicated-execution semantics.
+- Go Raft election timeout now randomizes correctly over 150–300ms (previous string-modulo produced 48–57ms); tests use a deterministic timeout override.
 - fs watcher sets its running flag only after a successful start and honors the configured debounce interval.
 - Jobserver pool clamps limit to ≥ 1; resource governor warning threshold no longer saturates at low limits.
 

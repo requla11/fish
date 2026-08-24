@@ -2,123 +2,219 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    tags: ["v*"]
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag (e.g. v0.1.0)'
+        description: "Tag to release (e.g. v0.5.0)"
         required: true
-        default: 'v0.1.0'
 
 permissions:
   contents: write
+  id-token: write
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build-release:
-    name: Build Binary (${{ matrix.target }})
+  build-artifacts:
+    name: Build ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
         include:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
-            use_cross: false
-          - target: x86_64-unknown-linux-musl
-            os: ubuntu-latest
-            use_cross: true
-          - target: aarch64-unknown-linux-gnu
-            os: ubuntu-latest
-            use_cross: true
-          - target: x86_64-apple-darwin
-            os: macos-latest
-            use_cross: false
-          - target: aarch64-apple-darwin
-            os: macos-latest
-            use_cross: false
+            archive: tar.gz
           - target: x86_64-pc-windows-msvc
             os: windows-latest
-            use_cross: false
-
+            archive: zip
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            archive: tar.gz
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            archive: tar.gz
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
 
-      - name: Install Cross compilation tools
-        if: matrix.use_cross
-        uses: taiki-e/install-action@cross
+      - uses: Swatinem/rust-cache@v2
 
-      - name: Build Release Binary (Native)
-        if: "!matrix.use_cross"
-        run: cargo build -p fish-cli --release --target ${{ matrix.target }}
+      - name: Install cross-compilation toolchain (macOS x86_64 on arm64 runner)
+        if: matrix.target == 'x86_64-apple-darwin'
+        run: rustup target add x86_64-apple-darwin
 
-      - name: Build Release Binary (Cross)
-        if: matrix.use_cross
-        run: cross build -p fish-cli --release --target ${{ matrix.target }}
+      - name: Build release binary
+        run: cargo build --release --target ${{ matrix.target }} -p fish-cli
 
-      - name: Package Binary (Unix)
-        if: matrix.os != 'windows-latest'
+      - name: Stage artifacts (unix)
+        if: runner.os != 'Windows'
         shell: bash
         run: |
-          BIN_NAME="fish"
-          PKG_NAME="fish-${{ github.ref_name || github.event.inputs.tag || 'pr' }}-${{ matrix.target }}"
-          mkdir -p "$PKG_NAME"
-          cp "target/${{ matrix.target }}/release/$BIN_NAME" "$PKG_NAME/"
-          cp README.md LICENSE "$PKG_NAME/" 2>/dev/null || true
-          tar -czf "$PKG_NAME.tar.gz" "$PKG_NAME"
-          echo "ARCHIVE=$PKG_NAME.tar.gz" >> $GITHUB_ENV
+          VERSION="${GITHUB_REF_NAME#v}"
+          STAGE="fish-${VERSION}-${{ matrix.target }}"
+          mkdir -p "dist/${STAGE}"
+          cp "target/${{ matrix.target }}/release/fish" "dist/${STAGE}/fish"
+          cp README.md LICENSE "dist/${STAGE}/" 2>/dev/null || true
+          tar czf "dist/${STAGE}.tar.gz" -C dist "${STAGE}"
+          sha256sum "dist/${STAGE}.tar.gz" > "dist/${STAGE}.tar.gz.sha256"
 
-      - name: Package Binary (Windows)
-        if: matrix.os == 'windows-latest'
-        shell: bash
+      - name: Stage artifacts (windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
         run: |
-          BIN_NAME="fish.exe"
-          PKG_NAME="fish-${{ github.ref_name || github.event.inputs.tag || 'pr' }}-${{ matrix.target }}"
-          mkdir -p "$PKG_NAME"
-          cp "target/${{ matrix.target }}/release/$BIN_NAME" "$PKG_NAME/"
-          cp README.md LICENSE "$PKG_NAME/" 2>/dev/null || true
-          7z a "$PKG_NAME.zip" "$PKG_NAME"
-          echo "ARCHIVE=$PKG_NAME.zip" >> $GITHUB_ENV
+          $version = "${{ github.ref_name }}".TrimStart("v")
+          $stage = "fish-$version-${{ matrix.target }}"
+          New-Item -ItemType Directory -Force -Path "dist\$stage" | Out-Null
+          Copy-Item "target\${{ matrix.target }}\release\fish.exe" "dist\$stage\fish.exe"
+          Compress-Archive -Path "dist\$stage" -DestinationPath "dist\$stage.zip"
+          $hash = (Get-FileHash "dist\$stage.zip" -Algorithm SHA256).Hash.ToLower()
+          "$hash  $stage.zip" | Out-File -Encoding ascii "dist\$stage.zip.sha256"
 
-      - name: Upload Build Artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: binary-${{ matrix.target }}
-          path: ${{ env.ARCHIVE }}
+          name: fish-${{ matrix.target }}
+          path: dist/*
 
-  publish-release:
-    name: Publish GitHub Release
-    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
-    needs: build-release
+  build-musl-static:
+    name: Build static musl binary
     runs-on: ubuntu-latest
+    timeout-minutes: 45
+    container:
+      image: rust:1.88-alpine
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download all build artifacts
-        uses: actions/download-artifact@v4
+      - name: Install toolchain deps
+        run: apk add --no-cache musl-dev upx binutils
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build static fish binary
+        run: |
+          export RUSTFLAGS="-C target-feature=+crt-static"
+          cargo build --release --target x86_64-unknown-linux-musl -p fish-cli --locked
+
+      - name: Strip + compress
+        run: |
+          strip target/x86_64-unknown-linux-musl/release/fish
+          upx --best --lzma target/x86_64-unknown-linux-musl/release/fish || true
+
+      - name: Stage artifact
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          STAGE="fish-${VERSION}-x86_64-unknown-linux-musl"
+          mkdir -p "dist/${STAGE}"
+          cp target/x86_64-unknown-linux-musl/release/fish "dist/${STAGE}/fish"
+          tar czf "dist/${STAGE}.tar.gz" -C dist "${STAGE}"
+          sha256sum "dist/${STAGE}.tar.gz" > "dist/${STAGE}.tar.gz.sha256"
+
+      - uses: actions/upload-artifact@v4
         with:
-          path: release-assets
+          name: fish-x86_64-unknown-linux-musl
+          path: dist/*
+
+  generate-provenance:
+    name: SLSA Provenance + Ed25519 Signature
+    needs: [build-artifacts]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
           merge-multiple: true
 
-      - name: Generate Checksums & SBOM
-        run: |
-          cd release-assets
-          sha256sum * > SHA256SUMS.txt
-          cat SHA256SUMS.txt
+      - uses: dtolnay/rust-toolchain@stable
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+      - name: Generate in-toto Statement/v1 per artifact
+        shell: bash
+        run: |
+          mkdir -p provenance
+          for f in dist/*.tar.gz dist/*.zip; do
+            [ -e "$f" ] || continue
+            name=$(basename "$f")
+            sha=$(sha256sum "$f" | cut -d' ' -f1)
+            size=$(stat -c%s "$f" 2>/dev/null || stat -f%z "$f")
+            cat > "provenance/${name}.intoto.jsonl" <<EOF
+          {"_type":"https://in-toto.io/Statement/v1","subject":[{"name":"${name}","digest":{"sha256":"${sha}"}}],"predicateType":"https://slsa.dev/provenance/v1","predicate":{"buildDefinition":{"externalParameters":{"workflow":"release.yaml","ref":"${GITHUB_REF_NAME}"},"internalParameters":{},"resolvedDependencies":[]},"runDetails":{"builder":{"id":"https://github.com/actions/runner"},"metadata":{"invocationId":"${{ github.run_id }}"}}}}
+          EOF
+          done
+          ls -la provenance/
+
+      - name: Sign provenance statements with Ed25519
+        env:
+          FISH_SIGNING_SEED: ${{ secrets.RELEASE_SIGNING_SEED }}
+        shell: bash
+        run: |
+          # Deterministic signing via the fish CLI itself.
+          cargo run --quiet -p fish-cli -- attest sign-provenance \
+            --dir provenance --out-dir provenance-signed || \
+            echo "::warning::attest subcommand unavailable; publishing unsigned"
+
+      - uses: actions/upload-artifact@v4
         with:
-          files: |
-            release-assets/*
-          generate_release_notes: true
+          name: provenance
+          path: provenance*/
+
+  create-release:
+    name: Create GitHub Release
+    needs: [build-artifacts, build-musl-static, generate-provenance]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Generate checksums file
+        shell: bash
+        run: cd dist && sha256sum *.tar.gz *.zip > SHA256SUMS 2>/dev/null || sha256sum *.* > SHA256SUMS
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
           draft: false
-          prerelease: false
+          prerelease: ${{ contains(github.ref_name, '-') && !contains(github.ref_name, '.') }}
+          files: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/*.sha256
+            dist/SHA256SUMS
+            provenance-signed/*
+
+  update-packaging-manifests:
+    name: Auto-fill Scoop/Homebrew/Winget hashes
+    needs: create-release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dev
+
+      - name: Patch packaging manifests with real release hashes
+        shell: bash
+        run: python scripts/update_packaging.py --tag "${GITHUB_REF_NAME#v}" --repo "$GITHUB_REPOSITORY"
+
+      - name: Commit updated manifests to dev
+        shell: bash
+        run: |
+          git config user.name "fish-release-bot"
+          git config user.email "noreply@github.com"
+          git add packaging/
+          if git diff --cached --quiet; then
+            echo "manifests already up to date"
+          else
+            git commit -m "chore(release): update packaging manifests for ${GITHUB_REF_NAME}"
+            git push origin dev
+          fi

@@ -21,6 +21,7 @@ toml = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 chrono = { workspace = true }
 reqwest = { version = "0.13", features = ["json"] }
+rusqlite = { version = "0.37", features = ["bundled"] }
 
 [dev-dependencies]
 tempfile = { workspace = true }

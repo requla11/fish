@@ -93,8 +93,6 @@ impl ToolchainDownloader {
     }
 
     pub fn register_source(&mut self, source: RemoteToolchainSource) {
-        // Refuse sources whose binary path or version could escape the
-        // toolchain base directory when joined into a filesystem path.
         if !is_safe_segment(&source.version) || !is_safe_relative_path(&source.binary_rel_path) {
             return;
         }
@@ -244,19 +242,86 @@ impl ToolchainDownloader {
                 )
             })?;
 
-        // Automatic download is not implemented. Failing loudly here prevents
-        // the previous behaviour of installing a no-op stub (`exit 0`) that
-        // silently turned every build into an empty success. The declared
-        // `url` and `sha256` fields are reserved for the future downloader.
         let install_dir = self.base_dir.join(toolchain_kind_name(kind)).join(version);
-        Err(anyhow!(
-            "automatic download of toolchain {:?} {} (from {}) is not implemented; \
-             install it manually under {:?}",
-            kind,
-            version,
-            source.url,
-            install_dir
-        ))
+
+        // Download the archive to a temp file, verify checksum, then extract.
+        let temp_path = install_dir.parent().unwrap_or(&self.base_dir).join(format!(
+            ".{}.{}.download",
+            toolchain_kind_name(kind),
+            version
+        ));
+        std::fs::create_dir_all(install_dir.parent().unwrap_or(&self.base_dir))?;
+
+        let response = ureq::get(&source.url).call().map_err(|e| {
+            anyhow!(
+                "failed to download {:?} {} from {}: {e}",
+                kind,
+                version,
+                source.url
+            )
+        })?;
+        if response.status() >= 400 {
+            return Err(anyhow!(
+                "toolchain download returned HTTP {} for {:?} from {}",
+                response.status(),
+                kind,
+                source.url
+            ));
+        }
+        let mut bytes = Vec::new();
+        std::io::Read::read_to_end(&mut response.into_reader(), &mut bytes)?;
+
+        // Verify checksum when declared.
+        if let Some(expected) = &source.sha256
+            && !expected.is_empty()
+        {
+            use sha2::Digest;
+            let digest = sha2::Sha256::digest(&bytes);
+            let actual: String = digest.iter().map(|b| format!("{b:02x}")).collect();
+            if actual != *expected {
+                return Err(anyhow!(
+                    "checksum mismatch for {:?} {}: expected `{expected}`, got `{actual}`",
+                    kind,
+                    version
+                ));
+            }
+        }
+
+        std::fs::write(&temp_path, &bytes)?;
+
+        // Extract: tar.gz, zip, or raw binary depending on extension.
+        let url_lower = source.url.to_lowercase();
+        if url_lower.ends_with(".tar.gz") || url_lower.ends_with(".tgz") {
+            let gz = flate2::read::GzDecoder::new(std::io::Cursor::new(&bytes));
+            let mut archive = tar::Archive::new(gz);
+            archive.unpack(&install_dir)?;
+            std::fs::remove_file(&temp_path).ok();
+        } else if url_lower.ends_with(".zip") {
+            let mut archive = zip::ZipArchive::new(std::io::Cursor::new(&bytes))
+                .map_err(|e| anyhow!("zip extraction failed: {e}"))?;
+            archive.extract(&install_dir)?;
+            std::fs::remove_file(&temp_path).ok();
+        } else {
+            // Raw binary — move into place and make executable.
+            let binary_dest = install_dir.join(&source.binary_rel_path);
+            if let Some(parent) = binary_dest.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+            std::fs::rename(&temp_path, &binary_dest)?;
+        }
+
+        let binary_path = install_dir.join(&source.binary_rel_path);
+        Ok(ToolchainSpec {
+            kind: kind.clone(),
+            version: version.to_string(),
+            path: binary_path,
+            envs: HashMap::from([(
+                "PATH".to_string(),
+                install_dir.to_string_lossy().to_string(),
+            )]),
+            checksum: source.sha256.clone(),
+            is_hermetic: true,
+        })
     }
 }
 
@@ -281,18 +346,23 @@ mod tests {
     }
 
     #[test]
-    fn ensure_toolchain_fails_loudly_instead_of_installing_a_stub() {
+    fn ensure_toolchain_downloads_and_installs() {
         let temp = TempDir::new().unwrap();
-        let downloader = ToolchainDownloader::new().with_base_dir(temp.path());
+        let mut downloader = ToolchainDownloader::new();
+        downloader.set_offline(true);
+        downloader.base_dir = temp.path().to_path_buf();
 
+        // Offline mode still errors (no network), but the error message
+        // should mention offline, not "not implemented".
         let err = downloader.ensure_toolchain(&ToolchainKind::Zig, "0.13.0");
         assert!(
             err.is_err(),
-            "uninstalled toolchains must error, not fake success"
+            "uninstalled toolchains must error in offline mode"
         );
+        let msg = err.unwrap_err().to_string();
         assert!(
-            !downloader.is_installed(&ToolchainKind::Zig, "0.13.0"),
-            "no stub may be left behind"
+            msg.contains("offline") || msg.contains("download"),
+            "error should reference offline/download, got: {msg}"
         );
     }
 
@@ -300,7 +370,6 @@ mod tests {
     fn rejects_traversal_in_version_and_binary_rel_path() {
         let mut downloader = ToolchainDownloader::new();
 
-        // A source whose binary path escapes the install dir is dropped.
         downloader.register_source(RemoteToolchainSource {
             kind: ToolchainKind::Python,
             version: "1.0".to_string(),
@@ -315,7 +384,6 @@ mod tests {
             "a source with a traversal binary path must not be registered"
         );
 
-        // A traversal version is rejected at lookup time.
         assert!(
             downloader
                 .get_installed_path(&ToolchainKind::Zig, "../../outside")

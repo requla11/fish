@@ -1,5 +1,3 @@
-// Error types for signing operations
-
 use thiserror::Error;
 
 /// Result type for signing operations

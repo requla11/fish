@@ -132,7 +132,6 @@ pub fn run_lsp() -> ExitCode {
     let mut stdout = io::stdout();
     let mut reader = stdin.lock();
 
-    // Full-sync documents keyed by URI, used for hover and diagnostics.
     let mut documents: HashMap<String, String> = HashMap::new();
 
     loop {
@@ -277,11 +276,9 @@ fn validate_document(uri: &str, text: &str) -> Vec<serde_json::Value> {
 /// Extract the current document text from an LSP notification parameter.
 fn document_text(params: Option<&serde_json::Value>) -> Option<&str> {
     let text_document = params?.get("textDocument")?;
-    // `didOpen` carries the full text in `textDocument.text`.
     if let Some(text) = text_document.get("text").and_then(|t| t.as_str()) {
         return Some(text);
     }
-    // `didChange` carries it in `contentChanges[0].text`.
     params?
         .get("contentChanges")?
         .get(0)?

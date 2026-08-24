@@ -3,7 +3,7 @@
 Fish hỗ trợ các giao thức lưu trữ đệm phân tán và thực thi từ xa hiệu năng cao.
 
 ## Giao thức Remote Execution API (REAPI v2)
-Fish tích hợp chuẩn Google / Bazel Remote Execution API v2 qua gRPC:
+Fish cung cấp mô hình dữ liệu **tương thích REAPI v2** (`ReapiDigest`, `ReapiDirectory`, `ReapiFileNode` trong `crates/fish-remote-cache/src/reapi.rs`) truyền qua giao thức HTTP/JSON — không phải gRPC. Workspace không phụ thuộc vào protobuf/gRPC; xem [go-services.md](go-services.md) về kế hoạch triển khai gRPC.
 ```bash
 fish build --remote-workers 10.0.0.1:8980,10.0.0.2:8980
 ```

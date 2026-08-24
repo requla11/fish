@@ -1,6 +1,15 @@
 from typing import List, Dict, Any
 
+
 class PredictiveBuildPrewarmer:
+    """Keystroke-driven prewarm *suggestions*.
+
+    The extension-to-checker mapping below is a real heuristic about which
+    toolchain a file edit would exercise. Fish does not wire these suggestions
+    into any scheduler or background executor yet, so the response says
+    ``SUGGESTIONS_ONLY`` instead of claiming work was scheduled.
+    """
+
     def __init__(self):
         self.typing_history: List[str] = []
 
@@ -12,16 +21,18 @@ class PredictiveBuildPrewarmer:
         predicted_targets = []
         if active_file.endswith(".rs"):
             predicted_targets.append("cargo-check")
-            predicted_targets.append("fish-backend-rust")
         elif active_file.endswith(".ts") or active_file.endswith(".js"):
             predicted_targets.append("tsc-check")
-            predicted_targets.append("fish-backend-ts")
         elif active_file.endswith(".go"):
             predicted_targets.append("go-vet")
 
         return {
-            "status": "PREWARM_SCHEDULED",
+            "status": "SUGGESTIONS_ONLY",
             "active_file": active_file,
             "dirty_symbol": dirty_symbol,
-            "prewarm_targets": predicted_targets
+            "prewarm_targets": predicted_targets,
+            "note": (
+                "Targets are heuristic suggestions; no scheduler or executor "
+                "is attached yet."
+            ),
         }

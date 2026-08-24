@@ -73,7 +73,7 @@ inputs = ["tests/**/*", "src/**/*"]
 
 | 配置键 | 类型 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- |
-| `cache_url` | 字符串 | None | 远程缓存服务器地址 (HTTP/gRPC)。 |
+| `cache_url` | 字符串 | None | 遠端快取伺服器位址 (HTTP)。 |
 | `token` | 字符串 | None | 远程访问所需的 Bearer 认证 Token。 |
 | `workers` | 字符串列表 | `[]` | 远程执行集群 Worker 節點地址列表（例如 `["worker1:9000", "worker2:9000"]`）。 |
 | `send_source` | 布尔值 | `false` | 压缩并传输源码快照至无共享存储的远程 Worker 節點。 |

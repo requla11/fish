@@ -15,7 +15,6 @@ use std::path::Path;
 /// Try to create a symlink, falling back to hard copy if it fails
 /// This handles Windows symlink restrictions without requiring Admin
 pub fn try_symlink_or_copy(src: &Path, dst: &Path) -> io::Result<()> {
-    // Try symlink first
     #[cfg(windows)]
     {
         if std::os::windows::fs::symlink_file(src, dst).is_ok() {
@@ -30,7 +29,6 @@ pub fn try_symlink_or_copy(src: &Path, dst: &Path) -> io::Result<()> {
         }
     }
 
-    // Fallback to hard copy
     fs::copy(src, dst)?;
     Ok(())
 }
@@ -42,7 +40,6 @@ pub fn is_file_locked(path: &Path) -> bool {
         use std::fs::OpenOptions;
 
         if let Ok(file) = OpenOptions::new().read(true).write(false).open(path) {
-            // If we can open it for reading, it's not locked
             drop(file);
             false
         } else {
@@ -52,7 +49,6 @@ pub fn is_file_locked(path: &Path) -> bool {
 
     #[cfg(not(windows))]
     {
-        // On Unix, file locking is advisory, so we assume not locked
         false
     }
 }
@@ -62,13 +58,10 @@ pub fn is_file_locked(path: &Path) -> bool {
 pub fn safe_replace_file(src: &Path, dst: &Path) -> io::Result<()> {
     let temp_path = dst.with_extension(".tmp");
 
-    // Copy to temp file first
     fs::copy(src, &temp_path)?;
 
-    // Try to replace the target
     #[cfg(windows)]
     {
-        // On Windows, we may need to retry if the file is locked
         let mut retries = 5;
         loop {
             match fs::rename(&temp_path, dst) {
@@ -78,7 +71,6 @@ pub fn safe_replace_file(src: &Path, dst: &Path) -> io::Result<()> {
                     std::thread::sleep(std::time::Duration::from_millis(100));
                 }
                 Err(e) => {
-                    // Clean up temp file
                     let _ = fs::remove_file(&temp_path);
                     return Err(e);
                 }

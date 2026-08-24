@@ -8,16 +8,16 @@ Tài liệu này trình bày lộ trình phát triển chiến lược của d�
 
 ## 🎯 Tầm nhìn chiến lược
 
-Fish hướng tới trở thành hệ thống điều phối build đa ngôn ngữ (polyglot) hiệu năng cao nhất, an toàn nhất và thân thiện nhất với lập trình viên, vận hành trên **Kiến trúc Tri-Engine (Rust 75% + Python 15% + Go 10%)**.
+Fish hướng tới trở thành hệ thống điều phối build đa ngôn ngữ (polyglot) hiệu năng cao nhất, an toàn nhất và thân thiện nhất với lập trình viên cho các monorepo đa ngôn ngữ. Hiện tại Fish là một **workspace thuần Rust**; các tầng dịch vụ Python và Go được mô tả trong các bản phác thảo trước đây là kế hoạch tương lai, chưa phải mã nguồn chính thức.
 
 ---
 
 ## 🚀 Cột mốc Hiện tại (v0.2.x) — Đã Hoàn Thành
 
 ### Giai đoạn 1: Lõi Thực Thi & Đa Ngôn Ngữ
-- [x] **Kiến trúc Tri-Engine**: Lõi tính toán Rust siêu tốc (75%), Trí tuệ nhân tạo Python (15%) và Mạng phân tán Go (10%).
+- [ ] **Kiến trúc Tri-Engine**: *Kế hoạch tương lai, chưa triển khai.* Hiện chỉ có lõi Rust hiệu năng cao; chưa có các dịch vụ Python AI hay Go cloud trong kho mã nguồn.
 - [x] **11 Backend Ngôn ngữ**: Rust, Go, TypeScript/Node.js, Python, C/C++, Docker, Java, .NET, Swift, Dart, Zig.
-- [x] **Hợp đồng Protobuf dùng chung**: Các giao thức `build.proto`, `ai.proto`, `coordinator.proto`.
+- [ ] **Hợp đồng Protobuf dùng chung**: *Bản thảo.* `build.proto`, `ai.proto`, và `coordinator.proto` nằm trong `proto/` nhưng chưa được crate nào tham chiếu (workspace chưa có phụ thuộc gRPC).
 - [x] **Lưu trữ CAS Blake3 & Thuật toán Nén ZSTD**: Hệ thống Content-Addressable Storage hai pha dọn dẹp.
 - [x] **Điều phối GNU Jobserver**: Phân phối token luồng toàn cục chống tràn bộ nhớ CPU/RAM.
 - [x] **Tự động sinh CI/CD**: Hỗ trợ GitHub Actions, GitLab CI, CircleCI, Bitbucket Pipelines.

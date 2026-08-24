@@ -59,9 +59,13 @@ pub fn run_jit(args: JitArgs) -> ExitCode {
     );
     match jit.compile_expression_to_machine_code(&args.function_name, args.value) {
         Ok(compiled) => {
+            let location = match compiled.memory_address {
+                Some(addr) => format!("mapped at 0x{addr:X}"),
+                None => "assembled (not mapped into executable memory)".to_string(),
+            };
             println!(
-                "👑 In-Process Micro-JIT compiled `{}` to 0x{:X} ({} ns)",
-                compiled.function_name, compiled.memory_address, compiled.execution_duration_nanos
+                "?? In-Process Micro-JIT assembled `{}` — {}",
+                compiled.function_name, location
             );
             println!("   Opcode bytes: {:02X?}", compiled.machine_opcodes);
             ExitCode::SUCCESS

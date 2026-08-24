@@ -41,7 +41,7 @@ impl KernelResourceGovernor {
 
         if used_pct >= self.ram_limit_pct {
             MemoryPressureLevel::Critical
-        } else if used_pct >= self.ram_limit_pct.saturating_sub(10) {
+        } else if self.ram_limit_pct > 10 && used_pct >= self.ram_limit_pct - 10 {
             MemoryPressureLevel::Warning
         } else {
             MemoryPressureLevel::Normal

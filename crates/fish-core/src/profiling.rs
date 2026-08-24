@@ -97,8 +97,7 @@ impl Profiler {
             Duration::ZERO
         };
 
-        // Estimate parallelism efficiency based on cache and timing
-        let parallelism_efficiency = cache_hit_rate * 0.7 + 0.3; // Base 30% + cache contribution
+        let parallelism_efficiency = cache_hit_rate * 0.7 + 0.3;
 
         PerformanceMetrics {
             task_count,
@@ -177,7 +176,6 @@ impl TaskGuard {
             cache_hit,
         };
 
-        // Update metrics
         self.metrics.task_count.fetch_add(1, Ordering::SeqCst);
         self.metrics
             .total_duration
@@ -196,7 +194,6 @@ impl TaskGuard {
             self.metrics.cache_misses.fetch_add(1, Ordering::SeqCst);
         }
 
-        // Store profile
         self.profiles.lock().push(profile);
     }
 }

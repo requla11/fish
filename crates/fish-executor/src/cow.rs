@@ -21,10 +21,6 @@ impl KernelCowCloner {
             let _ = fs::remove_file(dst);
         }
 
-        // A hard link aliases the source inode: writing to the "clone" would
-        // silently corrupt the original artifact. True copy-on-write clones
-        // (FICLONE reflinks) require unsafe ioctls that this crate forbids, so
-        // fall back to a real byte-for-byte copy, which is always independent.
         Self::fast_copy(src, dst)?;
         Ok(CloneStrategy::FastCopy)
     }
@@ -80,7 +76,6 @@ mod tests {
 
         KernelCowCloner::try_clone_file(&src, &dst).unwrap();
 
-        // Mutating the clone must not corrupt the source artifact.
         fs::write(&dst, b"modified").unwrap();
         assert_eq!(fs::read(&src).unwrap(), b"original");
         assert_eq!(fs::read(&dst).unwrap(), b"modified");

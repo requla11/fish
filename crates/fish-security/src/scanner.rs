@@ -1,5 +1,3 @@
-// Main vulnerability scanner
-
 use crate::backend::{BackendScanner, MavenScanner, NpmScanner, RustScanner};
 use crate::error::SecurityResult;
 use crate::vulnerability::{Severity, Vulnerability};
@@ -7,6 +5,17 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
+
+/// Where advisory data comes from during a scan.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub enum AdvisorySource {
+    /// Built-in rule snapshot (works offline, but ages quickly).
+    #[default]
+    EmbeddedDatabase,
+    /// Live OSV lookups against the given base URL
+    /// (e.g. `https://api.osv.dev/v1`, or an internal mirror).
+    Osv { base_url: String },
+}
 
 /// Scan options
 #[derive(Debug, Clone, Default)]
@@ -19,6 +28,9 @@ pub struct ScanOptions {
     pub scan_dev_dependencies: bool,
     /// Maximum number of vulnerabilities to return
     pub max_results: Option<usize>,
+    /// Advisory data source. Defaults to the embedded snapshot; switch to
+    /// [`AdvisorySource::Osv`] for live lookups.
+    pub advisory_source: AdvisorySource,
 }
 
 /// Scan report
@@ -66,7 +78,6 @@ impl VulnerabilityScanner {
         let start_time = std::time::Instant::now();
         let mut all_vulnerabilities = Vec::new();
 
-        // Try each backend scanner
         if let Ok(rust_vulns) = self.rust_scanner.scan(project_path, options).await {
             all_vulnerabilities.extend(rust_vulns);
         }
@@ -79,20 +90,17 @@ impl VulnerabilityScanner {
             all_vulnerabilities.extend(maven_vulns);
         }
 
-        // Filter by severity
         let vulnerabilities: Vec<Vulnerability> = all_vulnerabilities
             .into_iter()
             .filter(|v| v.severity >= options.min_severity)
             .collect();
 
-        // Limit results if specified
         let vulnerabilities = if let Some(max) = options.max_results {
             vulnerabilities.into_iter().take(max).collect()
         } else {
             vulnerabilities
         };
 
-        // Count by severity
         let mut by_severity = HashMap::new();
         for vuln in &vulnerabilities {
             *by_severity.entry(vuln.severity).or_insert(0) += 1;
@@ -130,6 +138,5 @@ mod tests {
     #[tokio::test]
     async fn test_scanner_creation() {
         let _scanner = VulnerabilityScanner::new();
-        // Scanner creation test - no assertion needed
     }
 }

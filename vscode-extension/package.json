@@ -2,7 +2,7 @@
   "name": "fish-build-orchestration",
   "displayName": "Fish Build Orchestration",
   "description": "IDE integration for Fish build orchestration system with DAG visualization and task runner",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "publisher": "requla11",
   "engines": {
     "vscode": "^1.75.0"
@@ -49,6 +49,21 @@
         "command": "fish.watch",
         "title": "Fish: Toggle Watch Mode",
         "icon": "$(eye)"
+      },
+      {
+        "command": "fish.openDashboard",
+        "title": "Fish: Open Web Dashboard",
+        "icon": "$(dashboard)"
+      },
+      {
+        "command": "fish.runDoctor",
+        "title": "Fish: Run Doctor Diagnostics",
+        "icon": "$(pulse)"
+      },
+      {
+        "command": "fish.quickMenu",
+        "title": "Fish: Quick Actions Menu",
+        "icon": "$(sparkle)"
       }
     ],
     "viewsContainers": {

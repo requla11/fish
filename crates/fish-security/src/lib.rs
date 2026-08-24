@@ -4,6 +4,7 @@
 
 pub mod backend;
 pub mod error;
+pub mod osv;
 pub mod rbac;
 pub mod scanner;
 pub mod slsa;
@@ -58,6 +59,5 @@ mod tests {
     #[tokio::test]
     async fn test_security_service_creation() {
         let _service = SecurityService::new();
-        // Security service creation test - no assertion needed
     }
 }

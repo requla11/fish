@@ -3,6 +3,7 @@
 pub mod bin_packing;
 pub mod jobserver_pool;
 pub mod pipelining;
+pub mod preemption;
 pub mod racing;
 pub mod resource_governor;
 pub mod watcher;
@@ -638,11 +639,9 @@ mod tests {
         let summary = BuildSummary::from_graph(&graph, Duration::ZERO, 2, vec![], timings);
 
         let expected = summary.critical_path(&graph).1;
-        // Equal-cost leaves must resolve to a stable, reproducible path.
         for _ in 0..20 {
             assert_eq!(summary.critical_path(&graph).1, expected);
         }
-        // With ties broken by ascending NodeId, the earliest node wins.
         assert_eq!(expected, vec!["a"]);
     }
 

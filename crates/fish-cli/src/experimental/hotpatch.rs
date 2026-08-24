@@ -64,40 +64,25 @@ impl HotPatchEngine {
         let old_hash = blake3::hash(&old_bytes);
         let new_hash = blake3::hash(&new_bytes);
 
-        let mut relocations = Vec::new();
-        let mut trampoline_payload = Vec::new();
-        let mut rollback_image = Vec::new();
-
         if old_hash != new_hash {
-            let symbol = SymbolRelocation {
-                symbol_name: "hot_reload_fn".to_string(),
-                old_offset: 0x1000,
-                new_offset: 0x2000,
-                size_bytes: 64,
-                trampoline_kind: match arch {
-                    TargetArch::X86_64 => TrampolineKind::IndirectAbs64,
-                    TargetArch::AArch64 => TrampolineKind::Arm64Indirect64,
-                },
-            };
-
-            let patch_bytes = Self::generate_trampoline(arch, symbol.old_offset, symbol.new_offset);
-            trampoline_payload.extend_from_slice(&patch_bytes);
-
-            if old_bytes.len() >= patch_bytes.len() {
-                rollback_image.extend_from_slice(&old_bytes[0..patch_bytes.len()]);
-            } else {
-                rollback_image.extend_from_slice(&old_bytes);
-            }
-
-            relocations.push(symbol);
+            // Detecting *which* bytes changed and mapping them to symbols
+            // requires real binary parsing (ELF/Mach-O symbol tables plus
+            // instruction-level diffing). Inventing relocations would make
+            // every downstream patch corrupt the target process, so this
+            // refuses until that implementation exists.
+            return Err(io::Error::new(
+                io::ErrorKind::Unsupported,
+                "hot-patch delta computation requires symbol-level binary diffing, \
+                 which is not implemented; no synthetic relocations are produced",
+            ));
         }
 
         Ok(PatchDelta {
             target_binary: new_binary.to_path_buf(),
             arch,
-            relocations,
-            trampoline_payload,
-            rollback_image,
+            relocations: Vec::new(),
+            trampoline_payload: Vec::new(),
+            rollback_image: Vec::new(),
             checksum: new_hash.to_hex().to_string(),
         })
     }
@@ -133,9 +118,6 @@ impl HotPatchEngine {
         delta: &PatchDelta,
         process_id: u32,
     ) -> io::Result<LivePatchReport> {
-        // Live patching a running process requires ptrace/mprotect plus
-        // unsafe code, none of which is implemented (`fish-cli` forbids
-        // unsafe). Report failure instead of claiming a patch was injected.
         let _ = delta;
         Err(io::Error::new(
             io::ErrorKind::Unsupported,
@@ -176,7 +158,7 @@ mod tests {
     }
 
     #[test]
-    fn test_hotpatch_delta_computation_and_apply() {
+    fn test_hotpatch_delta_refuses_differing_binaries_without_diffing() {
         let temp = tempdir().unwrap();
         let old_bin = temp.path().join("app_v1.exe");
         let new_bin = temp.path().join("app_v2.exe");
@@ -184,14 +166,17 @@ mod tests {
         std::fs::write(&old_bin, b"ORIGINAL_BINARY_V1").unwrap();
         std::fs::write(&new_bin, b"UPDATED_BINARY_V2").unwrap();
 
-        let delta = HotPatchEngine::compute_patch_delta(&old_bin, &new_bin).unwrap();
-        assert_eq!(delta.relocations.len(), 1);
-        assert!(!delta.trampoline_payload.is_empty());
-        assert!(!delta.rollback_image.is_empty());
+        // Differing content must fail loudly: no synthetic relocations.
+        let err = HotPatchEngine::compute_patch_delta(&old_bin, &new_bin)
+            .expect_err("binary diffing is not implemented");
+        assert_eq!(err.kind(), io::ErrorKind::Unsupported);
 
-        // Applying and rolling back must fail loudly instead of pretending a
-        // patch was injected into a real process.
-        assert!(HotPatchEngine::apply_live_patch_detailed(&delta, 1337).is_err());
-        assert!(HotPatchEngine::rollback_patch(&delta, 1337).is_err());
+        // Identical content yields an empty, valid delta.
+        let same = HotPatchEngine::compute_patch_delta(&old_bin, &old_bin).unwrap();
+        assert!(same.relocations.is_empty());
+        assert!(same.trampoline_payload.is_empty());
+
+        assert!(HotPatchEngine::apply_live_patch_detailed(&same, 1337).is_err());
+        assert!(HotPatchEngine::rollback_patch(&same, 1337).is_err());
     }
 }

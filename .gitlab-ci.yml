@@ -1,35 +1,55 @@
 stages:
+  - lint
   - test
   - build
 
 variables:
   CARGO_TERM_COLOR: "always"
   CARGO_INCREMENTAL: "0"
+  CARGO_HOME: "$CI_PROJECT_DIR/.cargo"
+
+.shared-cache:
+  cache:
+    key:
+      files:
+        - Cargo.lock
+    paths:
+      - .cargo/
+      - target/
+
+fmt:
+  extends: .shared-cache
+  stage: lint
+  image: rust:latest
+  script:
+    - rustup component add rustfmt
+    - cargo fmt --all -- --check
+
+clippy:
+  extends: .shared-cache
+  stage: lint
+  image: rust:latest
+  script:
+    - rustup component add clippy
+    - cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
 
 test:
+  extends: .shared-cache
   stage: test
   image: rust:latest
   script:
-    - cargo test --workspace --all-targets --all-features
-  cache:
-    key: "$CI_COMMIT_REF_SLUG-test"
-    paths:
-      - target/
-      - .cargo/
+    - cargo test --workspace --locked
 
 build:
+  extends: .shared-cache
   stage: build
   image: rust:latest
   needs:
+    - fmt
+    - clippy
     - test
   script:
-    - cargo build --workspace --release
-    - cargo build -p fish-cli --release
+    - cargo build --workspace --release --locked
   artifacts:
     paths:
-      - target/release/Fish
-  cache:
-    key: "$CI_COMMIT_REF_SLUG-build"
-    paths:
-      - target/
-      - .cargo/
+      - target/release/fish

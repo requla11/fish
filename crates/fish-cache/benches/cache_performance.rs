@@ -65,7 +65,6 @@ fn bench_cache_matches(c: &mut Criterion) {
     let temp_dir = TempDir::new().unwrap();
     let cache = LocalCache::new(temp_dir.path()).unwrap();
 
-    // Pre-populate cache
     for i in 0..100 {
         cache
             .put(&format!("key_{}", i), &format!("fp_{}", i))
@@ -112,7 +111,6 @@ fn bench_cache_disk_stats(c: &mut Criterion) {
     let temp_dir = TempDir::new().unwrap();
     let cache = LocalCache::new(temp_dir.path()).unwrap();
 
-    // Pre-populate cache
     for i in 0..100 {
         cache
             .put(&format!("key_{}", i), &format!("fp_{}", i))
@@ -134,7 +132,6 @@ fn bench_cache_prune(c: &mut Criterion) {
     let temp_dir = TempDir::new().unwrap();
     let cache = LocalCache::new(temp_dir.path()).unwrap();
 
-    // Pre-populate cache with old records
     for i in 0..100 {
         cache
             .put(&format!("key_{}", i), &format!("fp_{}", i))

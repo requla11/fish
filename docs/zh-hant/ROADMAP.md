@@ -8,16 +8,16 @@
 
 ## 🎯 專案願景
 
-Fish 致力於成為多語言單體大倉（Polyglot Monorepo）與分散式開發環境中效能最高、最安全且對開發者最友善的建置編排系統，由獨特的 **三引擎架構 (Rust 75% + Python 15% + Go 10%)** 強力驅動。
+Fish 致力於成為多語言單體大倉（Polyglot Monorepo）與分散式開發環境中效能最高、最安全且對開發者最友善的建置編排系統。目前 Fish 是一個**純 Rust 工作區**；早期版本中描述的 Python 和 Go 服務層屬於未來規劃工作，而非目前已發布代碼。
 
 ---
 
 ## 🚀 目前里程碑 (v0.2.x) — 已完成
 
 ### 第一階段：核心引擎與多語言基石
-- [x] **三引擎架構**：Rust 高效能執行核心 (75%)、Python AI 智慧層 (15%) 與 Go 雲原生網路服務 (10%)。
+- [ ] **三引擎架構**：*規劃中，尚未實現。* 目前僅存在 Rust 高效能核心；倉庫中尚無 Python AI 或 Go 雲端服務。
 - [x] **11 種後端語言支援**：Rust、Go、TypeScript/Node.js、Python、C/C++、Docker、Java、.NET、Swift、Dart、Zig。
-- [x] **通用 Protobuf 契約**：制定了 `build.proto`、`ai.proto` 與 `coordinator.proto`。
+- [ ] **通用 Protobuf 契約**：*僅為草案。* `build.proto`、`ai.proto` 與 `coordinator.proto` 位於 `proto/` 下，但尚未被任何 crate 引用（工作區暫無 gRPC 依賴）。
 - [x] **Blake3 CAS 與兩階段修剪**：高吞吐內容定址製品儲存，支援 Zstandard 壓縮。
 - [x] **GNU Jobserver 排程整合**：跨編譯器全域執行緒權杖協調，防止 CPU/記憶體過載。
 - [x] **CI/CD 工作流程產生器**：支援 GitHub Actions、GitLab CI、CircleCI、Bitbucket。

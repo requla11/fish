@@ -1,5 +1,3 @@
-// Analytics dashboard
-
 #[derive(Clone)]
 pub struct AnalyticsDashboard {
     config: DashboardConfig,

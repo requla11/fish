@@ -73,7 +73,7 @@ inputs = ["tests/**/*", "src/**/*"]
 
 | Key | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `cache_url` | string | None | Remote cache server endpoint (HTTP/gRPC). |
+| `cache_url` | string | None | Remote cache server endpoint (HTTP). |
 | `token` | string | None | Authentication bearer token for remote operations. |
 | `workers` | list of strings | `[]` | List of remote worker cluster endpoints (e.g. `["worker1:9000", "worker2:9000"]`). |
 | `send_source` | boolean | `false` | Compress and transmit source snapshots to workers without shared filesystems. |

@@ -74,14 +74,12 @@ impl BufferPool {
         let mut stats = self.allocations.lock();
         stats.deallocations += 1;
 
-        // Only pool buffers that match our size tiers
         if let Some(&tier_size) = SIZE_TIERS.get(tier_index)
             && capacity >= tier_size * 2 / 3
             && capacity <= tier_size * 3 / 2
             && let Some(pool) = self.pools.get(tier_index)
         {
             let mut pool = pool.lock();
-            // Limit pool size to prevent unbounded growth
             if pool.len() < 10 {
                 pool.push_back(buffer);
             }
@@ -168,7 +166,6 @@ mod tests {
         assert!(buffer2.capacity() >= 100);
 
         let stats = pool.stats();
-        // We expect at least one hit since we returned the first buffer
         assert!(stats.hits >= 1 || stats.misses >= 1);
     }
 
@@ -180,7 +177,7 @@ mod tests {
             let mut scoped = ScopedBuffer::new(1000, pool.clone());
             scoped.as_mut().extend_from_slice(b"test data");
             assert_eq!(scoped.as_ref().len(), 9);
-        } // Buffer should be returned to pool here
+        }
 
         let stats = pool.stats();
         assert!(stats.deallocations > 0);
@@ -190,7 +187,6 @@ mod tests {
     fn test_size_tiers() {
         let pool = BufferPool::new();
 
-        // Test different size tiers
         let sizes = [100, 500, 2000, 10000, 50000, 200000];
         for size in sizes {
             let buffer = pool.get_buffer(size);
@@ -203,13 +199,11 @@ mod tests {
     fn test_pool_limits() {
         let pool = BufferPool::new();
 
-        // Return many buffers - should be limited
         for _ in 0..20 {
             let buffer = pool.get_buffer(1000);
             pool.return_buffer(buffer);
         }
 
-        // Check that pool doesn't grow unbounded
         let first_pool = pool.pools.get(2).unwrap().lock();
         assert!(first_pool.len() <= 10);
     }

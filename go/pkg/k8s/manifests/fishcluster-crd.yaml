@@ -1,0 +1,159 @@
+# FishCluster CRD — auto-scaling elastic worker fleets
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: fishclusters.fish.build
+spec:
+  group: fish.build
+  scope: Namespaced
+  names:
+    plural: fishclusters
+    singular: fishcluster
+    kind: FishCluster
+    shortNames:
+      - fc
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Phase
+          type: string
+          jsonPath: .status.phase
+        - name: Workers
+          type: integer
+          jsonPath: .status.activeWorkers
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - coordinatorAddr
+              properties:
+                clusterId:
+                  type: string
+                  description: Unique identifier for this build cluster.
+                namespace:
+                  type: string
+                  default: "fish-build"
+                  description: Kubernetes namespace for worker pods.
+                coordinatorAddr:
+                  type: string
+                  description: Address of the fish-coordinator service.
+                defaultPool:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    minReplicas:
+                      type: integer
+                      minimum: 0
+                      default: 1
+                    maxReplicas:
+                      type: integer
+                      minimum: 1
+                      default: 10
+                    targetCPULoad:
+                      type: integer
+                      minimum: 1
+                      maximum: 100
+                      default: 80
+                    toolchains:
+                      type: array
+                      items:
+                        type: string
+                    nodeSelector:
+                      type: object
+                      additionalProperties:
+                        type: string
+                    resourceLimitMB:
+                      type: integer
+                      description: Memory limit in MB per worker pod.
+                customPools:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      minReplicas:
+                        type: integer
+                      maxReplicas:
+                        type: integer
+                      toolchains:
+                        type: array
+                        items:
+                          type: string
+            status:
+              type: object
+              properties:
+                phase:
+                  type: string
+                  enum: [Pending, Scaling, Healthy, Degraded, Error]
+                activeWorkers:
+                  type: integer
+                poolStatuses:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      currentReplicas:
+                        type: integer
+                      availableReplicas:
+                        type: integer
+                      healthStatus:
+                        type: string
+                message:
+                  type: string
+---
+# ServiceAccount for the operator
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fish-operator
+  namespace: fish-build
+---
+# ClusterRole with minimal permissions
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: fish-operator-role
+rules:
+  - apiGroups: ["fish.build"]
+    resources: ["fishclusters"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["fish.build"]
+    resources: ["fishclusters/status"]
+    verbs: ["get", "update", "patch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods", "pods/status", "services", "configmaps"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "create", "update"]
+---
+# ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: fish-operator-binding
+subjects:
+  - kind: ServiceAccount
+    name: fish-operator
+    namespace: fish-build
+roleRef:
+  kind: ClusterRole
+  name: fish-operator-role
+  apiGroup: rbac.authorization.k8s.io

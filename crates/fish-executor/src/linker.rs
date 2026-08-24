@@ -38,7 +38,9 @@ impl LinkerDispatcher {
             LinkerKind::Mold => vec!["-C".to_string(), "link-arg=-fuse-ld=mold".to_string()],
             LinkerKind::Lld => {
                 if cfg!(target_os = "windows") {
-                    vec!["-C".to_string(), "link-arg=-fuse-ld=lld-link".to_string()]
+                    vec!["-C".to_string(), "linker=lld-link".to_string()]
+                } else if cfg!(target_os = "macos") {
+                    vec!["-C".to_string(), "link-arg=-fuse-ld=ld64.lld".to_string()]
                 } else {
                     vec!["-C".to_string(), "link-arg=-fuse-ld=lld".to_string()]
                 }
@@ -93,5 +95,23 @@ mod tests {
             detected,
             LinkerKind::Mold | LinkerKind::Lld | LinkerKind::Msvc | LinkerKind::SystemDefault
         ));
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn test_lld_on_windows_selects_lld_link_driver() {
+        let flags = LinkerDispatcher::rustc_linker_flags(LinkerKind::Lld);
+        assert_eq!(flags, vec!["-C", "linker=lld-link"]);
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    #[test]
+    fn test_lld_on_posix_uses_fuse_ld() {
+        let flags = LinkerDispatcher::rustc_linker_flags(LinkerKind::Lld);
+        if cfg!(target_os = "macos") {
+            assert_eq!(flags, vec!["-C", "link-arg=-fuse-ld=ld64.lld"]);
+        } else {
+            assert_eq!(flags, vec!["-C", "link-arg=-fuse-ld=lld"]);
+        }
     }
 }

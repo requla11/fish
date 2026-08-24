@@ -49,7 +49,7 @@ impl FishDaemon {
             "ping" => (false, "PONG".to_string()),
             "status" => (
                 false,
-                format!("FISH_DAEMON_OK:WARMED:pid={}", std::process::id()),
+                format!("FISH_DAEMON_OK:RUNNING:pid={}", std::process::id()),
             ),
             "shutdown" => (true, "FISH_DAEMON_STOPPING".to_string()),
             other => (false, format!("error: unknown method `{other}`")),
@@ -121,7 +121,6 @@ impl FishDaemon {
         use std::os::unix::net::UnixListener;
 
         let sock = Self::socket_path(self.port);
-        // Clear a stale socket left behind by a previous unclean shutdown.
         let _ = std::fs::remove_file(&sock);
         let Ok(listener) = UnixListener::bind(&sock) else {
             return;

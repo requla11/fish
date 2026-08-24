@@ -8,7 +8,7 @@ fn fish() -> Command {
 }
 
 fn run(command: &mut Command) -> Output {
-    command.output().expect("failed to spawn forge")
+    command.output().expect("failed to spawn fish")
 }
 
 fn stdout(output: &Output) -> String {
@@ -311,18 +311,18 @@ fn fish_toml_sets_worker_count_and_disable_flag_wins() {
         dir.path().join("fish.toml"),
         "backend = \"rust\"\njobs = 1\nno_cache = true\n",
     )
-    .expect("write forge.toml");
+    .expect("write fish.toml");
 
     let output = run(fish().arg("build").current_dir(dir.path()));
     assert!(output.status.success(), "stderr: {}", stderr(&output));
     let text = stdout(&output);
     assert!(
         text.contains("Workers:   1"),
-        "forge.toml jobs=1 is applied: {text}"
+        "fish.toml jobs=1 is applied: {text}"
     );
     assert!(
         text.contains("Cached:    0"),
-        "forge.toml no_cache=true disables the cache: {text}"
+        "fish.toml no_cache=true disables the cache: {text}"
     );
 
     let second = run(fish().arg("build").current_dir(dir.path()));
@@ -333,7 +333,7 @@ fn fish_toml_sets_worker_count_and_disable_flag_wins() {
 #[test]
 fn invalid_fish_toml_is_a_clear_error() {
     let dir = workspace_fixture();
-    fs::write(dir.path().join("fish.toml"), "not = [valid toml").expect("write forge.toml");
+    fs::write(dir.path().join("fish.toml"), "not = [valid toml").expect("write fish.toml");
 
     let output = run(fish().arg("build").current_dir(dir.path()));
     assert!(!output.status.success());
@@ -407,7 +407,7 @@ fn build_typescript_project_succeeds() {
     fs::create_dir(dir.path().join("src")).expect("mkdir src");
     fs::write(
         dir.path().join("src").join("index.ts"),
-        "console.log('forge ts');",
+        "console.log('fish ts');",
     )
     .expect("write index.ts");
 
@@ -443,7 +443,7 @@ fn build_python_project_succeeds() {
     fs::create_dir(dir.path().join("src")).expect("mkdir src");
     fs::write(
         dir.path().join("src").join("main.py"),
-        "print('forge python')",
+        "print('fish python')",
     )
     .expect("write main.py");
 
@@ -458,7 +458,7 @@ fn build_python_project_succeeds() {
 #[test]
 fn build_custom_rules_project_succeeds() {
     let dir = tempfile::tempdir().expect("tempdir");
-    let forgefile = r#"{
+    let fishfile = r#"{
         "name": "custom-rule-app",
         "rules": [
             {
@@ -475,7 +475,7 @@ fn build_custom_rules_project_succeeds() {
             }
         ]
     }"#;
-    fs::write(dir.path().join("Fishfile.json"), forgefile).expect("write Fishfile.json");
+    fs::write(dir.path().join("Fishfile.json"), fishfile).expect("write Fishfile.json");
 
     let output = run(fish().arg("build").current_dir(dir.path()));
     assert!(output.status.success(), "stderr: {}", stderr(&output));
@@ -572,8 +572,6 @@ fn affected_builds_only_changed_packages_and_their_dependents() {
 
     let root = dir.path().to_path_buf();
     fs::write(dir.path().join(".gitignore"), "target/\n").expect("gitignore");
-    // `forge graph` runs cargo metadata, which writes Cargo.lock; commit it
-    // so it does not show up as an untracked workspace-level change later.
     let graph = run(fish().arg("graph").current_dir(dir.path()));
     assert!(graph.status.success(), "graph must load the workspace");
 

@@ -26,14 +26,44 @@ pub fn run_attest(args: AttestArgs) -> ExitCode {
 
     match attestation::AttestationEngine::generate_attestation(&start_dir, &outputs) {
         Ok(attestation) => {
-            let path = attestation::AttestationEngine::save_attestation(&start_dir, &attestation);
-            match path {
+            match attestation::AttestationEngine::save_attestation(&start_dir, &attestation) {
                 Ok(saved_path) => {
                     println!(
-                        "🔒 SLSA Level 3 Attestation generated: {}",
+                        "🔒 SLSA provenance attestation generated: {}",
                         saved_path.display()
                     );
                     println!("   Merkle Root: {}", attestation.merkle_root);
+
+                    for output in &outputs {
+                        let bytes = match std::fs::read(output) {
+                            Ok(b) => b,
+                            Err(_) => continue,
+                        };
+                        let blake3_hash = blake3::hash(&bytes).to_hex().to_string();
+                        let name = output
+                            .file_name()
+                            .map(|n| n.to_string_lossy().to_string())
+                            .unwrap_or_default();
+
+                        let statement = fish_security::slsa::generate_statement(
+                            &name,
+                            &blake3_hash,
+                            "https://github.com/requla11/fish",
+                            Some(env!("CARGO_PKG_VERSION")),
+                            "https://fish.build/tasks/v1",
+                            Default::default(),
+                        );
+
+                        let stmt_dir = start_dir.join(".fish").join("attestation");
+                        let stmt_path = stmt_dir.join(format!("{name}.intoto.jsonl"));
+                        if let Ok(json) = serde_json::to_string_pretty(&statement)
+                            && std::fs::create_dir_all(&stmt_dir).is_ok()
+                            && std::fs::write(&stmt_path, json).is_ok()
+                        {
+                            println!("   In-toto statement: {}", stmt_path.display());
+                        }
+                    }
+
                     ExitCode::SUCCESS
                 }
                 Err(e) => {

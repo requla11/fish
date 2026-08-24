@@ -99,7 +99,6 @@ impl DiagnosticLogger {
                 logs.pop_front();
             }
         }
-        // If lock is poisoned, silently fail to avoid crashing
     }
 
     pub fn get_logs(&self) -> Vec<DiagnosticLog> {

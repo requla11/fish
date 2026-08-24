@@ -62,10 +62,8 @@ impl FileLevelCache {
         let hash = artifact.metadata.hash.clone();
         let file_key = self.file_key(file_path);
 
-        // Store in CAS (DashMap insert is lock-free)
         self.cas_storage.insert(hash.clone(), artifact);
 
-        // Update file mapping (DashMap insert is lock-free)
         self.file_artifacts.insert(file_key, hash);
 
         Ok(())
@@ -79,16 +77,11 @@ impl FileLevelCache {
 
     /// Invalidate cache for all files in a directory (concurrent-safe iteration)
     pub fn invalidate_directory(&self, dir_path: &Path) {
-        // Keys are normalized to forward slashes (see `file_key`), and the
-        // directory prefix carries a trailing slash so the match is a
-        // component boundary: invalidating `/tmp/foo` must not also
-        // invalidate `/tmp/foobar/...`.
         let mut dir_key = normalize_path_key(dir_path);
         if !dir_key.ends_with('/') {
             dir_key.push('/');
         }
 
-        // Use retain for efficient concurrent filtering
         self.file_artifacts
             .retain(|key, _| !key.starts_with(&dir_key));
     }
@@ -145,7 +138,6 @@ impl FileDependencyGraph {
 
     /// Add a dependency relationship (lock-free concurrent write)
     pub fn add_dependency(&self, file: PathBuf, depends_on: PathBuf) {
-        // DashMap entry API for concurrent-safe modification
         self.dependencies
             .entry(file.clone())
             .and_modify(|deps| deps.push(depends_on.clone()))
@@ -190,8 +182,6 @@ impl FileDependencyGraph {
     pub fn parse_dep_file(&self, dep_file: &Path) -> Result<(), anyhow::Error> {
         let content = std::fs::read_to_string(dep_file)?;
 
-        // Join continuation lines before splitting so a dependency list that
-        // wraps across lines is parsed as a single target/deps group.
         let joined = content.replace("\\\r\n", " ").replace("\\\n", " ");
 
         for line in joined.lines() {
@@ -304,7 +294,6 @@ mod tests {
         let a = PathBuf::from("/proj/a.rs");
         let b = PathBuf::from("/proj/b.rs");
         let c = PathBuf::from("/proj/c.rs");
-        // a -> b -> c (a depends on b depends on c)
         graph.add_dependency(a.clone(), b.clone());
         graph.add_dependency(b.clone(), c.clone());
 

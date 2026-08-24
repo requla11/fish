@@ -9,14 +9,20 @@ use fish_core::BuildBackend;
 use fish_executor::{CacheEntry, CommandSpec, Task};
 use fish_graph::BuildGraph;
 
+pub mod audit;
 pub mod manifest;
+pub mod marketplace;
 pub mod rule;
 pub mod scripting;
 pub mod starlark_parser;
+pub mod wasm;
 pub mod wasm_sandbox;
 
 pub use rule::{PluginRulesManifest, RuleSpec};
 pub use starlark_parser::StarlarkRulesParser;
+pub use wasm::{
+    WasmCapabilities, WasmExecutionResult, WasmPluginEngine, WasmPluginManifest, WasmPluginRegistry,
+};
 
 #[derive(Debug, Error)]
 pub enum PluginError {
@@ -198,7 +204,7 @@ mod tests {
     #[test]
     fn test_plugin_task_graph_generation() {
         let dir = tempdir().unwrap();
-        let forgefile = r#"{
+        let fishfile = r#"{
             "name": "custom-engine",
             "rules": [
                 {
@@ -215,7 +221,7 @@ mod tests {
                 }
             ]
         }"#;
-        fs::write(dir.path().join("Fishfile.json"), forgefile).unwrap();
+        fs::write(dir.path().join("Fishfile.json"), fishfile).unwrap();
 
         let manifest = PluginRulesManifest::discover_or_load(dir.path()).unwrap();
         let backend = PluginBackend::new();

@@ -58,7 +58,6 @@ impl DartToolchain {
     }
 
     fn find_executable(name: &str) -> Option<String> {
-        // Check if executable exists in PATH
         if let Ok(output) = std::process::Command::new("where").arg(name).output()
             && output.status.success()
         {
@@ -66,7 +65,6 @@ impl DartToolchain {
             return paths.lines().next().map(|s| s.to_string());
         }
 
-        // Try direct execution
         if std::process::Command::new(name)
             .arg("--version")
             .output()
@@ -105,12 +103,10 @@ impl DartToolchain {
 
 impl DartCompiler {
     pub fn detect() -> Result<Self, DartBackendError> {
-        // Try flutter first
         if let Some(flutter) = DartToolchain::find_executable("flutter") {
             return Ok(DartCompiler::Flutter(flutter));
         }
 
-        // Fall back to dart
         if let Some(dart) = DartToolchain::find_executable("dart") {
             return Ok(DartCompiler::Dart(dart));
         }
@@ -141,7 +137,6 @@ mod tests {
 
     #[test]
     fn test_dart_toolchain_detection() {
-        // This test will fail if Dart is not installed
         let result = DartToolchain::detect();
         if let Ok(toolchain) = result
             && toolchain.is_dart_available()

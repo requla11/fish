@@ -112,12 +112,10 @@ impl DotnetProjectConfig {
     }
 
     pub fn detect(project_dir: &Path) -> Result<Self, String> {
-        // Try solution file first
         if !Self::find_sln_files(project_dir).is_empty() {
             return Self::from_solution(project_dir);
         }
 
-        // Try .csproj file
         if !Self::find_csproj_files(project_dir).is_empty() {
             return Self::from_csproj(project_dir);
         }
@@ -152,7 +150,6 @@ impl DotnetProjectConfig {
     }
 
     fn extract_target_framework(content: &str) -> Option<DotnetTargetFramework> {
-        // Try to extract <TargetFramework>...</TargetFramework>
         let start_tag = "<TargetFramework>";
         let end_tag = "</TargetFramework>";
 
@@ -164,7 +161,6 @@ impl DotnetProjectConfig {
             }
         }
 
-        // Try <TargetFrameworks> (multiple frameworks)
         let start_tag = "<TargetFrameworks>";
         let end_tag = "</TargetFrameworks>";
 
@@ -172,7 +168,6 @@ impl DotnetProjectConfig {
             let start = start + start_tag.len();
             if let Some(end) = content.find(end_tag) {
                 let tf_str = &content[start..end];
-                // Take the first framework if multiple are specified
                 let first_tf = tf_str.split(';').next().unwrap_or(tf_str);
                 return DotnetTargetFramework::from_str(first_tf.trim()).ok();
             }

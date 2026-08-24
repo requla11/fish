@@ -6,7 +6,7 @@ pub struct JobserverPool {
 
 impl JobserverPool {
     pub fn new(limit: usize) -> std::io::Result<Self> {
-        let client = jobserver::Client::new(limit)?;
+        let client = jobserver::Client::new(limit.max(1))?;
         Ok(Self {
             client: Arc::new(client),
         })

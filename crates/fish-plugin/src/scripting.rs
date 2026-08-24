@@ -107,8 +107,6 @@ impl ScriptPlugin {
     }
 
     fn execute_wasm(&self, _command: &str, _args: &[String]) -> Result<PluginOutput, PluginError> {
-        // WASM execution would require a WASM runtime
-        // For now, return an error
         Err(PluginError::Unsupported(
             "WASM execution not yet implemented".to_string(),
         ))
@@ -217,7 +215,6 @@ impl PluginManager {
             PluginError::InvalidConfig(format!("Cannot parse plugin config: {}", e))
         })?;
 
-        // Validate dependencies
         for dep in &plugin.dependencies {
             if !self.check_dependency(dep) {
                 return Err(PluginError::DependencyMissing(dep.clone()));
@@ -228,7 +225,6 @@ impl PluginManager {
     }
 
     fn check_dependency(&self, dep: &str) -> bool {
-        // Check if the dependency command exists
         Command::new(dep).arg("--version").output().is_ok()
     }
 
@@ -306,7 +302,6 @@ mod tests {
             },
         };
 
-        // This would actually execute, so we just test the structure
         assert_eq!(plugin.name, "test");
     }
 }

@@ -10,7 +10,7 @@ Fish 由 36 个高度模块化的 Rust Crates 组成，分层严谨且高内聚�
 2. **存储与缓存层 (Storage & Cache Tier)**:
    - `fish-cas`: ZSTD 压缩与 FastCDC 分块的 CAS 存储。
    - `fish-cache`: 双阶段 Fingerprint 缓存与 GC 清理。
-   - `fish-remote-cache`: gRPC REAPI v2 客户端与 TCP 流式缓存。
+   - `fish-remote-cache`: HTTP 远程缓存、Ed25519 签名门控与 REAPI v2 数据模型。
 3. **调度与执行层 (Scheduling Tier)**:
    - `fish-scheduler`: 关键路径动态预测调度器、Chase-Lev 工作窃取队列、GNU Jobserver。
    - `fish-worker`: 远程 Worker 集群执行与 Daemon IPC。

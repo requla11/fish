@@ -198,17 +198,10 @@ impl IntegrationTestEnvironment {
     }
 
     pub fn setup(&self) -> Result<(), anyhow::Error> {
-        // In a safe implementation without unsafe code, we cannot set environment variables
-        // Instead, we validate that the environment variables are properly stored
-        // and can be used by the test framework in other ways
-        // The environment_vars map serves as a testable record of what would be set
         Ok(())
     }
 
-    pub fn teardown(&self) {
-        // In a safe implementation without unsafe code, we cannot remove environment variables
-        // The environment_vars map is cleared when the IntegrationTestEnvironment is dropped
-    }
+    pub fn teardown(&self) {}
 }
 
 impl Drop for IntegrationTestEnvironment {
@@ -354,7 +347,6 @@ impl ParallelTestRunner {
             let failed_tests_clone = failed_tests.clone();
 
             std::thread::spawn(move || {
-                // Acquire semaphore permit (blocks until available)
                 semaphore_clone.acquire();
 
                 let start = std::time::Instant::now();
@@ -378,10 +370,8 @@ impl ParallelTestRunner {
                     error_message,
                 };
 
-                // Gracefully handle channel send failure
                 let _ = tx_clone.send(test_result);
 
-                // Release semaphore permit
                 semaphore_clone.release();
             });
         }
@@ -405,7 +395,7 @@ impl ParallelTestRunner {
             } else {
                 0.0
             },
-            suite_count: 0, // Parallel runner doesn't track suites
+            suite_count: 0,
         }
     }
 }
@@ -444,17 +434,14 @@ mod tests {
         let mut env = IntegrationTestEnvironment::new();
         assert!(env.temp_dir().is_some());
 
-        // Test setting environment variables
         env.set_env_var("FISH_TEST_VAR".to_string(), "test_value".to_string());
 
-        // Verify the structure stores the variables correctly
         assert!(env.environment_vars.contains_key("FISH_TEST_VAR"));
         assert_eq!(
             env.environment_vars.get("FISH_TEST_VAR"),
             Some(&"test_value".to_string())
         );
 
-        // Setup and teardown should not panic
         assert!(env.setup().is_ok(), "Environment setup should succeed");
         env.teardown();
     }

@@ -66,11 +66,9 @@ impl ZigProjectConfig {
         let content = std::fs::read_to_string(&build_zig_path)
             .map_err(|e| format!("Failed to read build.zig: {}", e))?;
 
-        // Extract project name from build.zig
         let project_name =
             Self::extract_project_name(&content).unwrap_or_else(|| "zig_project".to_string());
 
-        // Detect target (default to native)
         let target = Self::detect_target(&content);
 
         Ok(ZigProjectConfig {
@@ -115,7 +113,6 @@ impl ZigProjectConfig {
     }
 
     fn detect_target(content: &str) -> ZigTarget {
-        // Try to detect target from build.zig
         if content.contains("x86_64-linux") {
             return ZigTarget::X86_64Linux;
         }
@@ -135,7 +132,6 @@ impl ZigProjectConfig {
             return ZigTarget::Wasm32;
         }
 
-        // Default to native
         ZigTarget::Native
     }
 }
@@ -154,14 +150,14 @@ const std = @import("std");
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions({});
     const optimize = b.standardOptimizeOption(.{});
-    
+
     const exe = b.addExecutable(.{
         .name = "test_app",
         .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
     });
-    
+
     b.installArtifact(exe);
 }
 "#;

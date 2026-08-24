@@ -196,7 +196,6 @@ impl CasStorage {
 
     /// Store an artifact in CAS
     pub async fn store(&self, artifact: &Artifact) -> Result<()> {
-        // Check quota
         if self.config.max_size_bytes > 0 {
             let stats = self.backend.stats().await?;
             if stats.total_bytes.saturating_add(artifact.size()) > self.config.max_size_bytes {
@@ -248,8 +247,6 @@ impl CasStorage {
         let mut removed_count = 0;
         let mut freed_bytes = 0u64;
 
-        // Cleanup decisions use timestamps and tags. Loading the full artifact
-        // here used to read and decompress every object in the cache.
         let mut entries = Vec::new();
         for hash in hashes {
             if let Ok(metadata) = self.metadata(&hash).await {
@@ -305,18 +302,16 @@ impl CleanupPolicy {
             Self::OlderThan(duration) => {
                 let current_time = std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
+                    .unwrap_or_default()
                     .as_secs() as i64;
                 current_time - metadata.timestamp > duration.as_secs() as i64
             }
             Self::NotAccessedIn(duration) => {
                 let current_time = std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
+                    .unwrap_or_default()
                     .as_secs() as i64;
                 let threshold = duration.as_secs() as i64;
-                // Prefer the last-access timestamp; fall back to the store
-                // time for records written before access tracking existed.
                 let last = metadata.last_accessed.unwrap_or(metadata.timestamp);
                 current_time - last > threshold
             }
@@ -355,17 +350,13 @@ mod tests {
         )
         .unwrap();
 
-        // Store artifact
         storage.store(&artifact).await.unwrap();
 
-        // Check existence
         assert!(storage.exists(artifact.hash()).await.unwrap());
 
-        // Retrieve artifact
         let retrieved = storage.retrieve(artifact.hash()).await.unwrap();
         assert_eq!(retrieved.data(), artifact.data());
 
-        // Get stats
         let stats = storage.stats().await.unwrap();
         assert_eq!(stats.artifact_count, 1);
         assert_eq!(stats.total_bytes, artifact.size());
@@ -375,7 +366,7 @@ mod tests {
     async fn test_cas_config() {
         let config = CasStorageConfig::local("./test_cas")
             .with_compression(CompressionAlgorithm::ZstdMax)
-            .with_max_size(1024 * 1024 * 1024); // 1GB
+            .with_max_size(1024 * 1024 * 1024);
 
         assert_eq!(config.backend, CasBackendType::Local);
         assert_eq!(config.compression, CompressionAlgorithm::ZstdMax);
@@ -395,9 +386,9 @@ mod tests {
             let mut metadata = artifact.metadata.clone();
             metadata.timestamp = (std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
+                .unwrap_or_default()
                 .as_secs() as i64)
-                - (10 * 24 * 60 * 60); // 10 days ago
+                - (10 * 24 * 60 * 60);
             Artifact {
                 metadata,
                 data: artifact.data.clone(),
@@ -405,12 +396,10 @@ mod tests {
             }
         };
 
-        let policy = CleanupPolicy::OlderThan(std::time::Duration::from_secs(60 * 60 * 24 * 7)); // 7 days
-        assert!(!policy.should_remove(&artifact)); // Recent artifact
-        assert!(policy.should_remove(&old_artifact)); // Old artifact
+        let policy = CleanupPolicy::OlderThan(std::time::Duration::from_secs(60 * 60 * 24 * 7));
+        assert!(!policy.should_remove(&artifact));
+        assert!(policy.should_remove(&old_artifact));
 
-        // NotAccessedIn is driven by last_accessed when present, falling back
-        // to the store timestamp for legacy records.
         let not_accessed =
             CleanupPolicy::NotAccessedIn(std::time::Duration::from_secs(60 * 60 * 24 * 7));
 
@@ -425,7 +414,7 @@ mod tests {
         stale.metadata.last_accessed = Some(
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
+                .unwrap_or_default()
                 .as_secs() as i64
                 - 10 * 24 * 60 * 60,
         );
@@ -438,7 +427,7 @@ mod tests {
         legacy.metadata.last_accessed = None;
         legacy.metadata.timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_secs() as i64
             - 10 * 24 * 60 * 60;
         assert!(
@@ -446,7 +435,6 @@ mod tests {
             "legacy records without last_accessed fall back to their store time"
         );
 
-        // Test RemoveTags policy
         let mut tagged_artifact = artifact.clone();
         tagged_artifact
             .metadata
@@ -473,8 +461,6 @@ mod tests {
         let hash = artifact.hash().clone();
         storage.store(&artifact).await.unwrap();
 
-        // A damaged compressed payload cannot be retrieved. Cleanup can still
-        // delete it because the policy only needs its metadata.
         let data_path = temp_dir
             .path()
             .join("cas")

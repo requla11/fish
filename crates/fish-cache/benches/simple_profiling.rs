@@ -8,7 +8,6 @@ fn bench_cache_operations(c: &mut Criterion) {
     let temp_dir = TempDir::new().unwrap();
     let cache = LocalCache::new(temp_dir.path()).unwrap();
 
-    // Pre-populate cache
     for i in 0..100 {
         cache
             .put(&format!("key_{}", i), &format!("fingerprint_{}", i))

@@ -1,5 +1,3 @@
-// Matrix generator
-
 use crate::matrix::{MatrixConfig, TestMatrix};
 
 #[derive(Clone, Default)]

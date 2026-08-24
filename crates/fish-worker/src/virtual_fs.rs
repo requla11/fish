@@ -119,11 +119,8 @@ impl VirtualFileSystem {
         let content = self.read_from_node(&root, path)?;
         drop(root);
 
-        // Best-effort memoization bounded by total bytes, so a flood of large
-        // files cannot grow the in-memory cache without bound.
         let mut cache = self.cache.write().unwrap();
         if cache.entries.contains_key(path) {
-            // A concurrent reader cached this path first.
             return Ok(content);
         }
         if cache.total_bytes.saturating_add(content.len()) <= self.max_cache_bytes {
@@ -214,7 +211,6 @@ impl VirtualFileSystem {
         match node {
             VfsNode::File { .. } => {
                 if index == components.len() {
-                    // Replace existing file
                     *node = VfsNode::File { content, metadata };
                     Ok(())
                 } else {
@@ -231,11 +227,9 @@ impl VirtualFileSystem {
                 let child_name = components[index];
 
                 if index == components.len() - 1 {
-                    // This is the final component, create file
                     children.insert(child_name.to_string(), VfsNode::File { content, metadata });
                     Ok(())
                 } else {
-                    // Need to traverse further
                     let child = children.entry(child_name.to_string()).or_insert_with(|| {
                         VfsNode::Directory {
                             children: HashMap::new(),
@@ -263,7 +257,7 @@ impl VirtualFileSystem {
         let components: Vec<&str> = path.iter().filter_map(|c| c.to_str()).collect();
 
         if components.is_empty() {
-            return true; // Root exists
+            return true;
         }
 
         self.traverse_exists(node, &components, 0)
@@ -421,7 +415,6 @@ fn is_executable(path: &Path) -> bool {
 
     #[cfg(windows)]
     {
-        // On Windows, check file extension
         path.extension()
             .and_then(|e| e.to_str())
             .map(|ext| matches!(ext.to_lowercase().as_str(), "exe" | "bat" | "cmd" | "ps1"))
@@ -441,7 +434,6 @@ mod tests {
     #[test]
     fn test_vfs_creation() {
         let vfs = VirtualFileSystem::new(100);
-        // Test that VFS was created successfully by checking it can handle operations
         let test_path = Path::new("/test");
         let content = b"test".to_vec();
         let metadata = FileMetadata {
@@ -504,7 +496,6 @@ mod tests {
 
         vfs.write_file(path, content.clone(), metadata).unwrap();
 
-        // First read caches the file
         vfs.read_file(path).unwrap();
 
         let stats = vfs.cache_stats();
@@ -524,12 +515,12 @@ mod tests {
         };
 
         vfs.write_file(small, b"1234567890".to_vec(), metadata.clone())
-            .unwrap(); // 10 bytes
+            .unwrap();
         vfs.write_file(big, b"123456789012345678901234567890".to_vec(), metadata)
-            .unwrap(); // 30 bytes
+            .unwrap();
 
-        let _ = vfs.read_file(small).unwrap(); // 10 <= 20 -> cached
-        let _ = vfs.read_file(big).unwrap(); // 30 > 20 -> not cached
+        let _ = vfs.read_file(small).unwrap();
+        let _ = vfs.read_file(big).unwrap();
 
         let stats = vfs.cache_stats();
         assert_eq!(stats.entries, 1, "only the small file fits the byte budget");

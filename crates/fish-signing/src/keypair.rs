@@ -1,5 +1,3 @@
-// Key pair management for signing operations
-
 use crate::error::{SigningError, SigningResult};
 use ed25519_dalek::{SigningKey, VerifyingKey};
 use rand::rngs::SysRng;

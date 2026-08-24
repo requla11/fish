@@ -8,16 +8,16 @@ This document outlines the strategic development roadmap for Fish, structured ac
 
 ## 🎯 Vision
 
-Fish aims to be the most efficient, resilient, and developer-friendly build orchestration system for polyglot monorepos and distributed development environments, powered by a specialized **Tri-Engine Architecture (Rust 75% + Python 15% + Go 10%)**.
+Fish aims to be the most efficient, resilient, and developer-friendly build orchestration system for polyglot monorepos and distributed development environments. Today Fish is a **Rust-only workspace**; the Python and Go service layers described in earlier revisions are planned future work, not shipped code.
 
 ---
 
 ## 🚀 Current Milestone (v0.2.x) — Completed
 
 ### Phase 1: Core Engine & Polyglot Foundations
-- [x] **Tri-Engine Architecture**: Rust high-performance core (75%), Python AI layer (15%), and Go cloud networking (10%).
+- [ ] **Tri-Engine Architecture**: *Planned, not implemented.* Only the Rust high-performance core exists today; there are no Python AI or Go cloud services in the repository.
 - [x] **11 Language Backends**: Rust, Go, TypeScript/Node.js, Python, C/C++, Docker, Java, .NET, Swift, Dart, Zig.
-- [x] **Shared Protobuf Contracts**: Defined `build.proto`, `ai.proto`, and `coordinator.proto` for cross-language RPC.
+- [ ] **Shared Protobuf Contracts**: *Drafts only.* `build.proto`, `ai.proto`, and `coordinator.proto` exist under `proto/` but are referenced by no crate (no gRPC dependencies in the workspace).
 - [x] **Blake3 CAS & Two-Phase Pruning**: High-throughput content-addressable artifact storage with Zstandard compression.
 - [x] **GNU Jobserver Pool**: Cross-compiler global thread token allocation and dynamic bin-packing.
 - [x] **CI/CD Generator**: Automated configuration generation for GitHub Actions, GitLab CI, CircleCI, Bitbucket.

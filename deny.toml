@@ -1,4 +1,9 @@
 [advisories]
+ignore = [
+    "RUSTSEC-2024-0436",
+]
+# Unmaintained transitives (e.g. paste via wasmi) should not block CI.
+unmaintained = "transitive"
 
 [licenses]
 allow = [

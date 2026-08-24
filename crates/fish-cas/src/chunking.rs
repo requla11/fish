@@ -71,19 +71,9 @@ impl FastCdcChunker {
             } else {
                 let limit = remaining.min(self.max_size);
                 let mut cut = self.min_size;
-                // `avg_size.max(1)` avoids an underflow/divide-by-zero when a
-                // caller constructs the chunker with `avg_size == 0`. A modulo
-                // (instead of `hash & (avg_size - 1)`) also stays correct for
-                // non-power-of-two averages, where the old bitmask was not
-                // equivalent to `hash % avg_size`.
                 let divisor = self.avg_size.max(1) as u64;
 
                 while cut < limit {
-                    // Hash a small window (up to 8 bytes) rather than a single
-                    // byte: a one-byte hash has only 256 distinct values, so
-                    // for `avg_size > 256` boundaries essentially never fire
-                    // and every chunk collapses to `max_size`. A 64-bit hash
-                    // spreads boundaries at the intended `1 / avg_size` rate.
                     let mut hash_val: u64 = 0;
                     let window = &data[offset + cut..(offset + cut + 8).min(len)];
                     for &byte in window {
@@ -130,12 +120,32 @@ impl FastCdcChunker {
         chunk_map: &BTreeMap<String, Vec<u8>>,
     ) -> Result<Vec<u8>, String> {
         let mut buffer = Vec::with_capacity(manifest.total_size);
-        for hash in &manifest.chunk_hashes {
-            if let Some(chunk_bytes) = chunk_map.get(hash) {
-                buffer.extend_from_slice(chunk_bytes);
-            } else {
+        for (index, hash) in manifest.chunk_hashes.iter().enumerate() {
+            let Some(chunk_bytes) = chunk_map.get(hash) else {
                 return Err(format!("Missing chunk with hash: {hash}"));
+            };
+            let computed = blake3::hash(chunk_bytes).to_hex().to_string();
+            if &computed != hash {
+                return Err(format!(
+                    "Chunk {} content does not match its hash; expected `{computed}`",
+                    hash
+                ));
             }
+            let expected_len = manifest.chunk_lengths.get(index).copied().unwrap_or(0);
+            if chunk_bytes.len() != expected_len {
+                return Err(format!(
+                    "Chunk {hash} has length {}, manifest declares {expected_len}",
+                    chunk_bytes.len()
+                ));
+            }
+            buffer.extend_from_slice(chunk_bytes);
+        }
+        let total: usize = manifest.chunk_lengths.iter().sum();
+        if total != manifest.total_size {
+            return Err(format!(
+                "Chunk lengths sum to {total} bytes but the manifest declares {}",
+                manifest.total_size
+            ));
         }
         Ok(buffer)
     }
@@ -206,11 +216,6 @@ mod tests {
 
     #[test]
     fn large_average_size_produces_avg_sized_chunks_not_max_sized() {
-        // With avg_size = 1024 (> 256) and high-entropy input, a one-byte
-        // hash would collapse to chunks of ~min_size + 256 bytes; the
-        // multi-byte window hash must spread boundaries at ~1/1024, so the
-        // average chunk length tracks `avg_size` instead of `max_size`. The
-        // input is deterministic (xorshift64), so this cannot flake.
         let chunker = FastCdcChunker::new(16, 1024, 4096);
 
         let mut state: u64 = 0x1234_5678_9abc_def0;
@@ -227,9 +232,6 @@ mod tests {
         assert_eq!(manifest.total_size, sample.len());
         let count = chunks.len();
 
-        // ~524288 / (16 + 1024) ≈ 493 chunks expected; the old single-byte
-        // hash would yield ~1900. A generous window separates the two while
-        // tolerating hash-distribution variance.
         assert!(
             (200..=1500).contains(&count),
             "expected avg-sized chunks, got {count}"

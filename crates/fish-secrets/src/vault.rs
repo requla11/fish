@@ -1,10 +1,8 @@
-// HashiCorp Vault integration
-
 use crate::manager::SecretManager;
 
 pub struct VaultSecretManager {
     address: String,
-    #[allow(dead_code)] // part of the integration config; never logged or printed
+    #[allow(dead_code)]
     token: String,
 }
 
@@ -17,8 +15,6 @@ impl VaultSecretManager {
 #[async_trait::async_trait]
 impl SecretManager for VaultSecretManager {
     async fn get_secret(&self, key: &str) -> Result<String, anyhow::Error> {
-        // The Vault API integration is not implemented yet. Failing loudly
-        // prevents callers from silently receiving a fabricated value.
         Err(anyhow::anyhow!(
             "HashiCorp Vault integration is not implemented yet (requested `{key}` from `{}`)",
             self.address

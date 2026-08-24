@@ -57,12 +57,12 @@ pub(crate) fn run_cc_build(start_dir: &Path, args: &CommonArgs) -> ExitCode {
 
 pub(crate) fn run_go_build(start_dir: &Path, args: &CommonArgs) -> ExitCode {
     let start_dir = utils::plain_path(start_dir);
-    let config_path = start_dir.join("forge.go.json");
+    let config_path = start_dir.join("fish.go.json");
     let config = if config_path.exists() {
         match GoProjectConfig::from_file(&config_path) {
             Ok(cfg) => cfg,
             Err(err) => {
-                eprintln!("error: failed to read `forge.go.json`: {err}");
+                eprintln!("error: failed to read `fish.go.json`: {err}");
                 return ExitCode::FAILURE;
             }
         }
@@ -466,7 +466,6 @@ pub(crate) fn execute_task_graph(
     }
 }
 
-// Helper functions for file detection
 pub(crate) fn has_file_with_extension(dir: &Path, extensions: &[&str]) -> bool {
     if let Ok(entries) = std::fs::read_dir(dir) {
         for entry in entries.flatten() {
@@ -560,7 +559,6 @@ mod tests {
     fn test_detect_and_load_plugins_no_directory() {
         let dir = tempdir().unwrap();
         let result = detect_and_load_plugins(dir.path());
-        // Should succeed even without directory
         assert!(result.is_ok());
         let manager = result.unwrap();
         assert!(manager.list_plugins().is_empty());

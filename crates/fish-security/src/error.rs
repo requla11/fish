@@ -1,5 +1,3 @@
-// Error types for security operations
-
 use thiserror::Error;
 
 /// Result type for security operations

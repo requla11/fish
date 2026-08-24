@@ -10,7 +10,7 @@ Fish được cấu trúc thành 36 crates Rust mô-đun hóa cao theo từng t�
 2. **Tầng Lưu Trữ & Cache (Storage)**:
    - `fish-cas`: Kho lưu trữ Content-Addressable Storage nén ZSTD và FastCDC chunking.
    - `fish-cache`: Bộ đệm fingerprint hai pha dọn dẹp GC.
-   - `fish-remote-cache`: Giao thức gRPC REAPI v2 và bộ đệm TCP streaming.
+   - `fish-remote-cache`: Bộ đệm từ xa HTTP, Ed25519 signature gate và mô hình dữ liệu REAPI v2.
 3. **Tầng Lập Lịch & Thực Thi (Scheduling)**:
    - `fish-scheduler`: Bộ lập lịch Critical-Path Lookahead, Chase-Lev work-stealing và GNU Jobserver tokens.
    - `fish-worker`: Cụm thực thi worker từ xa và daemon IPC.

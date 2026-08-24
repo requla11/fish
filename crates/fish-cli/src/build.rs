@@ -60,13 +60,47 @@ pub(crate) fn build_executor(
     if args.super_opt {
         middleware_executor = middleware_executor.with_middleware(Box::new(SuperOptMiddleware));
     }
+    if let Some(endpoint) = &args.otel_endpoint {
+        let tracer = fish_analytics::otel::OtelTracer::new("fish-cli");
+        middleware_executor =
+            middleware_executor.with_middleware(Box::new(OtelTracingMiddleware {
+                tracer,
+                _endpoint: endpoint.clone(),
+            }));
+    }
     let base_executor: Box<dyn TaskExecutor> = Box::new(middleware_executor);
 
     if let Some(local_c) = cache {
         if let Some(remote_addr) = &args.remote_cache {
             let remote_client =
                 TcpRemoteCacheClient::new(remote_addr, args.remote_cache_token.clone());
-            let composite = CompositeCache::new(local_c, Some(Box::new(remote_client)));
+            // Wrap with signature gate when FISH_SIGNING_SEED is set.
+            let gated: Box<dyn fish_remote_cache::RemoteCacheClient> =
+                if let Ok(seed_hex) = std::env::var("FISH_SIGNING_SEED") {
+                    let mut seed = [0u8; 32];
+                    if hex::decode_to_slice(&seed_hex, &mut seed).is_ok() {
+                        let trusted: std::collections::HashSet<String> =
+                            std::env::var("FISH_TRUSTED_KEYS")
+                                .map(|v| v.split(',').map(str::to_string).collect())
+                                .unwrap_or_default();
+                        let policy = if std::env::var("FISH_SIG_POLICY").as_deref() == Ok("warn") {
+                            fish_remote_cache::signature_gate::GatePolicy::WarnOnly
+                        } else {
+                            fish_remote_cache::signature_gate::GatePolicy::Refuse
+                        };
+                        Box::new(fish_remote_cache::signature_gate::SignedArtifactGate::new(
+                            remote_client,
+                            seed,
+                            trusted,
+                            policy,
+                        ))
+                    } else {
+                        Box::new(remote_client)
+                    }
+                } else {
+                    Box::new(remote_client)
+                };
+            let composite = CompositeCache::new(local_c, Some(gated));
             Box::new(CompositeCachingExecutor::new(base_executor, composite))
         } else {
             Box::new(CachingExecutor::new(base_executor, local_c))
@@ -106,9 +140,6 @@ impl fish_executor::TaskMiddleware for SuperOptMiddleware {
         if outcome.status == fish_executor::TaskStatus::Executed {
             for artifact in &task.artifacts {
                 if artifact.exists() && artifact.is_file() {
-                    // Super-optimization is unimplemented; propagate the
-                    // failure instead of silently rewriting (or corrupting)
-                    // the artifact the build just produced.
                     crate::experimental::super_opt::SuperOptimizer::optimize_binary_simd(
                         artifact, artifact,
                     )
@@ -128,6 +159,38 @@ impl fish_executor::TaskMiddleware for SuperOptMiddleware {
 /// Entry point shared by `build`/`check`/`test` and `affected`. When
 /// `filtered_graph` is provided (affected builds) it replaces the
 /// discovered package graph, restricting tasks to the affected packages.
+struct OtelTracingMiddleware {
+    tracer: fish_analytics::otel::OtelTracer,
+    _endpoint: String,
+}
+
+impl fish_executor::TaskMiddleware for OtelTracingMiddleware {
+    fn post_execute(
+        &self,
+        task: &fish_executor::Task,
+        outcome: &mut fish_executor::TaskOutcome,
+    ) -> Result<(), fish_executor::ExecutorError> {
+        let mut span = self.tracer.start_span(format!("task:{}", task.label));
+        span = span.with_attribute("task.label", task.label.clone());
+        span = span.with_attribute("task.status", format!("{:?}", outcome.status));
+        span = span.with_attribute("task.duration_ms", outcome.duration.as_secs_f64() * 1000.0);
+        if let Some(code) = outcome.exit_code {
+            span = span.with_attribute("task.exit_code", code);
+        }
+        let success = outcome.status != fish_executor::TaskStatus::Failed;
+        let finished = span.finish(
+            success,
+            if !success {
+                Some(outcome.stderr.clone())
+            } else {
+                None
+            },
+        );
+        self.tracer.record_span(finished);
+        Ok(())
+    }
+}
+
 pub(crate) fn run_build_mode_with(
     args: CommonArgs,
     mode: BuildMode,
@@ -182,7 +245,16 @@ pub(crate) fn run_build_mode_with(
         wasm_sandbox: args.wasm_sandbox || config.wasm_sandbox,
         super_opt: args.super_opt || config.super_opt,
         explain: args.explain,
+        otel_endpoint: args
+            .otel_endpoint
+            .or(config.otel_endpoint)
+            .or_else(|| std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT").ok()),
+        replay_trace: args.replay_trace,
     };
+
+    if let Some(endpoint) = &merged.otel_endpoint {
+        println!("📡 OpenTelemetry OTLP Distributed Tracing active (exporter: {endpoint})");
+    }
 
     if merged.ramdisk
         && let Ok(rd) = crate::ramdisk::RamDisk::create_turbo_workspace("turbo")
@@ -258,8 +330,17 @@ pub(crate) fn run_build_mode_with(
         }
     }
 
-    if merged.wasm_sandbox {
-        println!("🛡️ WASM / WASI Hermetic Plugin Sandbox active");
+    let wasm_registry = fish_plugin::WasmPluginRegistry::discover_in_workspace(&start_dir);
+    if merged.wasm_sandbox || wasm_registry.count() > 0 {
+        if wasm_registry.count() > 0 {
+            println!(
+                "🛡️ WASM / WASI Hermetic Plugin Sandbox active (loaded {} plugins: {:?})",
+                wasm_registry.count(),
+                wasm_registry.plugin_names()
+            );
+        } else {
+            println!("🛡️ WASM / WASI Hermetic Plugin Sandbox active");
+        }
     }
 
     if merged.super_opt {
@@ -327,9 +408,7 @@ pub(crate) fn run_build_mode_with(
         || start_dir.join("Fishfile.json").exists()
         || start_dir.join("fish.rules.json").exists()
         || start_dir.join("BUILD.fish").exists()
-        || start_dir.join("BUILD.forge").exists()
         || start_dir.join("BUILD.bazel").exists()
-        || start_dir.join("forge.rules.json").exists()
     {
         if crate::backends::has_script_plugins(&start_dir) {
             let plugins = crate::backends::list_script_plugins(&start_dir);
@@ -352,32 +431,28 @@ pub(crate) fn run_build_mode_with(
         println!("ℹ️  Script plugins are available. Use 'fish plugin' commands to manage them.");
     }
 
-    if start_dir.join("fish.cc.json").exists() || start_dir.join("forge.cc.json").exists() {
+    if start_dir.join("fish.cc.json").exists() {
         return crate::backends::run_cc_build(&start_dir, &merged);
     }
 
     if start_dir.join("fish.go.json").exists()
-        || start_dir.join("forge.go.json").exists()
         || (start_dir.join("go.mod").exists() && !start_dir.join("Cargo.toml").exists())
     {
         return crate::backends::run_go_build(&start_dir, &merged);
     }
 
     if start_dir.join("fish.ts.json").exists()
-        || start_dir.join("forge.ts.json").exists()
         || (start_dir.join("package.json").exists() && !start_dir.join("Cargo.toml").exists())
     {
         return crate::backends::run_ts_build(&start_dir, &merged);
     }
 
     if start_dir.join("fish.py.json").exists()
-        || start_dir.join("forge.py.json").exists()
         || (start_dir.join("pyproject.toml").exists() && !start_dir.join("Cargo.toml").exists())
     {
         return crate::backends::run_py_build(&start_dir, &merged);
     }
 
-    // Java/Kotlin detection
     if start_dir.join("pom.xml").exists()
         || start_dir.join("build.gradle").exists()
         || start_dir.join("build.gradle.kts").exists()
@@ -385,33 +460,26 @@ pub(crate) fn run_build_mode_with(
         return crate::backends::run_java_build(&start_dir, &merged);
     }
 
-    // .NET detection
     let has_dotnet_project =
         crate::backends::has_file_with_extension(&start_dir, &["csproj", "sln"]);
     if has_dotnet_project {
         return crate::backends::run_dotnet_build(&start_dir, &merged);
     }
 
-    // Swift/Objective-C detection
     let has_swift_project = start_dir.join("Package.swift").exists()
         || crate::backends::has_dir_with_extension(&start_dir, &["xcodeproj"]);
     if has_swift_project {
         return crate::backends::run_swift_build(&start_dir, &merged);
     }
 
-    // Dart/Flutter detection
     if start_dir.join("pubspec.yaml").exists() {
         return crate::backends::run_dart_build(&start_dir, &merged);
     }
 
-    // Zig detection
     if start_dir.join("build.zig").exists() {
         return crate::backends::run_zig_build(&start_dir, &merged);
     }
 
-    // Docker builds require a Dockerfile. A compose file by itself is often
-    // development infrastructure in another kind of repository (including a
-    // Cargo workspace), so it must not select the Docker backend.
     if start_dir.join("Dockerfile").exists() {
         return crate::backends::run_docker_build(&start_dir, &merged);
     }
@@ -540,10 +608,180 @@ pub(crate) fn run_rust_build(
         }
     }
 
+    if let Err(err) = export_otel_trace(&summary) {
+        eprintln!("warning: OpenTelemetry export failed: {err}");
+    }
+    report_regression_verdict(&summary);
+
+    // Trace replay: verify hermetic determinism from a previously saved trace.
+    if let Some(ref trace_path) = args.replay_trace {
+        match fish_executor::trace_replay::ExecutionTrace::load(trace_path) {
+            Ok(trace) => {
+                println!(
+                    "▶ Replaying {} recorded processes for hermeticity verification...",
+                    trace.records.len()
+                );
+                let divergences = trace.replay_and_verify();
+                if divergences.is_empty() {
+                    println!("  ✓ All processes deterministic — hermeticity verified.");
+                } else {
+                    eprintln!("  ✗ {} divergences detected:", divergences.len());
+                    for d in &divergences {
+                        eprintln!(
+                            "    [{}] {}: expected {}, got {}",
+                            d.index, d.program, d.expected_hash, d.actual_hash
+                        );
+                    }
+                    return ExitCode::FAILURE;
+                }
+            }
+            Err(e) => {
+                eprintln!(
+                    "error: cannot load trace file {}: {e}",
+                    trace_path.display()
+                );
+                return ExitCode::FAILURE;
+            }
+        }
+    }
+
     if summary.succeeded() {
         ExitCode::SUCCESS
     } else {
         render::print_failures(&summary);
         ExitCode::FAILURE
+    }
+}
+
+/// Record this run's duration against the rolling history and surface an
+/// alert when the run regressed beyond configured thresholds. Tracking
+/// failures are warnings, never build failures.
+fn report_regression_verdict(summary: &fish_scheduler::BuildSummary) {
+    use fish_analytics::{BuildRunRecord, RegressionConfig, RegressionHistory, evaluate};
+
+    let project_root = match std::env::current_dir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            eprintln!("warning: cannot determine project root for regression tracking: {err}");
+            return;
+        }
+    };
+    let path = fish_analytics::regression::default_history_path(&project_root);
+
+    let outcome = (|| -> Result<(), String> {
+        let mut history = RegressionHistory::load(&path)
+            .map_err(|e| format!("reading {} failed: {e}", path.display()))?;
+        let config = RegressionConfig::default();
+        let current = summary.duration.as_secs_f64();
+
+        let verdict = evaluate(current, &history, &config);
+        history.record(
+            BuildRunRecord {
+                timestamp_unix_secs: std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs(),
+                duration_secs: current,
+                tasks_total: summary.total,
+                tasks_failed: summary.failed,
+            },
+            config.history_limit,
+        );
+        history
+            .save(&path)
+            .map_err(|e| format!("writing {} failed: {e}", path.display()))?;
+
+        match verdict {
+            fish_analytics::RegressionVerdict::Regressed {
+                baseline_secs,
+                overshoot_pct,
+            } => println!(
+                "⚠️  Build regression alert: {:.2}s vs {:.2}s median (+{:.1}%). \
+                 Investigate before merging.",
+                current, baseline_secs, overshoot_pct
+            ),
+            fish_analytics::RegressionVerdict::Improved {
+                improvement_pct, ..
+            } => println!(
+                "🚀 Build improved: {:.1}% faster than the recent median.",
+                improvement_pct
+            ),
+            _ => {}
+        }
+        Ok(())
+    })();
+    if let Err(err) = outcome {
+        eprintln!("warning: {err}");
+    }
+}
+
+/// Convert the build summary into OTLP spans and push them to the collector
+/// configured through `OTEL_EXPORTER_OTLP_ENDPOINT`. Without that variable
+/// this is a no-op; a configured but unreachable collector surfaces a
+/// warning without failing the build.
+fn export_otel_trace(summary: &fish_scheduler::BuildSummary) -> Result<(), String> {
+    use fish_analytics::{AttributeValue, OtelExportConfig, OtelTracer, OtlpExporter, SpanKind};
+
+    let Some(config) = OtelExportConfig::from_env()? else {
+        return Ok(());
+    };
+    let exporter = OtlpExporter::new(config.clone())?;
+
+    let tracer = OtelTracer::new("fish-build");
+    let root = tracer
+        .start_span("fish.build")
+        .with_kind(SpanKind::Server)
+        .with_attribute("fish.workers", summary.workers as u32)
+        .with_attribute("fish.tasks.total", summary.total as u32)
+        .with_attribute("fish.tasks.executed", summary.executed as u32)
+        .with_attribute("fish.tasks.cached", summary.cached as u32)
+        .with_attribute("fish.tasks.failed", summary.failed as u32)
+        .with_attribute("fish.duration_ms", summary.duration.as_millis() as u64);
+
+    for timing in &summary.timings {
+        let success = timing.status != fish_executor::TaskStatus::Failed;
+        let mut span = tracer
+            .start_span(format!("task:{}", timing.label))
+            .with_parent(root.span_id())
+            .with_kind(SpanKind::Internal)
+            .with_attribute("task.status", format!("{:?}", timing.status))
+            .with_attribute("task.worker_id", timing.worker_id as u32)
+            .with_attribute("task.duration_ms", timing.duration.as_millis() as u64);
+        if !success {
+            span.add_event(
+                "task.failed",
+                [
+                    (
+                        "task.label".to_string(),
+                        AttributeValue::String(timing.label.clone()),
+                    ),
+                    ("task.exit_code".to_string(), AttributeValue::Int(-1)),
+                ]
+                .into_iter()
+                .collect(),
+            );
+        }
+        let finished = span.finish(success, (!success).then(|| timing.label.clone()));
+        tracer.record_span(finished);
+    }
+
+    let root_span = root.finish(summary.succeeded(), None);
+    tracer.record_span(root_span);
+
+    match tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+    {
+        Ok(rt) => {
+            let exported = rt
+                .block_on(exporter.export_and_clear(&tracer))
+                .map_err(|e| e.to_string())?;
+            println!(
+                "🔭 OpenTelemetry: exported {exported} spans to {}",
+                config.endpoint
+            );
+            Ok(())
+        }
+        Err(err) => Err(format!("failed to start async runtime for export: {err}")),
     }
 }

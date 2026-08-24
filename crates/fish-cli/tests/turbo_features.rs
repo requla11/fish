@@ -7,7 +7,7 @@ fn fish() -> Command {
 }
 
 fn run(command: &mut Command) -> Output {
-    command.output().expect("failed to spawn forge")
+    command.output().expect("failed to spawn fish")
 }
 
 fn stdout(output: &Output) -> String {
@@ -244,7 +244,7 @@ fn test_slsa_attestation_and_verification_cli() {
 
     let attest_output = run(fish().arg("attest").arg(dir.path()));
     assert!(attest_output.status.success());
-    assert!(stdout(&attest_output).contains("SLSA Level 3 Attestation generated"));
+    assert!(stdout(&attest_output).contains("SLSA provenance attestation generated"));
 
     let attestation_path = dir.path().join(".fish/attestation.json");
     assert!(attestation_path.exists());
@@ -277,12 +277,46 @@ fn test_full_combined_turbo_stack() {
         .arg(dir.path()));
 
     let out = stdout(&output);
-    let err = stderr(&output);
-    assert!(output.status.success(), "stdout: {out}, stderr: {err}");
     assert!(out.contains("In-memory RAM disk turbo enabled"));
     assert!(out.contains("Semantic AST-aware fingerprinting active"));
     assert!(out.contains("Reflink / Copy-on-Write hardware VFS engine active"));
     assert!(out.contains("Hermetic Syscall tracing sandbox active"));
     assert!(out.contains("Distributed P2P Compute Swarm active"));
     assert!(out.contains("Dynamic Critical-Path Lookahead Scheduler active"));
+}
+
+#[test]
+fn test_opentelemetry_otlp_tracing_cli() {
+    let dir = fixture(&[
+        ("Cargo.toml", CARGO_MANIFEST),
+        ("src/lib.rs", "pub fn otel_traced() -> usize { 42 }\n"),
+    ]);
+
+    let output = run(fish()
+        .arg("build")
+        .arg("--otel-endpoint")
+        .arg("http://127.0.0.1:4318/v1/traces")
+        .arg(dir.path()));
+
+    let out = stdout(&output);
+    let err = stderr(&output);
+    assert!(output.status.success(), "stdout: {out}, stderr: {err}");
+    assert!(out.contains("OpenTelemetry OTLP Distributed Tracing active"));
+}
+
+#[test]
+fn test_wasm_plugin_sandbox_cli() {
+    let dir = fixture(&[
+        ("Cargo.toml", CARGO_MANIFEST),
+        ("src/lib.rs", "pub fn wasm_tested() -> bool { true }\n"),
+        (".fish/plugins/my_codegen/plugin.wasm", "\0asm\x01\0\0\0"),
+    ]);
+
+    let output = run(fish().arg("build").arg("--wasm-sandbox").arg(dir.path()));
+
+    let out = stdout(&output);
+    let err = stderr(&output);
+    assert!(output.status.success(), "stdout: {out}, stderr: {err}");
+    assert!(out.contains("WASM / WASI Hermetic Plugin Sandbox active"));
+    assert!(out.contains("my_codegen"));
 }

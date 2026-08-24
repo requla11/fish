@@ -105,23 +105,14 @@ impl<I: TaskExecutor> HybridCachingExecutor<I> {
 
 impl<I: TaskExecutor> TaskExecutor for HybridCachingExecutor<I> {
     fn execute(&self, task: &Task) -> Result<TaskOutcome, ExecutorError> {
-        // The file-level cache cannot currently prove a hit: `FileLevelCache`
-        // is an in-memory path→hash map, and membership alone says nothing
-        // about whether the on-disk content still matches the cached artifact.
-        // Treating membership as a hit (the previous behaviour) would skip
-        // execution forever after a single registration, even when the source
-        // files change. Fall through to the task-level fingerprint check,
-        // which performs an actual content comparison.
         if let Some(CacheEntry { key, fingerprint }) = &task.cache
             && self.local_cache.matches(key, fingerprint)
         {
             return Ok(TaskOutcome::cached(task));
         }
 
-        // Execute the task
         let outcome = self.inner.execute(task)?;
 
-        // Cache the result at task level
         if outcome.status == TaskStatus::Executed
             && let Some(CacheEntry { key, fingerprint }) = &task.cache
             && let Err(_error) = self.local_cache.put(key, fingerprint)
@@ -158,7 +149,6 @@ mod tests {
         let dep_graph = Arc::new(FileDependencyGraph::new());
         let file_adapter = Arc::new(FileLevelCacheAdapter::new(file_cache, dep_graph));
 
-        // Test that the adapter can be created
         assert!(!file_adapter.is_task_files_cached("nonexistent_task"));
         assert!(local_cache.root().exists());
     }

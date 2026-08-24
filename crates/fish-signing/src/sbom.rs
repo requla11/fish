@@ -1,5 +1,3 @@
-// SBOM (Software Bill of Materials) generation
-
 use crate::error::SigningResult;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -15,7 +13,7 @@ pub enum SbomFormat {
 }
 
 /// SBOM metadata for signing
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SbomMetadata {
     /// Package name
     pub name: String,
@@ -51,7 +49,7 @@ impl Default for SbomMetadata {
 }
 
 /// Dependency information
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct DependencyInfo {
     /// Dependency name
     pub name: String,
@@ -89,8 +87,6 @@ impl SbomGenerator {
 
     /// Extract metadata from package
     async fn extract_metadata(&self, package_path: &Path) -> SigningResult<SbomMetadata> {
-        // This would parse actual package files (Cargo.toml, package.json, etc.)
-        // For now, return basic metadata
         let name = package_path
             .file_name()
             .and_then(|n| n.to_str())

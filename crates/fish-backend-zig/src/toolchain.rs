@@ -38,7 +38,6 @@ impl ZigToolchain {
     }
 
     fn find_executable(name: &str) -> Option<String> {
-        // Check if executable exists in PATH
         if let Ok(output) = std::process::Command::new("where").arg(name).output()
             && output.status.success()
         {
@@ -46,7 +45,6 @@ impl ZigToolchain {
             return paths.lines().next().map(|s| s.to_string());
         }
 
-        // Try direct execution
         if std::process::Command::new(name)
             .arg("version")
             .output()
@@ -81,7 +79,6 @@ impl ZigToolchain {
 
 impl ZigCompiler {
     pub fn detect() -> Result<Self, ZigBackendError> {
-        // Try zig
         if let Some(zig) = ZigToolchain::find_executable("zig") {
             return Ok(ZigCompiler::Zig(zig));
         }
@@ -110,7 +107,6 @@ mod tests {
 
     #[test]
     fn test_zig_toolchain_detection() {
-        // This test will fail if Zig is not installed
         let result = ZigToolchain::detect();
         if let Ok(toolchain) = result {
             assert!(!toolchain.executable.is_empty());

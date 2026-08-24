@@ -130,7 +130,6 @@ impl FishConfig {
     pub fn load_from_env() -> Result<Self, ConfigError> {
         let mut config = Self::default();
 
-        // Override with environment variables
         if let Ok(level) = std::env::var("FISH_LOG_LEVEL") {
             config.general.log_level = level;
         }
@@ -165,7 +164,6 @@ impl FishConfig {
     }
 
     pub fn validate(&self) -> Result<(), ConfigError> {
-        // Validate parallel jobs
         if self.general.max_parallel_jobs == 0 {
             return Err(ConfigError::Validation(
                 "max_parallel_jobs must be greater than 0".to_string(),
@@ -178,7 +176,6 @@ impl FishConfig {
             ));
         }
 
-        // Validate cache size
         if let Some(max_size) = self.cache.max_size_gb {
             if max_size <= 0.0 {
                 return Err(ConfigError::Validation(
@@ -192,7 +189,6 @@ impl FishConfig {
             }
         }
 
-        // Validate security level
         match self.security.level.as_str() {
             "allow" | "strict" | "paranoid" => {}
             _ => {
@@ -293,9 +289,7 @@ mod tests {
         base.general.timeout_seconds = None;
 
         let mut overlay = FishConfig::default();
-        // Explicitly set to the *default* value: must still win.
         overlay.general.log_level = "info".to_string();
-        // Fields the old sentinel logic silently dropped:
         overlay.general.timeout_seconds = Some(90);
         overlay.build.hermetic = true;
         overlay.build.sandbox_enabled = true;
@@ -345,17 +339,11 @@ mod tests {
 
     #[test]
     fn test_env_override() {
-        // Test the parsing logic used in load_from_env
-        // Since we can't set environment variables due to #![forbid(unsafe_code)],
-        // we test the parsing behavior directly
-
-        // Test default values when env vars are not set
         let config = FishConfig::load_from_env().unwrap();
         assert_eq!(config.general.max_parallel_jobs, 4);
         assert_eq!(config.general.log_level, "info");
         assert!(config.cache.enabled);
 
-        // Test parsing logic (simulate what load_from_env does)
         let jobs_str = "8";
         let parsed_jobs: usize = jobs_str.parse().unwrap_or(4);
         assert_eq!(parsed_jobs, 8);

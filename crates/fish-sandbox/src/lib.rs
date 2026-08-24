@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-pub mod ebpf;
+pub mod file_events;
 pub mod snapshot;
 
 pub mod env;
@@ -8,11 +8,12 @@ pub mod executor;
 pub mod hermetic;
 pub mod isolation;
 pub mod microvm;
+pub mod microvm_config;
 pub mod tracer;
 
-pub use ebpf::{EbpfSyscallTracer, EbpfTraceSummary, FileAccessType};
 pub use env::{EnvPolicy, sanitize_env};
 pub use executor::{SandboxConfig, SandboxedExecutor};
+pub use file_events::{FileAccessType, FileEventRecorder, HermeticitySummary};
 pub use hermetic::{HermeticProcessSandbox, SandboxPlatform};
 pub use isolation::{FsPolicy, SandboxWorkspace};
 pub use snapshot::{SandboxSnapshot, SnapshotBackend, SnapshotManager};

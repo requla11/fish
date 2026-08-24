@@ -1,6 +1,3 @@
-// Fish Docker Builder - Docker Image Building as First-Class Artifacts
-// Build Docker images like build artifacts with layer caching
-
 #![forbid(unsafe_code)]
 #![allow(missing_docs)]
 #![warn(clippy::all)]

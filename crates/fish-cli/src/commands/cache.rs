@@ -185,10 +185,7 @@ pub fn run_cas(cache: &LocalCache, args: CasArgs) -> ExitCode {
         }
         CasCommand::Download { hash, output } => {
             let artifact_hash = ArtifactHash::new(hash.clone());
-            let output_path = output.unwrap_or_else(|| {
-                // Use hash as filename if no output specified
-                PathBuf::from(hash)
-            });
+            let output_path = output.unwrap_or_else(|| PathBuf::from(hash));
 
             let cas_path = cache.cas_path();
             let config = CasStorageConfig::local(&cas_path);
@@ -289,7 +286,7 @@ pub fn run_cas(cache: &LocalCache, args: CasArgs) -> ExitCode {
                     let policy = if let Some(duration) = older_than_duration {
                         CleanupPolicy::OlderThan(duration)
                     } else {
-                        CleanupPolicy::OlderThan(std::time::Duration::from_secs(7 * 24 * 60 * 60)) // 7 days default
+                        CleanupPolicy::OlderThan(std::time::Duration::from_secs(7 * 24 * 60 * 60))
                     };
 
                     match rt.block_on(storage.cleanup(policy)) {

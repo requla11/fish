@@ -1,5 +1,3 @@
-// Test matrix configuration
-
 use crate::platform::Target;
 use serde::{Deserialize, Serialize};
 

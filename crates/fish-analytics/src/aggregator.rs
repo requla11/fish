@@ -1,5 +1,3 @@
-// Metrics aggregator
-
 use crate::metrics::CacheMetrics;
 use std::path::Path;
 

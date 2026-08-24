@@ -1,6 +1,3 @@
-// Fish Secrets - Secret Management Integration
-// Secure secret injection for builds with Vault, AWS Secrets Manager, K8s secrets
-
 #![forbid(unsafe_code)]
 #![allow(missing_docs)]
 #![warn(clippy::all)]
@@ -59,7 +56,7 @@ mod tests {
 
         let err = service.get_secret("db_pass").await.unwrap_err();
         assert!(err.to_string().contains("not implemented"), "error: {err}");
-        let err = service.inject_secrets("forge build").await.unwrap_err();
+        let err = service.inject_secrets("fish build").await.unwrap_err();
         assert!(err.to_string().contains("not implemented"));
     }
 

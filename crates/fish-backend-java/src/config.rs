@@ -28,7 +28,6 @@ impl JavaProjectConfig {
         let content = std::fs::read_to_string(&pom_path)
             .map_err(|e| format!("Failed to read pom.xml: {}", e))?;
 
-        // Simple XML parsing for group ID, artifact ID, and version
         let group_id =
             extract_xml_tag(&content, "groupId").unwrap_or_else(|| "com.example".to_string());
         let artifact_id =

@@ -47,14 +47,12 @@ impl AsyncFileWriter {
 
         let tmp_path = crate::unique_tmp_path(&path);
 
-        // Write to temp file
         let mut file = fs::File::create(&tmp_path).await?;
         file.write_all(&data).await?;
         file.flush().await?;
         file.sync_all().await?;
         drop(file);
 
-        // Atomic rename
         fs::rename(&tmp_path, &path).await?;
 
         Ok(())
@@ -234,7 +232,7 @@ impl AsyncCache {
 
 impl Default for AsyncCache {
     fn default() -> Self {
-        Self::new(8) // Default to 8 parallel operations
+        Self::new(8)
     }
 }
 

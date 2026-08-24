@@ -40,28 +40,19 @@ pub struct OptimizationMetric {
 pub struct SuperOptimizer;
 
 impl SuperOptimizer {
-    pub fn build_cfg_from_binary(binary_bytes: &[u8]) -> ControlFlowGraph {
-        let mut blocks = Vec::new();
-        let chunk_size = 64;
-        let count = (binary_bytes.len() / chunk_size).max(1);
-
-        for i in 0..count {
-            let loop_depth = if i % 2 == 0 { 2 } else { 0 };
-            blocks.push(BasicBlock {
-                id: i,
-                start_offset: i * chunk_size,
-                instruction_count: 16,
-                loop_depth,
-                is_vectorizable: loop_depth > 0,
-            });
-        }
-
-        let hot_loop_count = blocks.iter().filter(|b| b.loop_depth > 0).count();
-
-        ControlFlowGraph {
-            blocks,
-            hot_loop_count,
-        }
+    /// Build a control-flow graph from raw machine code.
+    ///
+    /// Not implemented: recovering basic blocks requires instruction-length
+    /// decoding (and symbol/section awareness), which no disassembler in this
+    /// workspace provides. Chunking bytes on fixed boundaries and inventing
+    /// loop depths would produce plausible-looking garbage, so this refuses
+    /// until a real decoder is integrated.
+    pub fn build_cfg_from_binary(_binary_bytes: &[u8]) -> io::Result<ControlFlowGraph> {
+        Err(io::Error::new(
+            io::ErrorKind::Unsupported,
+            "CFG recovery requires an instruction decoder; \
+             fixed-boundary chunking is not analysis",
+        ))
     }
 
     pub fn optimize_binary_simd(
@@ -76,10 +67,6 @@ impl SuperOptimizer {
         output_path: &Path,
         _target_level: SimdVectorizationLevel,
     ) -> io::Result<OptimizationMetric> {
-        // Real binary rewriting is not implemented. Failing loudly prevents
-        // the previous behaviour of overwriting a freshly built artifact with
-        // placeholder bytes (corrupting it) while reporting a fabricated
-        // speedup.
         Err(io::Error::new(
             io::ErrorKind::Unsupported,
             format!(
@@ -117,10 +104,9 @@ mod tests {
     }
 
     #[test]
-    fn test_cfg_block_extraction() {
+    fn test_cfg_recovery_refuses_without_a_decoder() {
         let bytes = vec![0x90; 256];
-        let cfg = SuperOptimizer::build_cfg_from_binary(&bytes);
-        assert_eq!(cfg.blocks.len(), 4);
-        assert!(cfg.hot_loop_count > 0);
+        let result = SuperOptimizer::build_cfg_from_binary(&bytes);
+        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::Unsupported);
     }
 }

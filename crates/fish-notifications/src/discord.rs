@@ -1,5 +1,3 @@
-// Discord notifier
-
 use crate::notifier::{Notification, NotificationConfig, Notifier};
 
 pub struct DiscordNotifier {

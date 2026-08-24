@@ -1,5 +1,3 @@
-// Slack notifier
-
 use crate::notifier::{Notification, NotificationConfig, Notifier};
 
 pub struct SlackNotifier {

@@ -73,7 +73,7 @@ pub fn run_run(args: RunArgs) -> ExitCode {
             .filter(|t| t.kind.iter().any(|k| k.to_string() == "bin"))
             .collect();
         if bin_targets.is_empty() {
-            eprintln!("error: a bin target must be available for `forge run`");
+            eprintln!("error: a bin target must be available for `fish run`");
             return ExitCode::FAILURE;
         }
     }
@@ -108,6 +108,8 @@ pub fn run_run(args: RunArgs) -> ExitCode {
         wasm_sandbox: false,
         super_opt: false,
         explain: false,
+        otel_endpoint: None,
+        replay_trace: None,
     };
 
     let build_status = crate::run_build_mode(common_args, BuildMode::Build);

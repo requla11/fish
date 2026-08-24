@@ -3,7 +3,7 @@
 Fish 支持高性能分布式缓存与远程计算执行协议。
 
 ## Remote Execution API (REAPI v2)
-Fish 支持基于 gRPC 的 Google / Bazel REAPI v2 协议：
+Fish 提供 **兼容 REAPI v2 的数据模型**（位于 `crates/fish-remote-cache/src/reapi.rs` 中的 `ReapiDigest`、`ReapiDirectory`、`ReapiFileNode`），通过 HTTP/JSON 传输 — 而非 gRPC。工作区没有 protobuf/gRPC 依赖；关于规划中的 gRPC 传输，请参阅 [go-services.md](go-services.md)。
 ```bash
 fish build --remote-workers 10.0.0.1:8980,10.0.0.2:8980
 ```

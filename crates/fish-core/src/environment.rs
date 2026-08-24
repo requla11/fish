@@ -25,9 +25,6 @@ impl std::hash::Hash for EnvironmentFingerprint {
         self.architecture.hash(state);
         self.libc_version.hash(state);
         self.toolchain_hash.hash(state);
-        // `HashMap` itself does not implement `Hash`, and its iteration order
-        // is unspecified, so hash the compiler entries in a stable sorted
-        // order to keep the fingerprint deterministic.
         let mut compilers: Vec<(&String, &String)> = self.compiler_versions.iter().collect();
         compilers.sort_by_key(|(compiler, _)| compiler.as_str());
         for (compiler, version) in compilers {
@@ -110,7 +107,6 @@ impl EnvironmentFingerprint {
     fn get_compiler_versions() -> HashMap<String, String> {
         let mut versions = HashMap::new();
 
-        // GCC
         if let Ok(output) = Command::new("gcc").args(["--version"]).output() {
             let version = String::from_utf8_lossy(&output.stdout);
             if let Some(first_line) = version.lines().next() {
@@ -118,7 +114,6 @@ impl EnvironmentFingerprint {
             }
         }
 
-        // Clang
         if let Ok(output) = Command::new("clang").args(["--version"]).output() {
             let version = String::from_utf8_lossy(&output.stdout);
             if let Some(first_line) = version.lines().next() {
@@ -126,19 +121,16 @@ impl EnvironmentFingerprint {
             }
         }
 
-        // Rust
         if let Ok(output) = Command::new("rustc").args(["--version"]).output() {
             let version = String::from_utf8_lossy(&output.stdout);
             versions.insert("rustc".to_string(), version.trim().to_string());
         }
 
-        // Go
         if let Ok(output) = Command::new("go").args(["version"]).output() {
             let version = String::from_utf8_lossy(&output.stdout);
             versions.insert("go".to_string(), version.trim().to_string());
         }
 
-        // Node
         if let Ok(output) = Command::new("node").args(["--version"]).output() {
             let version = String::from_utf8_lossy(&output.stdout);
             versions.insert("node".to_string(), version.trim().to_string());
@@ -151,13 +143,8 @@ impl EnvironmentFingerprint {
         compiler_versions: &HashMap<String, String>,
         libc_version: &Option<String>,
     ) -> String {
-        // Use a stable, content-addressed hash. `DefaultHasher` is explicitly
-        // documented as unstable across Rust releases, so relying on it here
-        // would silently change every cache key after a toolchain upgrade.
         let mut hasher = blake3::Hasher::new();
 
-        // Hash all compiler versions in sorted order, with a NUL separator
-        // between fields so `("a", "bc")` and `("ab", "c")` cannot collide.
         let mut compilers: Vec<_> = compiler_versions.iter().collect();
         compilers.sort_by_key(|(k, _)| *k);
 
@@ -168,7 +155,6 @@ impl EnvironmentFingerprint {
             hasher.update(&[0]);
         }
 
-        // Hash libc version if available
         if let Some(libc) = libc_version {
             hasher.update(libc.as_bytes());
         }
@@ -177,7 +163,6 @@ impl EnvironmentFingerprint {
     }
 
     pub fn is_compatible_with(&self, other: &EnvironmentFingerprint) -> bool {
-        // Strict compatibility check
         self.os == other.os
             && self.architecture == other.architecture
             && self.toolchain_hash == other.toolchain_hash
@@ -189,7 +174,6 @@ impl EnvironmentFingerprint {
             self.os,
             self.architecture,
             self.toolchain_hash,
-            // Include libc version for Linux for ABI consistency
             self.libc_version.as_deref().unwrap_or("none")
         )
     }
@@ -220,7 +204,6 @@ mod tests {
         let fp1 = EnvironmentFingerprint::capture();
         let fp2 = EnvironmentFingerprint::capture();
 
-        // Same environment should be compatible
         assert!(fp1.is_compatible_with(&fp2));
     }
 }

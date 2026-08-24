@@ -1,13 +1,18 @@
 #![forbid(unsafe_code)]
 
-pub mod p2p_lan;
-pub use p2p_lan::{LanPeerNode, LanPeerRegistry};
-
 pub mod artifact;
 pub mod client;
+pub mod p2p_lan;
 pub mod protocol;
 pub mod reapi;
+pub mod replication;
 pub mod server;
+pub mod signature_gate;
+
+pub use p2p_lan::{
+    ArtifactChunk, ChunkBitfield, ChunkManifest, LanPeerNode, LanPeerRegistry,
+    P2PArtifactReassembler,
+};
 
 use std::collections::HashMap;
 use std::fmt::Debug;

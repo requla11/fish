@@ -36,7 +36,6 @@ impl FsWatcherDaemon {
     pub fn start(&mut self) -> Result<()> {
         let invalidated = Arc::clone(&self.invalidated_targets);
         let is_running = Arc::clone(&self.is_running);
-        is_running.store(true, Ordering::SeqCst);
 
         let event_handler = move |res: Result<Event, notify::Error>| {
             if let Ok(event) = res {
@@ -54,7 +53,8 @@ impl FsWatcherDaemon {
             }
         };
 
-        let mut watcher = RecommendedWatcher::new(event_handler, Config::default())
+        let watcher_config = Config::default().with_poll_interval(self.debounce_duration);
+        let mut watcher = RecommendedWatcher::new(event_handler, watcher_config)
             .context("Failed to initialize filesystem watcher")?;
 
         for path in &self.watched_paths {
@@ -64,6 +64,7 @@ impl FsWatcherDaemon {
         }
 
         self._watcher = Some(watcher);
+        is_running.store(true, Ordering::SeqCst);
         Ok(())
     }
 

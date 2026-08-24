@@ -377,6 +377,10 @@ pub struct CommonArgs {
     pub swarm_compute: bool,
     #[arg(long = "critical-path")]
     pub critical_path: bool,
+    /// Load a previously saved execution trace and replay it to verify
+    /// hermetic determinism before running the actual build.
+    #[arg(long = "replay-trace")]
+    pub replay_trace: Option<PathBuf>,
     #[arg(long = "turbo-link")]
     pub turbo_link: bool,
     #[arg(long = "speculative")]

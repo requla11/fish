@@ -249,6 +249,7 @@ pub(crate) fn run_build_mode_with(
             .otel_endpoint
             .or(config.otel_endpoint)
             .or_else(|| std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT").ok()),
+        replay_trace: args.replay_trace,
     };
 
     if let Some(endpoint) = &merged.otel_endpoint {
@@ -611,6 +612,38 @@ pub(crate) fn run_rust_build(
         eprintln!("warning: OpenTelemetry export failed: {err}");
     }
     report_regression_verdict(&summary);
+
+    // Trace replay: verify hermetic determinism from a previously saved trace.
+    if let Some(ref trace_path) = args.replay_trace {
+        match fish_executor::trace_replay::ExecutionTrace::load(trace_path) {
+            Ok(trace) => {
+                println!(
+                    "▶ Replaying {} recorded processes for hermeticity verification...",
+                    trace.records.len()
+                );
+                let divergences = trace.replay_and_verify();
+                if divergences.is_empty() {
+                    println!("  ✓ All processes deterministic — hermeticity verified.");
+                } else {
+                    eprintln!("  ✗ {} divergences detected:", divergences.len());
+                    for d in &divergences {
+                        eprintln!(
+                            "    [{}] {}: expected {}, got {}",
+                            d.index, d.program, d.expected_hash, d.actual_hash
+                        );
+                    }
+                    return ExitCode::FAILURE;
+                }
+            }
+            Err(e) => {
+                eprintln!(
+                    "error: cannot load trace file {}: {e}",
+                    trace_path.display()
+                );
+                return ExitCode::FAILURE;
+            }
+        }
+    }
 
     if summary.succeeded() {
         ExitCode::SUCCESS

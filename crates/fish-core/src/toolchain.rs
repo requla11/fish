@@ -179,6 +179,11 @@ impl ToolchainRegistry {
         self.toolchains.len()
     }
 
+    /// Return all registered toolchain specs, unordered.
+    pub fn all(&self) -> Vec<&ToolchainSpec> {
+        self.toolchains.values().collect()
+    }
+
     pub fn is_empty(&self) -> bool {
         self.toolchains.is_empty()
     }

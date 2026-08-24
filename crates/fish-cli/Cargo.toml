@@ -51,6 +51,7 @@ notify = { workspace = true }
 crossterm = { workspace = true }
 ratatui = { workspace = true }
 blake3 = { workspace = true }
+hex = "0.4"
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 tracing-chrome = { workspace = true }

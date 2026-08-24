@@ -5,6 +5,7 @@ pub mod client;
 pub mod p2p_lan;
 pub mod protocol;
 pub mod reapi;
+pub mod replication;
 pub mod server;
 pub mod signature_gate;
 

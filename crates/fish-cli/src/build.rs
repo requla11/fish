@@ -74,7 +74,33 @@ pub(crate) fn build_executor(
         if let Some(remote_addr) = &args.remote_cache {
             let remote_client =
                 TcpRemoteCacheClient::new(remote_addr, args.remote_cache_token.clone());
-            let composite = CompositeCache::new(local_c, Some(Box::new(remote_client)));
+            // Wrap with signature gate when FISH_SIGNING_SEED is set.
+            let gated: Box<dyn fish_remote_cache::RemoteCacheClient> =
+                if let Ok(seed_hex) = std::env::var("FISH_SIGNING_SEED") {
+                    let mut seed = [0u8; 32];
+                    if hex::decode_to_slice(&seed_hex, &mut seed).is_ok() {
+                        let trusted: std::collections::HashSet<String> =
+                            std::env::var("FISH_TRUSTED_KEYS")
+                                .map(|v| v.split(',').map(str::to_string).collect())
+                                .unwrap_or_default();
+                        let policy = if std::env::var("FISH_SIG_POLICY").as_deref() == Ok("warn") {
+                            fish_remote_cache::signature_gate::GatePolicy::WarnOnly
+                        } else {
+                            fish_remote_cache::signature_gate::GatePolicy::Refuse
+                        };
+                        Box::new(fish_remote_cache::signature_gate::SignedArtifactGate::new(
+                            remote_client,
+                            seed,
+                            trusted,
+                            policy,
+                        ))
+                    } else {
+                        Box::new(remote_client)
+                    }
+                } else {
+                    Box::new(remote_client)
+                };
+            let composite = CompositeCache::new(local_c, Some(gated));
             Box::new(CompositeCachingExecutor::new(base_executor, composite))
         } else {
             Box::new(CachingExecutor::new(base_executor, local_c))

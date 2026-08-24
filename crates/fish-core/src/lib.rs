@@ -8,15 +8,18 @@ pub mod backend_utils;
 pub mod compile_commands;
 pub mod config;
 pub mod diagnostics;
+pub mod drift;
 pub mod environment;
 pub mod error;
 pub mod input_filter;
 pub mod profiling;
 pub mod project;
+pub mod sandbox_profiles;
 pub mod security;
 pub mod testing;
 pub mod toolchain;
 pub mod toolchain_downloader;
+pub mod toolchain_lock;
 
 #[cfg(windows)]
 pub mod windows_compat;

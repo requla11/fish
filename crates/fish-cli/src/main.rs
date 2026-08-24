@@ -10,6 +10,7 @@ mod config;
 mod critical_path;
 pub mod daemon;
 pub mod experimental;
+mod nl_authoring;
 mod nl_query;
 pub mod pgo;
 pub mod pipeline;
@@ -89,7 +90,7 @@ fn main() -> ExitCode {
         Command::Ai(args) => commands::run_ai(args),
         Command::Why(args) => commands::run_why(args),
         Command::Lsp(_args) => commands::run_lsp(),
-        Command::Init(args) => commands::run_init(args.path, args.force),
+        Command::Init(args) => commands::run_init(args.path, args.force, args.describe),
         Command::New(args) => commands::run_new(&args.name, args.template.as_deref(), args.path),
         Command::Build(args) => run_build_mode(args.common, BuildMode::Build),
         Command::Check(args) => run_build_mode(args.common, BuildMode::Check),

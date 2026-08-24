@@ -135,6 +135,9 @@ pub struct InitArgs {
     pub path: Option<PathBuf>,
     #[arg(long, short)]
     pub force: bool,
+    /// Plain-language project description, e.g. --describe "rust cli + python tools".
+    #[arg(long)]
+    pub describe: Option<String>,
 }
 
 #[derive(Debug, Args)]

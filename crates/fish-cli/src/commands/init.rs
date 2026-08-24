@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DetectedLanguage {
     pub name: &'static str,
     pub backend: &'static str,
@@ -162,7 +163,7 @@ pub fn generate_fish_yaml(languages: &[DetectedLanguage]) -> String {
     out
 }
 
-pub fn run_init(path: Option<PathBuf>, force: bool) -> ExitCode {
+pub fn run_init(path: Option<PathBuf>, force: bool, describe: Option<String>) -> ExitCode {
     let target_dir = path.unwrap_or_else(|| PathBuf::from("."));
     let fish_file = target_dir.join("fish.yaml");
 
@@ -175,6 +176,33 @@ pub fn run_init(path: Option<PathBuf>, force: bool) -> ExitCode {
     }
 
     println!("🐟 Initializing Fish in {}", target_dir.display());
+
+    if let Some(description) = describe.as_deref().filter(|d| !d.trim().is_empty()) {
+        println!("  [info] Description: \"{description}\"");
+        let parsed = crate::nl_authoring::parse_description(description);
+        if parsed.languages.is_empty() {
+            println!("  [warn] No recognized languages in the description; generating default config.");
+        } else {
+            println!(
+                "  [ok] Parsed {} language(s) and archetype {:?}:",
+                parsed.languages.len(),
+                parsed.archetype
+            );
+            for lang in &parsed.languages {
+                println!("    - {} (backend: {})", lang.name, lang.backend);
+            }
+        }
+        let config_content = crate::nl_authoring::generate_from_description(&parsed);
+        if let Err(e) = std::fs::write(&fish_file, config_content) {
+            eprintln!("error: failed to write fish.yaml: {e}");
+            return ExitCode::FAILURE;
+        }
+        println!("  [ok] Successfully generated {}", fish_file.display());
+        println!("\nYou can now run:");
+        println!("  fish build    # to build all targets");
+        return ExitCode::SUCCESS;
+    }
+
     let detected = detect_workspace_languages(&target_dir);
 
     if detected.is_empty() {

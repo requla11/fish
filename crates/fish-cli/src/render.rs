@@ -191,6 +191,7 @@ pub fn print_profile_saved(path: &Path) {
 }
 
 pub fn print_failures(summary: &fish_scheduler::BuildSummary) {
+    let mut all_output = String::new();
     for failure in &summary.failures {
         eprintln!();
         eprintln!("Task:      {}", failure.label);
@@ -203,6 +204,7 @@ pub fn print_failures(summary: &fish_scheduler::BuildSummary) {
         if !failure.stderr.trim().is_empty() {
             output.push_str(&failure.stderr);
         }
+        all_output.push_str(&output);
         let total = output.lines().count();
         for (index, line) in output.lines().enumerate() {
             if index == 30 {
@@ -215,6 +217,24 @@ pub fn print_failures(summary: &fish_scheduler::BuildSummary) {
             eprintln!("  (no output)");
         }
     }
+    capture_failure_output(&all_output);
+}
+
+static LAST_FAILURE_OUTPUT: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
+
+fn capture_failure_output(output: &str) {
+    if let Ok(mut slot) = LAST_FAILURE_OUTPUT.lock() {
+        *slot = Some(output.to_string());
+    }
+}
+
+/// Full (uncapped) combined stdout+stderr from the most recent failed run.
+pub fn last_failure_output() -> String {
+    LAST_FAILURE_OUTPUT
+        .lock()
+        .ok()
+        .and_then(|slot| slot.clone())
+        .unwrap_or_default()
 }
 
 pub fn print_graph_tree(project: &Project, graph: &BuildGraph<PackageId>) {

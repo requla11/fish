@@ -1003,6 +1003,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "fallible-iterator"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2acce4a10f12dc2fb14a218589d4f1f62ef011b2d0cc4b3cb1bba8e94da14649"
+
+[[package]]
+name = "fallible-streaming-iterator"
+version = "0.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7360491ce676a36bf9bb3c56c1aa791658183a54d2744120f27285738d90465a"
+
+[[package]]
 name = "fastrand"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1032,13 +1044,14 @@ checksum = "d45db016d36b838f563236e9193d0ee6ce38f3f68b6c94e914b4929c96bbb890"
 
 [[package]]
 name = "fish-analytics"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "chrono",
  "fish-cache",
  "fish-core",
  "reqwest",
+ "rusqlite",
  "serde",
  "serde_json",
  "tempfile",
@@ -1049,7 +1062,7 @@ dependencies = [
 
 [[package]]
 name = "fish-backend-cc"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "blake3",
  "fish-cache",
@@ -1067,7 +1080,7 @@ dependencies = [
 
 [[package]]
 name = "fish-backend-dart"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "blake3",
  "fish-cache",
@@ -1084,7 +1097,7 @@ dependencies = [
 
 [[package]]
 name = "fish-backend-docker"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1102,7 +1115,7 @@ dependencies = [
 
 [[package]]
 name = "fish-backend-dotnet"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "blake3",
  "fish-cache",
@@ -1119,7 +1132,7 @@ dependencies = [
 
 [[package]]
 name = "fish-backend-go"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "blake3",
  "fish-cache",
@@ -1137,7 +1150,7 @@ dependencies = [
 
 [[package]]
 name = "fish-backend-java"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "blake3",
  "fish-cache",
@@ -1154,7 +1167,7 @@ dependencies = [
 
 [[package]]
 name = "fish-backend-py"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "blake3",
  "fish-cache",
@@ -1173,7 +1186,7 @@ dependencies = [
 
 [[package]]
 name = "fish-backend-rust"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "blake3",
@@ -1193,7 +1206,7 @@ dependencies = [
 
 [[package]]
 name = "fish-backend-swift"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "blake3",
  "fish-cache",
@@ -1210,7 +1223,7 @@ dependencies = [
 
 [[package]]
 name = "fish-backend-ts"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "blake3",
  "fish-cache",
@@ -1228,7 +1241,7 @@ dependencies = [
 
 [[package]]
 name = "fish-backend-zig"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "blake3",
  "fish-cache",
@@ -1245,7 +1258,7 @@ dependencies = [
 
 [[package]]
 name = "fish-cache"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "criterion",
@@ -1265,7 +1278,7 @@ dependencies = [
 
 [[package]]
 name = "fish-cas"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "async-trait",
  "blake3",
@@ -1284,7 +1297,7 @@ dependencies = [
 
 [[package]]
 name = "fish-ci-generator"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "fish-core",
  "fish-graph",
@@ -1296,7 +1309,7 @@ dependencies = [
 
 [[package]]
 name = "fish-cli"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "anstream",
  "anstyle",
@@ -1348,7 +1361,7 @@ dependencies = [
 
 [[package]]
 name = "fish-core"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "blake3",
@@ -1373,7 +1386,7 @@ dependencies = [
 
 [[package]]
 name = "fish-dashboard"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "chrono",
  "fish-cache",
@@ -1391,7 +1404,7 @@ dependencies = [
 
 [[package]]
 name = "fish-docker-builder"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "blake3",
@@ -1405,7 +1418,7 @@ dependencies = [
 
 [[package]]
 name = "fish-executor"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "blake3",
  "fastrand",
@@ -1420,7 +1433,7 @@ dependencies = [
 
 [[package]]
 name = "fish-flaky-detection"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1433,14 +1446,14 @@ dependencies = [
 
 [[package]]
 name = "fish-graph"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "thiserror",
 ]
 
 [[package]]
 name = "fish-incremental"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "blake3",
  "chrono",
@@ -1455,7 +1468,7 @@ dependencies = [
 
 [[package]]
 name = "fish-installer"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "anstream",
  "anstyle",
@@ -1469,7 +1482,7 @@ dependencies = [
 
 [[package]]
 name = "fish-multiplatform"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "fish-ci-generator",
  "fish-core",
@@ -1481,7 +1494,7 @@ dependencies = [
 
 [[package]]
 name = "fish-notifications"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1496,7 +1509,7 @@ dependencies = [
 
 [[package]]
 name = "fish-plugin"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "base64 0.23.1",
  "blake3",
@@ -1517,7 +1530,7 @@ dependencies = [
 
 [[package]]
 name = "fish-remote-cache"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "base64 0.23.1",
@@ -1535,7 +1548,7 @@ dependencies = [
 
 [[package]]
 name = "fish-sandbox"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "fish-core",
  "fish-executor",
@@ -1547,7 +1560,7 @@ dependencies = [
 
 [[package]]
 name = "fish-scheduler"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "criterion",
@@ -1564,11 +1577,12 @@ dependencies = [
  "thiserror",
  "tokio",
  "tracing",
+ "ureq",
 ]
 
 [[package]]
 name = "fish-secrets"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1581,7 +1595,7 @@ dependencies = [
 
 [[package]]
 name = "fish-security"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "base64 0.23.1",
@@ -1600,7 +1614,7 @@ dependencies = [
 
 [[package]]
 name = "fish-signing"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "base64 0.23.1",
@@ -1625,7 +1639,7 @@ dependencies = [
 
 [[package]]
 name = "fish-templates"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "fish-core",
@@ -1638,7 +1652,7 @@ dependencies = [
 
 [[package]]
 name = "fish-worker"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "base64 0.23.1",
@@ -1681,6 +1695,12 @@ name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
+
+[[package]]
+name = "foldhash"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d9c4f5dac5e15c24eb999c26181a6ca40b39fe946cbe4c263c7209467bc83af2"
 
 [[package]]
 name = "foldhash"
@@ -1850,13 +1870,22 @@ checksum = "e5274423e17b7c9fc20b6e7e208532f9b19825d82dfd615708b70edd83df41f1"
 
 [[package]]
 name = "hashbrown"
+version = "0.15.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9229cfe53dfd69f0609a49f65461bd93001ea1ef889cd5529dd176593f5338a1"
+dependencies = [
+ "foldhash 0.1.5",
+]
+
+[[package]]
+name = "hashbrown"
 version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "841d1cc9bed7f9236f321df977030373f4a4163ae1a7dbfe1a51a2c1a51d9100"
 dependencies = [
  "allocator-api2",
  "equivalent",
- "foldhash",
+ "foldhash 0.2.0",
 ]
 
 [[package]]
@@ -1867,7 +1896,16 @@ checksum = "ed5909b6e89a2db4456e54cd5f673791d7eca6732202bbf2a9cc504fe2f9b84a"
 dependencies = [
  "allocator-api2",
  "equivalent",
- "foldhash",
+ "foldhash 0.2.0",
+]
+
+[[package]]
+name = "hashlink"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7382cf6263419f2d8df38c55d7da83da5c18aef87fc7a7fc1fb1e344edfe14c1"
+dependencies = [
+ "hashbrown 0.15.5",
 ]
 
 [[package]]
@@ -2373,6 +2411,17 @@ name = "libm"
 version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6d2cec3eae94f9f509c767b45932f1ada8350c4bdb85af2fcab4a3c14807981"
+
+[[package]]
+name = "libsqlite3-sys"
+version = "0.35.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "133c182a6a2c87864fe97778797e46c7e999672690dc9fa3ee8e241aa4a9c13f"
+dependencies = [
+ "cc",
+ "pkg-config",
+ "vcpkg",
+]
 
 [[package]]
 name = "line-clipping"
@@ -3136,6 +3185,20 @@ dependencies = [
  "libc",
  "untrusted",
  "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "rusqlite"
+version = "0.37.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "165ca6e57b20e1351573e3729b958bc62f0e48025386970b6e4d29e7a7e71f3f"
+dependencies = [
+ "bitflags",
+ "fallible-iterator",
+ "fallible-streaming-iterator",
+ "hashlink",
+ "libsqlite3-sys",
+ "smallvec",
 ]
 
 [[package]]
@@ -4094,6 +4157,8 @@ dependencies = [
  "once_cell",
  "rustls",
  "rustls-pki-types",
+ "serde",
+ "serde_json",
  "url",
  "webpki-roots 0.26.11",
 ]
@@ -4139,6 +4204,12 @@ name = "valuable"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ba73ea9cf16a25df0c8caa16c51acb937d5712a8429db78a3ee29d5dcacd3a65"
+
+[[package]]
+name = "vcpkg"
+version = "0.2.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
 
 [[package]]
 name = "wait-timeout"

@@ -136,3 +136,4 @@ mod tests {
 }
 
 pub mod subtree_cache;
+pub mod test_selector;

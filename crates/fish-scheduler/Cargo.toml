@@ -15,6 +15,7 @@ sysinfo = { version = "0.38", default-features = false, features = ["system"] }
 thiserror = { workspace = true }
 dashmap = { version = "6", features = ["rayon", "serde"] }
 anyhow = { workspace = true }
+ureq = { version = "2", default-features = false, features = ["tls", "json"] }
 crossbeam-channel = "0.5"
 jobserver = "0.1"
 notify = { workspace = true }

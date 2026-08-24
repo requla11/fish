@@ -1,0 +1,30 @@
+# Winget manifest for Fish.
+# Submit to microsoft/winget-pkgs via:
+#   wingetcreate new https://github.com/requla11/fish/releases/download/v0.5.0/fish-0.5.0-x86_64-pc-windows-msvc.zip
+# The release pipeline can automate this with `wingetcreate update`.
+
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.singleton.1.6.0.schema.json
+PackageIdentifier: requla11.fish
+PackageVersion: 0.5.0
+PackageName: Fish Build
+Publisher: Fish Contributors
+License: MIT
+ShortDescription: Fast, flexible, cache-first build orchestration system for Rust and beyond.
+PackageUrl: https://github.com/requla11/fish
+Moniker: fish
+Tags:
+  - build
+  - cache
+  - rust
+  - monorepo
+Installers:
+  - Architecture: x64
+    InstallerType: zip
+    InstallerUrl: https://github.com/requla11/fish/releases/download/v0.5.0/fish-0.5.0-x86_64-pc-windows-msvc.zip
+    InstallerSha256: REPLACE_WITH_SHA256_AT_RELEASE
+    NestedInstallerType: portable
+    NestedInstallerFiles:
+      - RelativeFilePath: fish-0.5.0-x86_64-pc-windows-msvc\fish.exe
+        PortableCommandAlias: fish
+ManifestType: singleton
+ManifestVersion: 1.6.0

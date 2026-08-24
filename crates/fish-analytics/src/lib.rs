@@ -9,6 +9,7 @@ pub mod metrics;
 pub mod otel;
 pub mod otel_export;
 pub mod regression;
+pub mod time_series;
 pub mod trace_merge;
 
 pub use aggregator::MetricsAggregator;

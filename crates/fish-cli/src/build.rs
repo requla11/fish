@@ -649,8 +649,30 @@ pub(crate) fn run_rust_build(
         ExitCode::SUCCESS
     } else {
         render::print_failures(&summary);
+        print_self_heal_hints();
         ExitCode::FAILURE
     }
+}
+
+/// Surface repair suggestions derived from the failed build output.
+///
+/// Best-effort only — never changes the exit code.
+fn print_self_heal_hints() {
+    let hints = crate::self_heal::analyze_failure(&render::last_failure_output());
+    if hints.is_empty() {
+        return;
+    }
+    println!(
+        "\n🩹 Self-heal suggestions ({} pattern(s) matched):",
+        hints.len()
+    );
+    for hint in &hints {
+        println!("  [{}] {}", hint.category, hint.advice);
+        if !hint.matched_line.is_empty() && hint.matched_line.len() < 120 {
+            println!("      ↳ matched: {}", hint.matched_line);
+        }
+    }
+    println!("  Run `fish fix` for full diagnostics, or `fish fix --auto` to apply cargo fix.");
 }
 
 /// Record this run's duration against the rolling history and surface an

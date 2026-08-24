@@ -1,7 +1,6 @@
 package raft
 
 import (
-	"fmt"
 	"sync"
 	"time"
 )
@@ -108,8 +107,16 @@ func NewRaftNode(id string, peers []string, applier func(LogEntry)) *RaftNode {
 }
 
 func randomElectionTimeout() time.Duration {
-	base := 150 + time.Duration(fmt.Sprintf("%d", time.Now().UnixNano()%150)[0])%150
-	return base * time.Millisecond
+	// Raft spec: 150-300ms randomized to prevent split votes.
+	n := time.Now().UnixNano() % int64(150)
+	return time.Duration(150+int(n)) * time.Millisecond
+}
+
+// SetElectionTimeout overrides the randomized timeout (for tests).
+func (r *RaftNode) SetElectionTimeout(d time.Duration) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.electionTimeout = d
 }
 
 // IsLeader returns whether this node is currently the leader.

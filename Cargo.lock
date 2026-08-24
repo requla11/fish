@@ -1328,6 +1328,7 @@ dependencies = [
  "fish-remote-cache",
  "fish-sandbox",
  "fish-scheduler",
+ "fish-security",
  "fish-worker",
  "hex",
  "notify",
@@ -1497,7 +1498,9 @@ dependencies = [
 name = "fish-plugin"
 version = "0.4.0"
 dependencies = [
+ "base64 0.23.1",
  "blake3",
+ "ed25519-dalek",
  "fish-cache",
  "fish-core",
  "fish-executor",
@@ -1505,8 +1508,10 @@ dependencies = [
  "fish-scheduler",
  "serde",
  "serde_json",
+ "sha2",
  "tempfile",
  "thiserror",
+ "ureq",
  "wasmi",
 ]
 

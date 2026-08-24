@@ -11,6 +11,7 @@ use fish_graph::BuildGraph;
 
 pub mod audit;
 pub mod manifest;
+pub mod marketplace;
 pub mod rule;
 pub mod scripting;
 pub mod starlark_parser;

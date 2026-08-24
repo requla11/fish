@@ -6,6 +6,7 @@ pub mod chunking;
 pub mod compression;
 pub mod error;
 pub mod gc;
+pub mod multi_tenant;
 pub mod reflink;
 pub mod storage;
 

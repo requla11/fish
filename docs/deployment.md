@@ -6,7 +6,7 @@ Comprehensive instructions for deploying Fish in cloud and production CI/CD envi
 > `fish-coordinator`, Kubernetes autoscaling) describe **planned** services
 > that do not exist in this repository yet. Today only single-node local CI
 > and the opt-in `fish worker` / `fish cache-server` processes are available.
-> See [ARCHITECTURE.md](ARCHITECTURE.md).
+> See [ARCHITECTURE.md](architecture.md).
 
 ## Deployment Topologies
 1. **Single-Node Local CI**: Embedded high-speed caching on runner host.

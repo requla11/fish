@@ -10,7 +10,6 @@ mod config;
 mod critical_path;
 pub mod daemon;
 pub mod experimental;
-mod monitoring;
 pub mod pgo;
 pub mod pipeline;
 mod polyglot;

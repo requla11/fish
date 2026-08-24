@@ -1,16 +1,9 @@
-# Go 分布式服务系统 (`go/`)
+# Go 分布式服务系统 (`go/`) — 计划中，尚未实现
 
-Fish 包含基于 Go 1.22+ 编写的高并发云原生分布式服务套件。
-
-## 核心组件
-- **`fish-coordinator` (`go/cmd/fish-coordinator`)**: 节点注册中心、优先级任务队列及集群心跳监控。
-- **`fish-worker-gateway` (`go/cmd/fish-worker-gateway`)**: 具备令牌桶限流的负载均衡反向代理网关。
-- **`k8s` (`go/pkg/k8s`)**: 基于 Little's Law 的 Kubernetes 自动伸缩控制器与 Spot 实例生命周期管理。
-- **`mesh` (`go/pkg/mesh`)**: 具备 SHA-256 校验与滑动窗口流控的 P2P Mesh 路由网络。
-- **`telemetry` (`go/pkg/telemetry`)**: OpenTelemetry 分布式链路追踪与 Prometheus 指标导出器。
-
-## 运行 Go 测试
-```bash
-cd go
-go test -v ./...
-```
+> ⚠️ **状态说明：** 本页早期版本描述的 Go 服务（coordinator、worker gateway、
+> Kubernetes 自动伸缩、P2P mesh、telemetry）**在本仓库中并不存在** —— 目前没有
+> `go/` 目录。
+>
+> 本页仅作为未来设计的占位说明。当前的分布式执行由 Rust crate
+> `fish-worker` 和 `fish-remote-cache`（纯 HTTP/JSON）实现。
+> 详见 [ROADMAP.md](ROADMAP.md)。

@@ -1,5 +1,11 @@
 # Release v0.3.0 — Tri-Engine Architecture, 11 Backends, Polyglot Examples & Extreme Performance
 
+> ⚠️ **Accuracy note (added retroactively):** This historical release note
+> describes components that were **never merged into the repository**
+> (`go/` services, `py/` AI engine, VS Code extension, gRPC transport).
+> They were aspirational at the time of writing. Fish remains a Rust-only
+> workspace; see [ARCHITECTURE.md](ARCHITECTURE.md) for what actually ships.
+
 ## 📌 Summary
 
 This release establishes the official **Fish v0.3.0 Release**, introducing the complete Tri-Engine architecture, 11 production-grade language backends, real-world polyglot reference examples, comprehensive 5-language documentation, and deep performance optimizations.

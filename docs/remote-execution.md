@@ -3,7 +3,11 @@
 Fish supports high-performance distributed caching and remote execution protocols.
 
 ## Remote Execution API (REAPI v2)
-Fish integrates Google / Bazel Remote Execution API v2 over gRPC:
+Fish ships a Remote Execution API **v2-compatible data model**
+(`ReapiDigest`, `ReapiDirectory`, `ReapiFileNode` in
+`crates/fish-remote-cache/src/reapi.rs`) transported over HTTP/JSON — not
+gRPC. The workspace has no protobuf/gRPC dependencies; see
+[go-services.md](go-services.md) for the planned gRPC transport.
 ```bash
 fish build --remote-workers 10.0.0.1:8980,10.0.0.2:8980
 ```

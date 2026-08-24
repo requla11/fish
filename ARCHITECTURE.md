@@ -384,11 +384,15 @@ Only rebuild affected packages based on dependency graph changes.
 
 Remote workers enable horizontal scaling for large projects.
 
-## Tri-Engine Polyglot Architecture (Rust + Python + Go)
+## Architecture Status
 
-Fish adopts a specialized tri-engine architecture where each layer is built using the language best suited for its operational requirements:
+Fish is a single-language Rust workspace. There are no Python or Go services
+in this repository, and no crate currently uses gRPC/protobuf. Earlier drafts
+of this document described a "Tri-Engine" architecture; that description did
+not match the codebase and has been removed.
 
-### 1. Rust Core Engine (75%) — High-Performance Execution & Local Builds
+### Current core (implemented)
+
 - **`fish-core`**: Workspace discovery, manifest models, fine-grained input filtering.
 - **`fish-graph`**: Dependency graph, topological sort, algebraic query evaluation (`deps`, `rdeps`, `somepath`).
 - **`fish-executor`**: Process execution, middleware chain, response file generation.
@@ -397,22 +401,13 @@ Fish adopts a specialized tri-engine architecture where each layer is built usin
 - **`fish-cas`**: Content-addressable artifact storage with ZSTD compression.
 - **`fish-cli`**: Terminal user interface powered by ratatui and clap.
 
-### 2. Python AI Services (15%) — Intelligence & Telemetry Layer
-- **`fish_ai_analyzer`**: Machine learning build failure analysis, error classification, and root-cause suggestions.
-- **`fish_optimizer`**: AI-driven DAG scheduling optimization and duration prediction.
-- **`fish_analytics`**: Build run metrics aggregation, cache efficiency tracking, and bottleneck identification.
-- **`fish_recommender`**: Smart build target prediction and flaky test candidate detection.
+### Planned: cross-language contracts (`proto/`)
 
-### 3. Go Services (10%) — Cloud-Native Networking & Coordination
-- **`fish-coordinator`**: Distributed worker node registry, heartbeat monitoring, and optimal task dispatching.
-- **`fish-worker-gateway`**: High-performance reverse proxy and streaming multiplexer for worker nodes.
-- **`fish-db-migrator`**: Schema versioning and migration tooling for build telemetry databases.
-- **`fish-network`**: Connection pooling, mTLS transport configuration, and high-throughput TCP streaming.
-
-### 4. Shared Protobuf Contracts (`proto/`)
-- **`proto/fish/v1/build.proto`**: Core task definitions, task results, and build graph schemas.
-- **`proto/fish/v1/ai.proto`**: Failure analysis requests, scheduling optimization plans, and recommendation queries.
-- **`proto/fish/v1/coordinator.proto`**: Worker registration, heartbeat protocol, and distributed task dispatching.
+The files under `proto/fish/v1/` (`build.proto`, `ai.proto`,
+`coordinator.proto`) are forward-looking interface drafts only. They are not
+compiled or referenced by any crate yet — the workspace has no `prost`/`tonic`
+dependencies. Distributed features shipped today use plain HTTP/JSON instead
+(see `crates/fish-worker` and `crates/fish-remote-cache`).
 
 ## Security Considerations
 

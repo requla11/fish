@@ -1,16 +1,9 @@
-# Distributed Go Services (`go/`)
+# Distributed Go Services (`go/`) — PLANNED, NOT IMPLEMENTED
 
-Fish contains high-concurrency cloud-native services written in Go 1.22+.
-
-## Components
-- **`fish-coordinator` (`go/cmd/fish-coordinator`)**: Central node registry, dynamic task queue with priority scheduling, and cluster heartbeat monitor.
-- **`fish-worker-gateway` (`go/cmd/fish-worker-gateway`)**: Reverse proxy load balancer (Round Robin & Least Loaded) with token bucket rate limiting.
-- **`k8s` (`go/pkg/k8s`)**: Kubernetes autoscaler implementing Little's Law and spot instance lifecycle manager.
-- **`mesh` (`go/pkg/mesh`)**: P2P mesh network router with SHA-256 integrity verification and sliding window flow control.
-- **`telemetry` (`go/pkg/telemetry`)**: OpenTelemetry distributed tracing and Prometheus metrics exporter.
-
-## Testing Go Services
-```bash
-cd go
-go test -v ./...
-```
+> ⚠️ **Status:** The Go services described in earlier versions of this page
+> (coordinator, worker gateway, Kubernetes autoscaler, P2P mesh, telemetry)
+> **do not exist in this repository** — there is no `go/` directory today.
+>
+> This page is kept as a placeholder for future design work. Distributed
+> execution today is handled by the Rust crates `fish-worker` and
+> `fish-remote-cache` (plain HTTP/JSON). See [ROADMAP.md](ROADMAP.md).

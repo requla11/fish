@@ -169,7 +169,7 @@ crates/
   fish-incremental/  change detection, AST inference, and dirty explainer
   fish-backend-*/    11+ language and toolchain adapters
   fish-worker/       distributed execution server and streaming VFS protocol
-  fish-remote-cache/ gRPC/HTTP remote cache server
+  fish-remote-cache/ HTTP remote cache server with Ed25519 signature gating
   fish-security/     multi-layer security, secret redaction, and CVE scanner
   fish-signing/      Ed25519 cryptographic artifact signing and SPDX SBOM
   fish-cli/          command-line application, daemon IPC, and terminal rendering

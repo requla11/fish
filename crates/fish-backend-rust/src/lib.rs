@@ -14,6 +14,7 @@ pub mod fingerprint;
 pub mod linker;
 pub mod nextest;
 pub mod pipelining;
+pub mod reproducibility;
 pub mod rustc;
 pub mod unification;
 pub mod wrapper;

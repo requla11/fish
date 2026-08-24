@@ -1169,6 +1169,7 @@ dependencies = [
 name = "fish-backend-rust"
 version = "0.4.0"
 dependencies = [
+ "anyhow",
  "blake3",
  "cargo_metadata",
  "fish-cache",
@@ -1178,6 +1179,8 @@ dependencies = [
  "fish-scheduler",
  "glob",
  "regex",
+ "serde",
+ "serde_json",
  "tempfile",
  "thiserror",
 ]
@@ -1397,8 +1400,11 @@ dependencies = [
 name = "fish-executor"
 version = "0.4.0"
 dependencies = [
+ "blake3",
  "fastrand",
  "nix",
+ "serde",
+ "serde_json",
  "tempfile",
  "thiserror",
  "tokio",

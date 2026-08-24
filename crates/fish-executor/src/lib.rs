@@ -8,6 +8,7 @@ pub mod linker;
 pub mod middleware;
 pub mod response_file;
 pub mod task;
+pub mod trace_replay;
 
 pub use async_executor::AsyncProcessExecutor;
 pub use command::CommandSpec;

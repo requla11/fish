@@ -93,8 +93,8 @@ North-star outcomes we optimize for, in order:
 - [ ] **Offline Mode Guarantees**: Every command must behave deterministically offline — explicit errors, never silent degradation.
 
 ### 2. Build Reproducibility
-- [ ] **Trace Replay**: Record every spawned process (argv, env subset, cwd, stdin) into the build trace and replay deterministically in CI to prove hermeticity.
-- [ ] **Bit-for-Bit Output Certification**: Per-backend reproducibility audits (Rust first: `-C metadata` normalization, source date epoch pinning).
+- [x] **Trace Replay**: Record every spawned process (argv, env subset, cwd, stdin) into the build trace and replay deterministically in CI to prove hermeticity. *(Full implementation in `fish-executor/src/trace_replay.rs`: `ProcessRecord` captures program/args/cwd/env-overrides/exit-code/output-hash; `ExecutionTrace` saves/loads as JSONL; `replay_and_verify()` re-executes successful commands sequentially with cleared env and compares BLAKE3 output hashes. Divergences reported per-record.)*
+- [x] **Bit-for-Bit Output Certification**: Per-backend reproducibility audits (Rust first: `-C metadata` normalization, source date epoch pinning). *(`fish-backend-rust/src/reproducibility.rs`: `certify_reproducible()` compares two output directories via BLAKE3 per-file digest with forward-slash normalized paths, `recommended_env_vars()` provides SOURCE_DATE_EPOCH + RUSTFLAGS remap-path-prefix, `CertificationResult` reports matching/mismatched/missing files.)*
 - [x] **Environment Drift Detector**: Diff the effective toolchain/env snapshot against the last successful build and warn on drift. *(Full implementation in `fish-core/src/drift.rs`: BLAKE3 hash over OS/architecture/libc/compiler versions, JSONL-persisted drift records, `FirstRun`/`Stable`/`Drifted` verdicts.)*
 
 ### 3. Security Hardening

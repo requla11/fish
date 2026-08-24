@@ -21,7 +21,6 @@ pub fn run_signing_key() -> ExitCode {
         return ExitCode::FAILURE;
     }
 
-    use ed25519_dalek::Signer;
     let signing = ed25519_dalek::SigningKey::from_bytes(&seed);
     let verifying = signing.verifying_key();
     println!("{}", hex::encode(verifying.as_bytes()));

@@ -74,10 +74,10 @@ pub fn parse_description(input: &str) -> ParsedDescription {
 
     let mut languages: Vec<DetectedLanguage> = Vec::new();
     for word in &words {
-        if let Some(lang) = lang_for(word) {
-            if !languages.iter().any(|l| l.backend == lang.backend) {
-                languages.push(lang);
-            }
+        if let Some(lang) = lang_for(word)
+            && !languages.iter().any(|l| l.backend == lang.backend)
+        {
+            languages.push(lang);
         }
     }
 

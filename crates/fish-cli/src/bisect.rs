@@ -175,14 +175,14 @@ pub fn heal(repo: &Path, depth: usize, build_words: &[String]) -> std::io::Resul
         return Err(std::io::Error::other("repository has no commits"));
     }
 
-    let mut first_good: Option<usize> = None;
-    for (idx, commit) in commits.iter().enumerate() {
-        checkout_detached(repo, &commit.hash)?;
-        if run_build_command(repo, build_words) {
-            first_good = Some(idx);
-            break;
-        }
-    }
+    let mut probe_idx = 0usize;
+    let first_good = find_first_good_index(&commits, || {
+        let commit = &commits[probe_idx];
+        probe_idx += 1;
+        checkout_detached(repo, &commit.hash)
+            .map(|_| run_build_command(repo, build_words))
+            .unwrap_or(false)
+    });
 
     restore_ref(repo, &original)?;
 

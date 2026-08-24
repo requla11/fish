@@ -102,6 +102,9 @@ pub struct FishConfig {
     pub super_opt: bool,
     #[serde(default)]
     pub otel_endpoint: Option<String>,
+    /// Opt out of automatic cross-language dependency inference.
+    #[serde(default)]
+    pub no_infer_deps: bool,
 }
 
 impl FishConfig {

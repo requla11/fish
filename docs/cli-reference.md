@@ -13,6 +13,11 @@ Complete reference for all Fish command-line interface commands and options.
 - `-j, --jobs <N>`: Maximum parallel worker threads.
 - `--no-cache`: Bypass both local and remote caches.
 - `--cache-dir <PATH>`: Custom local cache directory.
+- `--no-infer-deps`: Disable automatic cross-language dependency inference. By
+  default, polyglot builds scan each detected project for references into a
+  sibling project (relative imports, `go.mod` `replace` directives, editable
+  requirements) and link the corresponding tasks so producers build first.
+  This flag restores fully independent per-ecosystem builds.
 - `--explain`: Print detailed rebuild reasons for dirty targets.
 - `--pgo-generate`: Instrument binaries for Profile-Guided Optimization.
 - `--pgo-use`: Compile binaries utilizing gathered PGO profile data.

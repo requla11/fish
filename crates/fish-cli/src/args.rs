@@ -417,11 +417,6 @@ pub struct CommonArgs {
     pub explain: bool,
     #[arg(long = "otel-endpoint")]
     pub otel_endpoint: Option<String>,
-    /// Disable automatic cross-language dependency inference between detected
-    /// projects (see `cross_deps`); references are then ignored and each
-    /// ecosystem builds independently.
-    #[arg(long = "no-infer-deps")]
-    pub no_infer_deps: bool,
 }
 
 #[derive(Debug, Args)]

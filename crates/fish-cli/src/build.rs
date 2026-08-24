@@ -250,7 +250,6 @@ pub(crate) fn run_build_mode_with(
             .or(config.otel_endpoint)
             .or_else(|| std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT").ok()),
         replay_trace: args.replay_trace,
-        no_infer_deps: args.no_infer_deps || config.no_infer_deps,
     };
 
     if let Some(endpoint) = &merged.otel_endpoint {
@@ -390,22 +389,15 @@ pub(crate) fn run_build_mode_with(
         let unique_ecosystems: std::collections::HashSet<_> =
             ecosystems.iter().map(|e| e.ecosystem).collect();
         if unique_ecosystems.len() > 1 {
-            let cross_dep_options = crate::cross_deps::CrossDepOptions {
-                enabled: !merged.no_infer_deps,
-                ..crate::cross_deps::CrossDepOptions::default()
+            let mut unified_graph = match crate::polyglot::PolyglotGraphBuilder::build_unified_graph(
+                &start_dir, mode,
+            ) {
+                Ok(g) => g,
+                Err(err) => {
+                    eprintln!("error: polyglot graph resolution failed: {err}");
+                    return ExitCode::FAILURE;
+                }
             };
-            let mut unified_graph =
-                match crate::polyglot::PolyglotGraphBuilder::build_unified_graph_with_options(
-                    &start_dir,
-                    mode,
-                    &cross_dep_options,
-                ) {
-                    Ok(g) => g,
-                    Err(err) => {
-                        eprintln!("error: polyglot graph resolution failed: {err}");
-                        return ExitCode::FAILURE;
-                    }
-                };
             if !unified_graph.is_empty() {
                 return crate::backends::execute_task_graph(&mut unified_graph, &merged);
             }

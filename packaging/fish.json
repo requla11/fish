@@ -10,7 +10,7 @@
     "architecture": {
         "64bit": {
             "url": "https://github.com/requla11/fish/releases/download/v0.5.0/fish-0.5.0-x86_64-pc-windows-msvc.zip",
-            "hash": "REPLACE_WITH_SHA256_AT_RELEASE"
+            "hash": "a57835a2978134b7835d19ca40ab0ba35fced8f0f6a879f215c3b3c9f644064d"
         }
     },
     "bin": [

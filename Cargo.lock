@@ -1318,6 +1318,7 @@ dependencies = [
  "cargo_metadata",
  "clap",
  "crossterm",
+ "ed25519-dalek",
  "fish-analytics",
  "fish-backend-cc",
  "fish-backend-dart",

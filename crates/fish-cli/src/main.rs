@@ -130,6 +130,7 @@ fn main() -> ExitCode {
         Command::SuperOpt(args) => commands::run_super_opt(args),
         Command::Plugin(args) => commands::run_plugin(args),
         Command::Fix(args) => commands::run_fix(args),
+        Command::SigningKey => commands::signing_key::run_signing_key(),
         Command::CostEstimate(args) => commands::run_cost_estimate(args),
         Command::Ui(args) => match commands::run_ui(args.port, args.open, args.path) {
             Ok(_) => ExitCode::SUCCESS,

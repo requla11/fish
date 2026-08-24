@@ -12,6 +12,7 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow = { workspace = true }
+ed25519-dalek = { workspace = true }
 fish-core = { workspace = true }
 fish-graph = { workspace = true }
 fish-executor = { workspace = true }

@@ -1,6 +1,7 @@
 pub mod affected;
 pub mod ai;
 pub mod attestation;
+pub mod signing_key;
 pub mod cache;
 pub mod ci;
 pub mod clean;

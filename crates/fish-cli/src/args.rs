@@ -55,6 +55,7 @@ pub enum Command {
     SuperOpt(SuperOptArgs),
     Plugin(PluginArgs),
     Fix(FixArgs),
+    SigningKey,
     CostEstimate(CostEstimateArgs),
     #[command(alias = "dashboard")]
     Ui(UiArgs),

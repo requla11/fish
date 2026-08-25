@@ -70,7 +70,7 @@ fn emit_command(cmd: &mut Command, level: usize, out: &mut String) {
     }
 
     // Usage line straight from clap so it always matches reality.
-    out.push_str(&format!("```\n{}\n```\n\n", cmd.render_usage().to_string()));
+    out.push_str(&format!("```\n{}\n```\n\n", cmd.render_usage()));
 
     // Arguments table. Globals (like --experimental) propagate to
     // every node, so list them once at the root to avoid noise.

@@ -1,4 +1,4 @@
-﻿[package]
+[package]
 name = "fish-backend-swift"
 version.workspace = true
 edition.workspace = true

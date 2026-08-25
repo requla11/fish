@@ -1,4 +1,4 @@
-﻿[package]
+[package]
 name = "fish-backend-zig"
 version.workspace = true
 edition.workspace = true

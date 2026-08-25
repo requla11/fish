@@ -1,4 +1,4 @@
-﻿[package]
+[package]
 name = "fish-backend-go"
 version.workspace = true
 edition.workspace = true

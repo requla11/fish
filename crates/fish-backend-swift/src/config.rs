@@ -72,12 +72,10 @@ impl SwiftProjectConfig {
     }
 
     pub fn from_xcode_project(project_dir: &Path) -> Result<Self, String> {
-        let xcodeproj_files = Self::find_xcodeproj_files(project_dir);
-        if xcodeproj_files.is_empty() {
+        let Some(xcodeproj_path) = Self::find_first_xcodeproj(project_dir) else {
             return Err("No .xcodeproj file found".to_string());
-        }
+        };
 
-        let xcodeproj_path = &xcodeproj_files[0];
         let project_name = xcodeproj_path
             .file_stem()
             .and_then(|s| s.to_str())
@@ -99,7 +97,7 @@ impl SwiftProjectConfig {
             return Self::from_package_swift(project_dir);
         }
 
-        if !Self::find_xcodeproj_files(project_dir).is_empty() {
+        if Self::find_first_xcodeproj(project_dir).is_some() {
             return Self::from_xcode_project(project_dir);
         }
 
@@ -139,17 +137,15 @@ impl SwiftProjectConfig {
         }
     }
 
-    fn find_xcodeproj_files(project_dir: &Path) -> Vec<std::path::PathBuf> {
-        let mut xcodeproj_files = Vec::new();
-        if let Ok(entries) = std::fs::read_dir(project_dir) {
-            for entry in entries.flatten() {
+    /// First match wins — stops scanning as soon as one is found.
+    fn find_first_xcodeproj(project_dir: &Path) -> Option<std::path::PathBuf> {
+        std::fs::read_dir(project_dir)
+            .ok()?
+            .flatten()
+            .find_map(|entry| {
                 let path = entry.path();
-                if path.extension().and_then(|s| s.to_str()) == Some("xcodeproj") {
-                    xcodeproj_files.push(path);
-                }
-            }
-        }
-        xcodeproj_files
+                (path.extension().and_then(|s| s.to_str()) == Some("xcodeproj")).then_some(path)
+            })
     }
 }
 

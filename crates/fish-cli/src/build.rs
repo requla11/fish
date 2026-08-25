@@ -395,8 +395,9 @@ pub(crate) fn run_build_mode_with(
                 ..crate::cross_deps::CrossDepOptions::default()
             };
             let mut unified_graph =
-                match crate::polyglot::PolyglotGraphBuilder::build_unified_graph_with_options(
+                match crate::polyglot::PolyglotGraphBuilder::build_unified_graph_from_ecosystems(
                     &start_dir,
+                    ecosystems,
                     mode,
                     &cross_dep_options,
                 ) {

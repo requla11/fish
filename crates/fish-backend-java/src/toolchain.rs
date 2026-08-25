@@ -20,7 +20,19 @@ pub enum JavaCompiler {
 }
 
 impl JavaToolchain {
+    /// Cached process-wide. Detection spawns up to ~7 subprocesses
+    /// (java/javac/kotlinc/mvn/gradle probes); multi-module Java
+    /// workspaces previously paid that per module directory.
     pub fn detect() -> Result<Self, JavaBackendError> {
+        static CACHE: std::sync::OnceLock<Result<JavaToolchain, String>> =
+            std::sync::OnceLock::new();
+        CACHE
+            .get_or_init(|| Self::detect_uncached().map_err(|e| e.to_string()))
+            .clone()
+            .map_err(JavaBackendError::Toolchain)
+    }
+
+    fn detect_uncached() -> Result<Self, JavaBackendError> {
         let java_executable = Self::find_executable("java")
             .ok_or_else(|| JavaBackendError::Toolchain("Java not found in PATH".to_string()))?;
 

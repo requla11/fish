@@ -7,7 +7,14 @@ pub struct GoToolchain {
 }
 
 impl GoToolchain {
+    /// Cached process-wide: `go version` previously ran once per
+    /// project directory.
     pub fn detect() -> Result<Self, String> {
+        static CACHE: std::sync::OnceLock<Result<GoToolchain, String>> = std::sync::OnceLock::new();
+        CACHE.get_or_init(Self::detect_uncached).clone()
+    }
+
+    fn detect_uncached() -> Result<Self, String> {
         let executable = "go".to_string();
         let version = ToolchainUtils::get_tool_version(&executable, &["version"])?;
 

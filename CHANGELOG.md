@@ -9,6 +9,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Performance
+- Polyglot builds and `fish graph` now perform a single full-tree ecosystem
+  walk per invocation: command dispatch passes its scan result into the graph
+  builder instead of walking the workspace twice.
+- Tree walkers classify entries through `DirEntry::file_type()` (the type the
+  OS already delivered) instead of two separate `is_dir()`/`is_file()` stat
+  calls per entry.
+- Cross-language inference resolves references lexically before touching the
+  filesystem, eliminating up to hundreds of thousands of pointless `exists()`
+  stats on import-heavy repositories, and no longer allocates for string
+  literals that cannot escape their project.
+- Discovery and cross-project scanning share one prune list, so vendored and
+  dependency trees are skipped consistently by every pass.
+
+### Added
+- Cross-language dependency inference for polyglot workspaces: fish scans each
+  detected project for references into sibling projects (source imports that
+  reach across directories, `go.mod` `replace` pointers, `-e ../` editable
+  requirements) and links the corresponding tasks so producers build first —
+  no `depends_on` declarations needed. On by default; disable with
+  `--no-infer-deps`. Every edge cites its evidence file in build logs, and
+  mutual references are refused instead of guessed. `fish graph` now renders
+  the unified task graph (inferred edges included) for multi-ecosystem
+  workspaces instead of walking up to an enclosing Cargo workspace.
+
+### Fixed
+- Docker backend: a Dockerfile using lowercase `as` stage aliases had every
+  instruction collapse into one "default" bucket, emitting N identically-named
+  tasks that ran as N redundant concurrent full-image builds. Stage parsing is
+  now case-insensitive, unnamed `FROM` stages get stable names derived from
+  their image reference, exactly one task is emitted per stage, and the image
+  artifact attaches to the actual last stage instead of the magic name
+  `final`.
+
 ## [0.5.0] - 2026-08-24
 
 ### Added

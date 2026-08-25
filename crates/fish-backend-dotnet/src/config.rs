@@ -58,13 +58,11 @@ pub struct DotnetProjectConfig {
 
 impl DotnetProjectConfig {
     pub fn from_csproj(project_dir: &Path) -> Result<Self, String> {
-        let csproj_files = Self::find_csproj_files(project_dir);
-        if csproj_files.is_empty() {
+        let Some(csproj_path) = Self::find_first_file(project_dir, "csproj") else {
             return Err("No .csproj file found".to_string());
-        }
+        };
 
-        let csproj_path = &csproj_files[0];
-        let content = std::fs::read_to_string(csproj_path)
+        let content = std::fs::read_to_string(&csproj_path)
             .map_err(|e| format!("Failed to read .csproj file: {}", e))?;
 
         let project_name = csproj_path
@@ -88,12 +86,10 @@ impl DotnetProjectConfig {
     }
 
     pub fn from_solution(project_dir: &Path) -> Result<Self, String> {
-        let sln_files = Self::find_sln_files(project_dir);
-        if sln_files.is_empty() {
+        let Some(sln_path) = Self::find_first_file(project_dir, "sln") else {
             return Err("No .sln file found".to_string());
-        }
+        };
 
-        let sln_path = &sln_files[0];
         let project_name = sln_path
             .file_stem()
             .and_then(|s| s.to_str())
@@ -112,41 +108,70 @@ impl DotnetProjectConfig {
     }
 
     pub fn detect(project_dir: &Path) -> Result<Self, String> {
-        if !Self::find_sln_files(project_dir).is_empty() {
-            return Self::from_solution(project_dir);
+        // Single scan per manifest kind; the found path is passed
+        // through instead of re-walking inside from_solution/from_csproj.
+        if let Some(sln_path) = Self::find_first_file(project_dir, "sln") {
+            return Self::solution_from(sln_path);
         }
 
-        if !Self::find_csproj_files(project_dir).is_empty() {
-            return Self::from_csproj(project_dir);
+        if let Some(csproj_path) = Self::find_first_file(project_dir, "csproj") {
+            return Self::csproj_from(csproj_path);
         }
 
         Err("No .NET project files found (.sln or .csproj)".to_string())
     }
 
-    fn find_csproj_files(project_dir: &Path) -> Vec<std::path::PathBuf> {
-        let mut csproj_files = Vec::new();
-        if let Ok(entries) = std::fs::read_dir(project_dir) {
-            for entry in entries.flatten() {
-                let path = entry.path();
-                if path.extension().and_then(|s| s.to_str()) == Some("csproj") {
-                    csproj_files.push(path);
-                }
-            }
-        }
-        csproj_files
+    fn csproj_from(csproj_path: std::path::PathBuf) -> Result<Self, String> {
+        let content = std::fs::read_to_string(&csproj_path)
+            .map_err(|e| format!("Failed to read .csproj file: {}", e))?;
+
+        let project_name = csproj_path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("Project")
+            .to_string();
+
+        let target_framework =
+            Self::extract_target_framework(&content).unwrap_or(DotnetTargetFramework::Net8_0);
+
+        Ok(DotnetProjectConfig {
+            project_name,
+            target_framework,
+            release: false,
+            run_tests: true,
+            publish: false,
+            output_path: None,
+            runtime: None,
+        })
     }
 
-    fn find_sln_files(project_dir: &Path) -> Vec<std::path::PathBuf> {
-        let mut sln_files = Vec::new();
-        if let Ok(entries) = std::fs::read_dir(project_dir) {
-            for entry in entries.flatten() {
+    fn solution_from(sln_path: std::path::PathBuf) -> Result<Self, String> {
+        let project_name = sln_path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("Solution")
+            .to_string();
+
+        Ok(DotnetProjectConfig {
+            project_name,
+            target_framework: DotnetTargetFramework::Net8_0,
+            release: false,
+            run_tests: true,
+            publish: false,
+            output_path: None,
+            runtime: None,
+        })
+    }
+
+    /// First match wins — stops scanning as soon as one is found.
+    fn find_first_file(project_dir: &Path, extension: &str) -> Option<std::path::PathBuf> {
+        std::fs::read_dir(project_dir)
+            .ok()?
+            .flatten()
+            .find_map(|entry| {
                 let path = entry.path();
-                if path.extension().and_then(|s| s.to_str()) == Some("sln") {
-                    sln_files.push(path);
-                }
-            }
-        }
-        sln_files
+                (path.extension().and_then(|s| s.to_str()) == Some(extension)).then_some(path)
+            })
     }
 
     fn extract_target_framework(content: &str) -> Option<DotnetTargetFramework> {

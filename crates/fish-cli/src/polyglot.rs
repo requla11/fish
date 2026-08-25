@@ -18,7 +18,7 @@ use fish_backend_zig::{ZigBackend, ZigProjectConfig};
 use fish_core::project::Project;
 use fish_executor::Task;
 use fish_graph::{BuildGraph, NodeId};
-use fish_incremental::ecosystem::{EcosystemInfo, EcosystemType, detect_ecosystems};
+use fish_incremental::ecosystem::{EcosystemInfo, EcosystemType};
 
 /// Short label for log lines: the project directory's file name.
 fn project_label(path: &Path) -> String {
@@ -30,15 +30,18 @@ fn project_label(path: &Path) -> String {
 pub struct PolyglotGraphBuilder;
 
 impl PolyglotGraphBuilder {
-    /// Discover every ecosystem under `start_dir`, expand each into tasks,
-    /// and merge them into one DAG. Cross-language dependency inference runs
-    /// unless disabled through `options`.
-    pub fn build_unified_graph_with_options(
+    /// Expand every ecosystem in `ecosystems` into tasks and merge them into
+    /// one DAG. Cross-language dependency inference runs unless disabled
+    /// through `options`. Callers that have not scanned yet should run
+    /// `detect_ecosystems(start_dir)` themselves and pass the result here —
+    /// dispatch sites typically need the scan anyway, so this keeps the whole
+    /// command to a single full-tree walk.
+    pub fn build_unified_graph_from_ecosystems(
         start_dir: &Path,
+        ecosystems: Vec<EcosystemInfo>,
         mode: BuildMode,
         options: &CrossDepOptions,
     ) -> Result<BuildGraph<Task>, anyhow::Error> {
-        let ecosystems = detect_ecosystems(start_dir);
         if ecosystems.is_empty() {
             if let Ok(Some(project)) = Project::discover(start_dir) {
                 let backend = RustBackend::new()?;
@@ -352,13 +355,15 @@ impl PolyglotGraphBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use fish_incremental::ecosystem::detect_ecosystems;
     use tempfile::tempdir;
 
     #[test]
     fn test_polyglot_graph_builder_empty_dir() {
         let dir = tempdir().unwrap();
-        let res = PolyglotGraphBuilder::build_unified_graph_with_options(
+        let res = PolyglotGraphBuilder::build_unified_graph_from_ecosystems(
             dir.path(),
+            detect_ecosystems(dir.path()),
             BuildMode::Build,
             &CrossDepOptions::default(),
         );
@@ -382,8 +387,9 @@ edition = "2021"
         std::fs::create_dir_all(&src_dir).unwrap();
         std::fs::write(src_dir.join("lib.rs"), "").unwrap();
 
-        let graph = PolyglotGraphBuilder::build_unified_graph_with_options(
+        let graph = PolyglotGraphBuilder::build_unified_graph_from_ecosystems(
             dir.path(),
+            detect_ecosystems(dir.path()),
             BuildMode::Build,
             &CrossDepOptions::default(),
         )
@@ -428,14 +434,16 @@ edition = "2021"
                 .sum::<usize>()
         };
 
-        let linked = PolyglotGraphBuilder::build_unified_graph_with_options(
+        let linked = PolyglotGraphBuilder::build_unified_graph_from_ecosystems(
             dir.path(),
+            detect_ecosystems(dir.path()),
             BuildMode::Build,
             &CrossDepOptions::default(),
         )
         .unwrap();
-        let isolated = PolyglotGraphBuilder::build_unified_graph_with_options(
+        let isolated = PolyglotGraphBuilder::build_unified_graph_from_ecosystems(
             dir.path(),
+            detect_ecosystems(dir.path()),
             BuildMode::Build,
             &CrossDepOptions {
                 enabled: false,

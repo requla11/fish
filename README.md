@@ -16,6 +16,8 @@ and runs build, check, and test work with local caching and parallel scheduling.
 
 Fish does not replace compilers or package managers. It coordinates tools such
 as Cargo, Go, Node.js, Python, C/C++, Docker, and other supported backends.
+Unrelated to [fish-shell](https://fishshell.com), the interactive shell — they
+share only a name.
 
 > Status: pre-1.0. The CLI and configuration may change. Treat distributed,
 > remote-cache, and experimental features as opt-in and validate them in your

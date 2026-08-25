@@ -31,21 +31,9 @@ use fish_graph::{BuildGraph, NodeId};
 use fish_incremental::ecosystem::EcosystemType;
 
 /// Directories never descended into while scanning project sources.
-const SKIP_DIRS: &[&str] = &[
-    ".git",
-    ".github",
-    ".idea",
-    ".venv",
-    ".fish",
-    "__pycache__",
-    "build",
-    "deps",
-    "dist",
-    "fixtures",
-    "node_modules",
-    "target",
-    "vendor",
-];
+/// Kept identical to the discovery walker's prune list so every pass agrees
+/// on the workspace shape.
+const SKIP_DIRS: &[&str] = fish_incremental::ecosystem::PRUNED_DIRS;
 
 /// File extensions scanned for quoted relative references (H1).
 const SCAN_EXTENSIONS: &[&str] = &[
@@ -356,10 +344,16 @@ fn extract_quoted_candidates(line: &str) -> Vec<String> {
         if chunk.len() > 260 || chunk.contains("://") {
             continue;
         }
-        let normalized = chunk.replace('\\', "/");
-        if normalized.starts_with("../") || normalized.starts_with("./../") {
-            candidates.push(normalized);
+        // Borrowed pre-filter: skip literals that cannot escape before paying
+        // for the backslash-normalizing allocation.
+        if !(chunk.starts_with("../")
+            || chunk.starts_with("..\\")
+            || chunk.starts_with("./..")
+            || chunk.starts_with(".\\.."))
+        {
+            continue;
         }
+        candidates.push(chunk.replace('\\', "/"));
     }
     candidates
 }
@@ -404,12 +398,13 @@ fn extract_manifest_pointers(line: &str) -> Vec<(String, &'static str)> {
 /// in — but only if the resolved location exists on disk.
 fn resolve_into_sibling(base_dir: &Path, siblings: &[PathBuf], reference: &str) -> Option<PathBuf> {
     let resolved = normalize_lexical(&base_dir.join(reference));
-    if !resolved.exists() {
-        return None;
-    }
+    // Cheap lexical containment test first: nearly every candidate never
+    // leaves the referencing project, and this costs zero syscalls. Only a
+    // candidate that lands inside a sibling pays for the exists() stat.
     siblings
         .iter()
         .find(|dir| dir_prefix_of(&resolved, dir))
+        .filter(|_| resolved.exists())
         .cloned()
 }
 

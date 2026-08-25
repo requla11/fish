@@ -19,3 +19,6 @@ tokio = { workspace = true, features = ["process", "fs", "io-util", "rt-multi-th
 async-trait = { workspace = true }
 blake3 = { workspace = true }
 regex = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

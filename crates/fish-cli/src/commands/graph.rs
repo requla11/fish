@@ -29,8 +29,9 @@ pub fn run_graph(args: GraphArgs) -> ExitCode {
             enabled: !args.no_infer_deps,
             ..CrossDepOptions::default()
         };
-        match crate::polyglot::PolyglotGraphBuilder::build_unified_graph_with_options(
+        match crate::polyglot::PolyglotGraphBuilder::build_unified_graph_from_ecosystems(
             &start_dir,
+            ecosystems,
             BuildMode::Build,
             &cross_dep_options,
         ) {

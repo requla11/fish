@@ -17,7 +17,18 @@ pub enum DotnetCompiler {
 }
 
 impl DotnetToolchain {
+    /// Cached process-wide: `dotnet --version` + 2 PATH probes per call
+    /// previously ran once per project directory.
     pub fn detect() -> Result<Self, DotnetBackendError> {
+        static CACHE: std::sync::OnceLock<Result<DotnetToolchain, String>> =
+            std::sync::OnceLock::new();
+        CACHE
+            .get_or_init(|| Self::detect_uncached().map_err(|e| e.to_string()))
+            .clone()
+            .map_err(DotnetBackendError::Toolchain)
+    }
+
+    fn detect_uncached() -> Result<Self, DotnetBackendError> {
         let dotnet_executable = Self::find_executable("dotnet").ok_or_else(|| {
             DotnetBackendError::Toolchain(".NET CLI not found in PATH".to_string())
         })?;

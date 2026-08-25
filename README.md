@@ -169,11 +169,11 @@ crates/
   fish-cache/        fingerprint cache and two-phase pruning
   fish-cas/          content-addressable artifact storage with ZSTD compression
   fish-incremental/  change detection, AST inference, and dirty explainer
-  fish-backend-*/    11+ language and toolchain adapters
+  fish-backend-*/    11 language and toolchain adapters behind one EcosystemBackend trait
+  fish-backend-api/  the backend contract crate (trait, BuildMode, Ecosystem)
   fish-worker/       distributed execution server and streaming VFS protocol
   fish-remote-cache/ HTTP remote cache server with Ed25519 signature gating
-  fish-security/     multi-layer security, secret redaction, and CVE scanner
-  fish-signing/      Ed25519 cryptographic artifact signing and SPDX SBOM
+  fish-security/     multi-layer security, CVE scanner, SLSA provenance signing
   fish-cli/          command-line application, daemon IPC, and terminal rendering
 examples/             sample projects
 docs/                 additional documentation

@@ -191,15 +191,25 @@ Fish is a cache-first, polyglot build orchestration system designed for monorepo
 
 ## Language Backends
 
-Each backend implements a common interface for project detection, dependency extraction, and task generation.
+Every backend implements the uniform `EcosystemBackend` contract from
+the `fish-backend-api` crate and registers itself in
+`fish-cli/src/backend_registry.rs` — adding an ecosystem means
+implementing the trait plus one registry line.
 
 ### Backend Interface
 
 ```rust
-pub trait Backend {
-    fn detect(&self, path: &Path) -> bool;
-    fn extract_dependencies(&self, path: &Path) -> Result<Vec<Dependency>>;
-    fn generate_tasks(&self, package: &Package) -> Result<Vec<Task>>;
+pub trait EcosystemBackend: Send + Sync {
+    fn id(&self) -> &'static str;
+    fn ecosystems(&self) -> &'static [Ecosystem];
+    /// Cheap existence probe for this ecosystem's manifests.
+    fn detect(&self, dir: &Path) -> bool;
+    /// Config discovery + task-graph construction, owned per backend.
+    fn build_task_graph(
+        &self,
+        dir: &Path,
+        mode: BuildMode,
+    ) -> Result<BuildGraph<Task>, String>;
 }
 ```
 
@@ -219,12 +229,14 @@ pub trait Backend {
 
 ## Security Features
 
-### 1. Artifact Signing (`fish-signing`)
+### 1. Artifact Signing (`fish-security` / `fish-remote-cache`)
 
-- Ed25519 cryptographic signing
-- SBOM generation (SPDX/CycloneDX)
-- Artifact verification
-- Source-to-build chain tracking
+- Ed25519 signing via `FISH_SIGNING_SEED`; public key exported with
+  `fish signing-key`
+- SLSA/in-toto provenance statements (`fish-security/src/slsa.rs`)
+- Remote-cache signature gate verifies every download against
+  `FISH_TRUSTED_KEYS` (`fish-remote-cache/signature_gate.rs`)
+- See `docs/signing.md` for the full producer/consumer flow
 
 ### 2. Security Scanner (`fish-security`)
 
@@ -232,13 +244,6 @@ pub trait Backend {
 - Multi-backend support
 - Severity-based blocking
 - CVSS score tracking
-
-### 3. Secret Management (`fish-secrets`)
-
-- HashiCorp Vault integration
-- AWS Secrets Manager
-- Kubernetes secrets
-- Secure secret injection
 
 ## CI/CD Generation
 

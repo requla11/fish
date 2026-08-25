@@ -10,6 +10,7 @@ use fish_graph::BuildGraph;
 pub mod compiler;
 pub mod config;
 pub mod depfile;
+pub mod ecosystem;
 pub mod fingerprint;
 
 pub use compiler::{CcCompiler, CompilerFamily};

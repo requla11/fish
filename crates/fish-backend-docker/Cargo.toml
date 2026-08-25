@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "fish-backend-docker"
 version.workspace = true
 edition.workspace = true
@@ -8,6 +8,7 @@ description = "Docker/OCI container engine backend for Fish"
 
 [dependencies]
 anyhow = { workspace = true }
+fish-backend-api = { workspace = true }
 fish-core = { workspace = true }
 fish-executor = { workspace = true }
 fish-graph = { workspace = true }

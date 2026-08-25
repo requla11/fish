@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 
 pub mod config;
+pub mod ecosystem;
 pub mod fingerprint;
 pub mod toolchain;
 
@@ -303,7 +304,7 @@ mod tests {
     #[test]
     fn one_task_per_stage_not_per_instruction() {
         // Regression: nine instructions under one stage produced nine
-        // identically-named tasks — nine concurrent full-image builds.
+        // identically-named tasks â€” nine concurrent full-image builds.
         let dir = tempfile::tempdir().unwrap();
         let config = write_dockerfile(
             dir.path(),

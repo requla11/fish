@@ -10,6 +10,7 @@ use fish_core::{BinaryUtils, BuildBackend, FingerprintUtils, ToolchainUtils};
 use fish_executor::{CacheEntry, CommandSpec, Task};
 use fish_graph::{BuildGraph, NodeId};
 
+pub mod ecosystem;
 pub mod fingerprint;
 pub mod linker;
 pub mod nextest;
@@ -19,46 +20,13 @@ pub mod rustc;
 pub mod unification;
 pub mod wrapper;
 
+pub use fish_backend_api::BuildMode;
 pub use linker::{FastLinker, RustLinkerOptimizer};
 pub use nextest::{NextestRunner, SingleTestResult, TestStatus};
 pub use pipelining::PipelinedCrateCoordinator;
 pub use rustc::RustcCompiler;
 pub use unification::WorkspaceFeatureUnification;
 pub use wrapper::RustcInvocation;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BuildMode {
-    Build,
-    Check,
-    Test,
-    Clippy,
-    Doc,
-    Bench,
-}
-
-impl BuildMode {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Self::Build => "build",
-            Self::Check => "check",
-            Self::Test => "test",
-            Self::Clippy => "clippy",
-            Self::Doc => "doc",
-            Self::Bench => "bench",
-        }
-    }
-
-    pub fn cargo_subcommand(&self) -> &'static str {
-        match self {
-            Self::Build => "build",
-            Self::Check => "check",
-            Self::Test => "test",
-            Self::Clippy => "clippy",
-            Self::Doc => "doc",
-            Self::Bench => "bench",
-        }
-    }
-}
 
 #[derive(Debug, Error)]
 pub enum BackendError {

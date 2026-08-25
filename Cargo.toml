@@ -1,6 +1,7 @@
-[workspace]
+﻿[workspace]
 resolver = "2"
 members = [
+    "crates/fish-backend-api",
     "crates/fish-core",
     "crates/fish-graph",
     "crates/fish-executor",
@@ -23,19 +24,11 @@ members = [
     "crates/fish-plugin",
     "crates/fish-remote-cache",
     "crates/fish-sandbox",
-    "crates/fish-signing",
     "crates/fish-security",
     "crates/fish-analytics",
-    "crates/fish-multiplatform",
-    "crates/fish-notifications",
-    "crates/fish-flaky-detection",
-    "crates/fish-docker-builder",
-    "crates/fish-secrets",
     "crates/fish-incremental",
-    "crates/fish-templates",
     "crates/fish-cli",
     "crates/fish-installer",
-    "crates/fish-dashboard",
 ]
 
 [workspace.package]
@@ -54,6 +47,7 @@ categories = ["development-tools", "development-tools::build-utils"]
 
 [workspace.dependencies]
 anyhow = "1.0"
+fish-backend-api = { path = "crates/fish-backend-api", version = "0.5.0" }
 fish-core = { path = "crates/fish-core", version = "0.5.0" }
 fish-graph = { path = "crates/fish-graph", version = "0.5.0" }
 fish-executor = { path = "crates/fish-executor", version = "0.5.0" }
@@ -76,17 +70,9 @@ fish-worker = { path = "crates/fish-worker", version = "0.5.0" }
 fish-plugin = { path = "crates/fish-plugin", version = "0.5.0" }
 fish-remote-cache = { path = "crates/fish-remote-cache", version = "0.5.0" }
 fish-sandbox = { path = "crates/fish-sandbox", version = "0.5.0" }
-fish-signing = { path = "crates/fish-signing", version = "0.5.0" }
 fish-security = { path = "crates/fish-security", version = "0.5.0" }
 fish-analytics = { path = "crates/fish-analytics", version = "0.5.0" }
-fish-multiplatform = { path = "crates/fish-multiplatform", version = "0.5.0" }
-fish-notifications = { path = "crates/fish-notifications", version = "0.5.0" }
-fish-flaky-detection = { path = "crates/fish-flaky-detection", version = "0.5.0" }
-fish-docker-builder = { path = "crates/fish-docker-builder", version = "0.5.0" }
-fish-secrets = { path = "crates/fish-secrets", version = "0.5.0" }
 fish-incremental = { path = "crates/fish-incremental", version = "0.5.0" }
-fish-templates = { path = "crates/fish-templates", version = "0.5.0" }
-fish-dashboard = { path = "crates/fish-dashboard", version = "0.5.0" }
 
 cargo_metadata = "0.23"
 thiserror = "2"

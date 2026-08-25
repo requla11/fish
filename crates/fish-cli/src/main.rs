@@ -3,6 +3,7 @@
 mod ai_bridge;
 mod args;
 mod attestation;
+mod backend_registry;
 mod backends;
 mod bisect;
 mod build;

@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "fish-backend-zig"
 version.workspace = true
 edition.workspace = true
@@ -8,6 +8,7 @@ description = "Zig backend for the Fish build tool"
 
 [dependencies]
 blake3 = { workspace = true }
+fish-backend-api = { workspace = true }
 fish-core = { workspace = true }
 fish-executor = { workspace = true }
 fish-graph = { workspace = true }

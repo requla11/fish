@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "fish-backend-rust"
 version.workspace = true
 edition.workspace = true
@@ -9,6 +9,7 @@ description = "Rust/Cargo backend for the Fish build tool"
 [dependencies]
 anyhow = { workspace = true }
 cargo_metadata = { workspace = true }
+fish-backend-api = { workspace = true }
 fish-core = { workspace = true }
 fish-executor = { workspace = true }
 fish-graph = { workspace = true }

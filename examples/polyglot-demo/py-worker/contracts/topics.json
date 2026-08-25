@@ -1,0 +1,10 @@
+{
+  "topics": [
+    "build.started",
+    "build.finished",
+    "build.failed",
+    "test.started",
+    "test.finished",
+    "test.failed"
+  ]
+}

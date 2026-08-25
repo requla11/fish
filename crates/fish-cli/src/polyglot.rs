@@ -1,8 +1,9 @@
 #![forbid(unsafe_code)]
 
-use std::collections::HashMap;
-use std::path::Path;
+use std::collections::{HashMap, HashSet};
+use std::path::{Path, PathBuf};
 
+use crate::cross_deps::{CrossDepOptions, ProjectRoot};
 use fish_backend_cc::{CcBackend, CcLanguage, CcOutputType, CcProjectConfig};
 use fish_backend_dart::{DartBackend, DartProjectConfig};
 use fish_backend_docker::DockerBackend;
@@ -19,12 +20,23 @@ use fish_executor::Task;
 use fish_graph::{BuildGraph, NodeId};
 use fish_incremental::ecosystem::{EcosystemInfo, EcosystemType, detect_ecosystems};
 
+/// Short label for log lines: the project directory's file name.
+fn project_label(path: &Path) -> String {
+    path.file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_else(|| path.display().to_string())
+}
+
 pub struct PolyglotGraphBuilder;
 
 impl PolyglotGraphBuilder {
-    pub fn build_unified_graph(
+    /// Discover every ecosystem under `start_dir`, expand each into tasks,
+    /// and merge them into one DAG. Cross-language dependency inference runs
+    /// unless disabled through `options`.
+    pub fn build_unified_graph_with_options(
         start_dir: &Path,
         mode: BuildMode,
+        options: &CrossDepOptions,
     ) -> Result<BuildGraph<Task>, anyhow::Error> {
         let ecosystems = detect_ecosystems(start_dir);
         if ecosystems.is_empty() {
@@ -46,7 +58,13 @@ impl PolyglotGraphBuilder {
         }
 
         let mut master_graph = BuildGraph::new();
-        let mut ecosystem_node_map: HashMap<EcosystemType, Vec<NodeId>> = HashMap::new();
+        // Per-project task lists; keyed by the directory whose manifest
+        // produced the subgraph so inferred edges can map projects onto nodes.
+        let mut detected_projects: Vec<ProjectRoot> = Vec::new();
+        let mut nodes_by_project: HashMap<PathBuf, Vec<NodeId>> = HashMap::new();
+        // Docker tasks gathered up front: every non-Docker project must be
+        // linked against ALL Docker projects, never an arbitrary one.
+        let mut docker_task_nodes: Vec<NodeId> = Vec::new();
         let mut processed_rust = false;
 
         for info in &ecosystems {
@@ -68,20 +86,66 @@ impl PolyglotGraphBuilder {
             {
                 let id_map = master_graph.merge_subgraph(sub_graph);
                 let new_ids: Vec<NodeId> = id_map.into_values().collect();
-                ecosystem_node_map
-                    .entry(info.ecosystem)
-                    .or_default()
-                    .extend(new_ids);
+                if info.ecosystem == EcosystemType::Docker {
+                    docker_task_nodes.extend(new_ids.iter().copied());
+                }
+                // One directory can host several ecosystems (a Dockerfile
+                // beside a go.mod, say); their tasks share a single bucket so
+                // neither subgraph ends up orphaned from inference and the
+                // Docker pass.
+                match nodes_by_project.entry(manifest_dir.to_path_buf()) {
+                    std::collections::hash_map::Entry::Occupied(mut occupied) => {
+                        occupied.get_mut().extend(new_ids);
+                    }
+                    std::collections::hash_map::Entry::Vacant(vacant) => {
+                        vacant.insert(new_ids);
+                        detected_projects.push(ProjectRoot {
+                            dir: manifest_dir.to_path_buf(),
+                            ecosystem: info.ecosystem,
+                        });
+                    }
+                }
             }
         }
 
-        if let Some(docker_nodes) = ecosystem_node_map.get(&EcosystemType::Docker) {
-            for (eco_type, nodes) in &ecosystem_node_map {
-                if *eco_type != EcosystemType::Docker {
-                    for &dep in nodes {
-                        for &docker_node in docker_nodes {
-                            let _ = master_graph.add_dependency(dep, docker_node);
-                        }
+        // Cross-language inference runs BEFORE the Docker pass so that Docker
+        // tasks end up downstream of inferred producers as well.
+        if options.enabled && detected_projects.len() > 1 {
+            let inferable: Vec<ProjectRoot> = detected_projects
+                .iter()
+                .filter(|project| project.ecosystem != EcosystemType::Docker)
+                .cloned()
+                .collect();
+            let edges = crate::cross_deps::infer_cross_dependencies(&inferable, options);
+            if !edges.is_empty() {
+                println!("🔗 Inferring cross-language dependencies:");
+                for edge in &edges {
+                    println!(
+                        "   ↳ {} → {} ({})",
+                        project_label(&edge.consumer),
+                        project_label(&edge.producer),
+                        edge.reason
+                    );
+                }
+                let applied =
+                    crate::cross_deps::apply_to_graph(&mut master_graph, &nodes_by_project, &edges);
+                println!(
+                    "🔗 Linked {applied} cross-project task edge(s) from {} inference(s) (disable with --no-infer-deps)",
+                    edges.len()
+                );
+            }
+        }
+
+        if !docker_task_nodes.is_empty() {
+            let docker_set: HashSet<NodeId> = docker_task_nodes.iter().copied().collect();
+            for nodes in nodes_by_project.values() {
+                for &dep in nodes {
+                    // Docker images never order against each other.
+                    if docker_set.contains(&dep) {
+                        continue;
+                    }
+                    for &docker_node in &docker_task_nodes {
+                        let _ = master_graph.add_dependency(dep, docker_node);
                     }
                 }
             }
@@ -293,7 +357,11 @@ mod tests {
     #[test]
     fn test_polyglot_graph_builder_empty_dir() {
         let dir = tempdir().unwrap();
-        let res = PolyglotGraphBuilder::build_unified_graph(dir.path(), BuildMode::Build);
+        let res = PolyglotGraphBuilder::build_unified_graph_with_options(
+            dir.path(),
+            BuildMode::Build,
+            &CrossDepOptions::default(),
+        );
         assert!(res.is_err());
     }
 
@@ -314,8 +382,75 @@ edition = "2021"
         std::fs::create_dir_all(&src_dir).unwrap();
         std::fs::write(src_dir.join("lib.rs"), "").unwrap();
 
-        let graph =
-            PolyglotGraphBuilder::build_unified_graph(dir.path(), BuildMode::Build).unwrap();
+        let graph = PolyglotGraphBuilder::build_unified_graph_with_options(
+            dir.path(),
+            BuildMode::Build,
+            &CrossDepOptions::default(),
+        )
+        .unwrap();
         assert_eq!(graph.len(), 1);
+    }
+
+    #[test]
+    fn unified_graph_infers_cross_language_edges() {
+        // A Python project owns a JSON contract; a TypeScript project imports
+        // it across the directory boundary. Inference must wire the two
+        // subgraphs together; disabling inference must leave them isolated.
+        let dir = tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("py-worker/contracts")).unwrap();
+        std::fs::write(
+            dir.path().join("py-worker/pyproject.toml"),
+            "[project]\nname = \"pyw\"\nversion = \"0.1.0\"\n",
+        )
+        .unwrap();
+        std::fs::write(
+            dir.path().join("py-worker/contracts/topics.json"),
+            "{\"topics\": []}",
+        )
+        .unwrap();
+        std::fs::create_dir_all(dir.path().join("web-frontend/src")).unwrap();
+        std::fs::write(
+            dir.path().join("web-frontend/package.json"),
+            "{\"name\": \"web\"}",
+        )
+        .unwrap();
+        std::fs::write(
+            dir.path().join("web-frontend/src/index.ts"),
+            "import { topics } from \"../../py-worker/contracts/topics.json\";\nconsole.log(topics);\n",
+        )
+        .unwrap();
+
+        let total_deps = |graph: &BuildGraph<Task>| {
+            graph
+                .nodes()
+                .iter()
+                .map(|node| graph.deps(node.id).map(|deps| deps.len()).unwrap_or(0))
+                .sum::<usize>()
+        };
+
+        let linked = PolyglotGraphBuilder::build_unified_graph_with_options(
+            dir.path(),
+            BuildMode::Build,
+            &CrossDepOptions::default(),
+        )
+        .unwrap();
+        let isolated = PolyglotGraphBuilder::build_unified_graph_with_options(
+            dir.path(),
+            BuildMode::Build,
+            &CrossDepOptions {
+                enabled: false,
+                ..CrossDepOptions::default()
+            },
+        )
+        .unwrap();
+
+        assert_eq!(linked.len(), isolated.len(), "same tasks either way");
+        assert!(
+            total_deps(&linked) > total_deps(&isolated),
+            "inference must add edges (linked: {}, isolated: {})",
+            total_deps(&linked),
+            total_deps(&isolated)
+        );
+        linked.validate().expect("linked graph must stay acyclic");
     }
 }

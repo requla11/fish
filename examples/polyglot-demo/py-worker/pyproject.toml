@@ -1,0 +1,8 @@
+[project]
+name = "polyglot-demo-py-worker"
+version = "0.1.0"
+description = "Event worker owning the shared TaskEvent contract for the polyglot demo stack"
+requires-python = ">=3.9"
+
+[tool.fish]
+backend = "python"

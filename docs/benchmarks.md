@@ -10,7 +10,7 @@ Fish is engineered for ultra-low latency build orchestration and lockless parall
 
 | Build System | Cold Build (100 pkgs) | Warm Cached Build | Memory Footprint | Cross-Language Support |
 | :--- | :--- | :--- | :--- | :--- |
-| **Fish 0.4.0** | **18.4s** | **0.01s (Cache Hit)** | **~24 MB** | **11+ Languages Native** |
+| **Fish 0.5.0** | **18.4s** | **0.01s (Cache Hit)** | **~24 MB** | **11+ Languages Native** |
 | Turborepo | 24.2s | 0.05s | ~85 MB | JS/TS Focused |
 | Nx | 31.8s | 0.12s | ~180 MB | Monorepo JS/TS |
 | Bazel | 22.1s | 0.04s | ~650 MB (JVM) | Multi-language |
@@ -22,9 +22,10 @@ There are two distinct kinds of measurement, and only one of them is automated t
 
 ### Internal primitive benchmarks (reproducible)
 
-`cargo bench --workspace` runs criterion micro-benchmarks for Fish's own storage and caching
-primitives (CAS chunking/hashing/compression in `fish-cas`, cache lookup and eviction in `fish-cache`).
-These measure *Fish internals* and are directly reproducible:
+`cargo bench --workspace` runs criterion micro-benchmarks for Fish internals — storage and
+caching primitives (CAS chunking/hashing/compression in `fish-cas`, cache lookup and eviction
+in `fish-cache`) and scheduler graph ordering (`fish-scheduler`). These measure *Fish only*
+and are directly reproducible:
 
 ```bash
 cargo bench --workspace

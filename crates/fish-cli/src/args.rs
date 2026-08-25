@@ -417,6 +417,11 @@ pub struct CommonArgs {
     pub explain: bool,
     #[arg(long = "otel-endpoint")]
     pub otel_endpoint: Option<String>,
+    /// Disable automatic cross-language dependency inference between detected
+    /// projects (see `cross_deps`); references are then ignored and each
+    /// ecosystem builds independently.
+    #[arg(long = "no-infer-deps")]
+    pub no_infer_deps: bool,
 }
 
 #[derive(Debug, Args)]
@@ -542,6 +547,10 @@ pub struct GraphArgs {
     pub path: Option<PathBuf>,
     #[arg(long, default_value_t = GraphFormat::Tree, value_enum)]
     pub format: GraphFormat,
+    /// Disable automatic cross-language dependency inference so the rendered
+    /// graph matches a `--no-infer-deps` build.
+    #[arg(long = "no-infer-deps")]
+    pub no_infer_deps: bool,
 }
 
 /// Arguments for cache server

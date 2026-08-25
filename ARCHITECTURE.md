@@ -41,7 +41,7 @@ Fish is a cache-first, polyglot build orchestration system designed for monorepo
 - Subgraph merging for polyglot monorepos (`merge_subgraph`)
 - Dynamic node expansion during runtime execution (`DynamicGraphExpander`)
 - Track task states (pending, running, completed, failed)
-- Algebraic query evaluation (`GraphQueryEngine` supporting `deps()`, `rdeps()`, `allpaths()`, `somepath()`, `filter()`)
+- Algebraic query evaluation (`GraphQueryEngine` supporting `deps()`, `rdeps()`, `allpaths()`, `somepath()`, `filter()`, `union()`, `intersect()`, `except()`)
 - Detect circular dependencies
 
 **Key Types**:

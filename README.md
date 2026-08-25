@@ -129,7 +129,7 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for local development and
 | `fish init` | Initialize Fish configuration and generate task definitions for detected project languages. |
 | `fish build`, `check`, `test` | Execute work discovered from the project graph (supports `--explain`, `--pgo-generate`, `--pgo-use`). |
 | `fish ui` | Start the interactive Web Dashboard & DAG visualizer with 5-language telemetry. |
-| `fish query <EXPR>` | Query graph algebra: `deps(...)`, `rdeps(...)`, `allpaths(...)`, `somepath(...)`, `filter(...)`. |
+| `fish query <EXPR>` | Query graph algebra: `deps(...)`, `rdeps(...)`, `allpaths(...)`, `somepath(...)`, `filter(...)`, `union(...)`, `intersect(...)`, `except(...)`. |
 | `fish daemon` | Manage background build daemon (`start`, `status`, `stop`) for sub-millisecond warm builds. |
 | `fish run` | Build and run a selected Rust package or binary. |
 | `fish graph` | Print the graph as stage trees, JSON, or DOT. |

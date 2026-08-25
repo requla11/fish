@@ -136,6 +136,7 @@ fn main() -> ExitCode {
         Command::Plugin(args) => commands::run_plugin(args),
         Command::Fix(args) => commands::run_fix(args),
         Command::SigningKey => commands::signing_key::run_signing_key(),
+        Command::GenDocs(args) => commands::docs_gen::run_gen_docs(args.path),
         Command::Heal(args) => {
             let repo = args.path.unwrap_or_else(|| PathBuf::from("."));
             let words: Vec<String> = if args.cmd.is_empty() {

@@ -1,10 +1,11 @@
-pub mod affected;
+﻿pub mod affected;
 pub mod ai;
 pub mod attestation;
 pub mod cache;
 pub mod ci;
 pub mod clean;
 pub mod cost;
+pub mod docs_gen;
 pub mod doctor;
 pub mod experimental;
 pub mod fix;

@@ -58,6 +58,9 @@ pub enum Command {
     SigningKey,
     /// Bisect recent commits after a failed build and prepare a revert branch.
     Heal(HealArgs),
+    /// Regenerate docs/cli-reference.md from clap definitions (internal).
+    #[command(hide = true)]
+    GenDocs(GenDocsArgs),
     CostEstimate(CostEstimateArgs),
     #[command(alias = "dashboard")]
     Ui(UiArgs),
@@ -96,6 +99,14 @@ pub struct HealArgs {
     /// Build command words to test at each commit (default: cargo build).
     #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
     pub cmd: Vec<String>,
+}
+
+/// Arguments for the hidden docs generator.
+#[derive(Debug, Args)]
+pub struct GenDocsArgs {
+    /// Output file (defaults to docs/cli-reference.md).
+    #[arg(long, short)]
+    pub path: Option<PathBuf>,
 }
 
 #[derive(Debug, Args)]

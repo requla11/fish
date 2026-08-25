@@ -262,8 +262,17 @@ mod tests {
         let start = Instant::now();
         let error = executor.execute(&task).unwrap_err();
         assert!(error.to_string().contains("timed out"), "error: {error:?}");
+        // Waiting on the child would take >= the full 2s sleep. The
+        // measured span includes process spawn, which is slow for
+        // powershell on loaded Windows runners, so the kill bound gets
+        // extra headroom there while still proving we did NOT wait.
+        let kill_bound = if cfg!(windows) {
+            Duration::from_millis(1900)
+        } else {
+            Duration::from_secs(1)
+        };
         assert!(
-            start.elapsed() < Duration::from_secs(1),
+            start.elapsed() < kill_bound,
             "the child must be killed, not waited on"
         );
     }

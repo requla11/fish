@@ -9,6 +9,8 @@ pub fn compute_dart_fingerprint(
     dart_version: &str,
     flutter_version: &Option<String>,
     project_type: &DartProjectType,
+    target_platform: &str,
+    release: bool,
 ) -> Result<String, DartBackendError> {
     let mut hasher = blake3::Hasher::new();
 
@@ -16,6 +18,10 @@ pub fn compute_dart_fingerprint(
     if let Some(flutter_ver) = flutter_version {
         hasher.update(flutter_ver.as_bytes());
     }
+    // Target platform and optimize mode change the emitted build commands;
+    // ignoring them would replay another target's cached artifacts.
+    hasher.update(target_platform.as_bytes());
+    hasher.update(if release { b"release" } else { b"debug" });
 
     match project_type {
         DartProjectType::Dart => {
@@ -74,8 +80,15 @@ mod tests {
         let pubspec_file = temp.path().join("pubspec.yaml");
         fs::write(&pubspec_file, "name: test_app").unwrap();
 
-        let fingerprint =
-            compute_dart_fingerprint(temp.path(), "3.0.0", &None, &DartProjectType::Dart).unwrap();
+        let fingerprint = compute_dart_fingerprint(
+            temp.path(),
+            "3.0.0",
+            &None,
+            &DartProjectType::Dart,
+            "native",
+            false,
+        )
+        .unwrap();
 
         assert!(!fingerprint.is_empty());
         assert_eq!(fingerprint.len(), 64);
@@ -90,14 +103,68 @@ mod tests {
         let dart_file = lib_dir.join("main.dart");
         fs::write(&dart_file, "void main() { print('Hello'); }").unwrap();
 
-        let fp1 =
-            compute_dart_fingerprint(temp.path(), "3.0.0", &None, &DartProjectType::Dart).unwrap();
+        let fp1 = compute_dart_fingerprint(
+            temp.path(),
+            "3.0.0",
+            &None,
+            &DartProjectType::Dart,
+            "native",
+            false,
+        )
+        .unwrap();
 
         fs::write(&dart_file, "void main() { print('Goodbye'); }").unwrap();
 
-        let fp2 =
-            compute_dart_fingerprint(temp.path(), "3.0.0", &None, &DartProjectType::Dart).unwrap();
+        let fp2 = compute_dart_fingerprint(
+            temp.path(),
+            "3.0.0",
+            &None,
+            &DartProjectType::Dart,
+            "native",
+            false,
+        )
+        .unwrap();
 
         assert_ne!(fp1, fp2);
+    }
+
+    #[test]
+    fn test_dart_fingerprint_distinguishes_target_and_mode() {
+        let temp = tempdir().unwrap();
+        let lib_dir = temp.path().join("lib");
+        fs::create_dir_all(&lib_dir).unwrap();
+        fs::write(lib_dir.join("main.dart"), "void main() {}").unwrap();
+        fs::write(temp.path().join("pubspec.yaml"), "name: test_app").unwrap();
+
+        let debug_native = compute_dart_fingerprint(
+            temp.path(),
+            "3.0.0",
+            &None,
+            &DartProjectType::Dart,
+            "native",
+            false,
+        )
+        .unwrap();
+        let release_native = compute_dart_fingerprint(
+            temp.path(),
+            "3.0.0",
+            &None,
+            &DartProjectType::Dart,
+            "native",
+            true,
+        )
+        .unwrap();
+        let release_apk = compute_dart_fingerprint(
+            temp.path(),
+            "3.0.0",
+            &None,
+            &DartProjectType::Flutter,
+            "apk",
+            true,
+        )
+        .unwrap();
+
+        assert_ne!(debug_native, release_native);
+        assert_ne!(release_native, release_apk);
     }
 }

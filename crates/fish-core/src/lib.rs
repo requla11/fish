@@ -37,7 +37,7 @@ pub use diagnostics::{
     ComponentHealthMonitor, DiagnosticLog, DiagnosticLogger, DiagnosticReport, HealthCheckRegistry,
     LogLevel, OpPerformanceMetrics, SystemDiagnostics,
 };
-pub use environment::EnvironmentFingerprint;
+pub use environment::{EnvironmentFingerprint, is_offline, set_offline};
 pub use error::{
     DiagnosticInfo, ErrorContext, ErrorSeverity, FishError, HealthCheck, HealthCheckResult,
     HealthStatus, RecoveryStrategy, Result,

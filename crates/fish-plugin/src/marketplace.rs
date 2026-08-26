@@ -39,6 +39,24 @@ pub struct PluginRegistry {
 impl PluginRegistry {
     /// Fetch and parse the registry index from a URL.
     pub fn fetch(endpoint: &str) -> Result<Self, String> {
+        let offline = std::env::var("FISH_OFFLINE")
+            .map(|v| {
+                v == "1"
+                    || v.eq_ignore_ascii_case("true")
+                    || v.eq_ignore_ascii_case("yes")
+                    || v.eq_ignore_ascii_case("on")
+            })
+            .unwrap_or(false);
+        Self::fetch_with_offline(endpoint, offline)
+    }
+
+    pub fn fetch_with_offline(endpoint: &str, offline: bool) -> Result<Self, String> {
+        if offline {
+            return Err(
+                "offline mode enabled (FISH_OFFLINE); plugin registry fetch rejected".to_string(),
+            );
+        }
+
         let resp = ureq::get(endpoint)
             .call()
             .map_err(|e| format!("registry fetch failed: {e}"))?;
@@ -92,6 +110,25 @@ pub fn verify_entry_signature(entry: &RegistryEntry) -> Result<(), String> {
 ///
 /// Verifies SHA-256 integrity after download. Returns raw WASM bytes.
 pub fn download_plugin(entry: &RegistryEntry) -> Result<Vec<u8>, String> {
+    let offline = std::env::var("FISH_OFFLINE")
+        .map(|v| {
+            v == "1"
+                || v.eq_ignore_ascii_case("true")
+                || v.eq_ignore_ascii_case("yes")
+                || v.eq_ignore_ascii_case("on")
+        })
+        .unwrap_or(false);
+    download_plugin_with_offline(entry, offline)
+}
+
+pub fn download_plugin_with_offline(
+    entry: &RegistryEntry,
+    offline: bool,
+) -> Result<Vec<u8>, String> {
+    if offline {
+        return Err("offline mode enabled (FISH_OFFLINE); plugin download rejected".to_string());
+    }
+
     let resp = ureq::get(&entry.url)
         .call()
         .map_err(|e| format!("plugin download failed: {e}"))?;
@@ -234,5 +271,16 @@ mod tests {
         )
         .unwrap();
         assert_eq!(manifest["name"], "my_plugin");
+    }
+
+    #[test]
+    fn test_offline_plugin_fetch_fail_fast() {
+        let err = PluginRegistry::fetch_with_offline("http://example.com/registry.json", true)
+            .unwrap_err();
+        assert!(err.contains("offline mode"));
+
+        let stub = make_stub("demo");
+        let dl_err = download_plugin_with_offline(&stub, true).unwrap_err();
+        assert!(dl_err.contains("offline mode"));
     }
 }

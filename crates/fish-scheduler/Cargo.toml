@@ -26,7 +26,12 @@ tracing = { workspace = true }
 tempfile = { workspace = true }
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 criterion = { version = "0.8", features = ["html_reports"] }
+rayon = "1"
 
 [[bench]]
 name = "scheduler_performance"
+harness = false
+
+[[bench]]
+name = "peer_comparison"
 harness = false

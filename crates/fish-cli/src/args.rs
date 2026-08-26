@@ -23,6 +23,10 @@ pub struct Cli {
     #[arg(long, global = true)]
     pub experimental: bool,
 
+    /// Disallow network access and fail-fast on remote operations
+    #[arg(long, global = true)]
+    pub offline: bool,
+
     #[command(subcommand)]
     pub command: Command,
 }

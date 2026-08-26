@@ -15,14 +15,24 @@ pub struct TcpRemoteCacheClient {
     pub server_addr: String,
     pub auth_token: Option<String>,
     pub timeout: Duration,
+    pub offline: bool,
 }
 
 impl TcpRemoteCacheClient {
     pub fn new(server_addr: impl Into<String>, auth_token: Option<String>) -> Self {
+        let offline = std::env::var("FISH_OFFLINE")
+            .map(|v| {
+                v == "1"
+                    || v.eq_ignore_ascii_case("true")
+                    || v.eq_ignore_ascii_case("yes")
+                    || v.eq_ignore_ascii_case("on")
+            })
+            .unwrap_or(false);
         Self {
             server_addr: server_addr.into(),
             auth_token,
             timeout: Duration::from_secs(5),
+            offline,
         }
     }
 
@@ -31,7 +41,26 @@ impl TcpRemoteCacheClient {
         self
     }
 
+    pub fn with_offline(mut self, offline: bool) -> Self {
+        self.offline = offline;
+        self
+    }
+
     fn send_request(&self, req: CacheRequest) -> Result<CacheResponse, RemoteCacheError> {
+        let env_offline = std::env::var("FISH_OFFLINE")
+            .map(|v| {
+                v == "1"
+                    || v.eq_ignore_ascii_case("true")
+                    || v.eq_ignore_ascii_case("yes")
+                    || v.eq_ignore_ascii_case("on")
+            })
+            .unwrap_or(false);
+        if self.offline || env_offline {
+            return Err(RemoteCacheError::Offline(
+                "offline mode enabled (FISH_OFFLINE); remote cache access rejected".to_string(),
+            ));
+        }
+
         let mut last_err = RemoteCacheError::Network("failed to connect".to_string());
         for attempt in 0..3 {
             if attempt > 0 {
@@ -225,6 +254,23 @@ impl RemoteCacheClient for TcpRemoteCacheClient {
             _ => Err(RemoteCacheError::Protocol(
                 "unexpected response to put_fingerprint".to_string(),
             )),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_offline_client_fail_fast() {
+        let client = TcpRemoteCacheClient::new("127.0.0.1:9999", None).with_offline(true);
+        let err = client.get_fingerprint("test_key").unwrap_err();
+        match err {
+            RemoteCacheError::Offline(msg) => {
+                assert!(msg.contains("offline mode"));
+            }
+            other => panic!("expected RemoteCacheError::Offline, got {:?}", other),
         }
     }
 }

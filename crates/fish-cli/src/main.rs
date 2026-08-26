@@ -86,6 +86,10 @@ fn main() -> ExitCode {
         experimental::enable();
     }
 
+    if cli.offline {
+        fish_core::set_offline(true);
+    }
+
     match cli.command {
         Command::Version => {
             println!("fish {}", env!("CARGO_PKG_VERSION"));

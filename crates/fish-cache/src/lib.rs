@@ -765,17 +765,23 @@ pub(crate) fn unique_tmp_path(path: &Path) -> PathBuf {
 
 fn atomic_rename(src: &Path, dst: &Path) -> io::Result<()> {
     let mut last_err: Option<io::Error> = None;
-    for i in 0..20 {
+    for i in 0..50 {
         match fs::rename(src, dst) {
             Ok(()) => return Ok(()),
             Err(e)
-                if i < 19
-                    && (e.kind() == io::ErrorKind::PermissionDenied
-                        || e.raw_os_error() == Some(5)
-                        || e.raw_os_error() == Some(32)) =>
+                if (e.kind() == io::ErrorKind::PermissionDenied
+                    || e.raw_os_error() == Some(5)
+                    || e.raw_os_error() == Some(32)) =>
             {
                 last_err = Some(e);
-                std::thread::sleep(std::time::Duration::from_millis(1 + i * 2));
+                #[cfg(windows)]
+                {
+                    if fs::copy(src, dst).is_ok() {
+                        let _ = fs::remove_file(src);
+                        return Ok(());
+                    }
+                }
+                std::thread::sleep(std::time::Duration::from_millis(1 + i * 3));
             }
             Err(e) => {
                 let _ = fs::remove_file(src);
@@ -783,6 +789,7 @@ fn atomic_rename(src: &Path, dst: &Path) -> io::Result<()> {
             }
         }
     }
+    let _ = fs::remove_file(src);
     Err(last_err.unwrap_or_else(|| io::Error::other("atomic rename exhausted retries")))
 }
 

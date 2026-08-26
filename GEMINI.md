@@ -1,10 +1,11 @@
 # Google Gemini & Antigravity Guide for Fish
 
 ## 🎯 Architecture & Invariants
-- **Engine Core**: Rust 2024 Edition (MSRV 1.88+) across 36+ crates.
-- **Go Services (`go/`)**: Go 1.22+ distributed networking, worker gateways, and Kubernetes controllers.
-- **Python AI Engine (`py/`)**: Python 3.11+ predictive models, AST remediation, and risk scoring.
+- **Engine Core**: Rust 2024 Edition (MSRV 1.88+) across 28 crates (single-language Rust workspace; see `Cargo.toml`).
+- **Go Services (`go/`)**: Optional Go 1.22+ auxiliary for distributed networking/worker gateways - not part of Rust workspace.
+- **Python AI Engine (`py/`)**: Optional Python 3.11+ predictive models/AST remediation - not part of Rust workspace.
 - **VS Code Extension (`vscode-extension/`)**: TypeScript client connecting to `fish lsp`.
+- **Cross-language contracts (`proto/`)**: Forward-looking `build.proto`/`ai.proto`/`coordinator.proto` drafts only - not compiled, no `prost`/`tonic` dependency (see `ARCHITECTURE.md`).
 
 ## 🛠️ Mandatory Verification
 ```bash

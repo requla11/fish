@@ -29,7 +29,7 @@ AI agents should read files in this priority order:
 ### Version Requirements
 - **MSRV**: Rust 1.88+ (Minimum Supported Rust Version)
 - **Edition**: Rust 2024
-- **Workspace**: 36+ crates with resolver = "2"
+- **Workspace**: 28 crates with resolver = "2" (see `Cargo.toml` workspace members)
 
 ### Branch Policy
 - **`dev`** branch - All development happens here

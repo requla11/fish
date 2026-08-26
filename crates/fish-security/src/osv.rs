@@ -36,18 +36,32 @@ pub struct OsvConfig {
     /// Base URL including the version segment, e.g. `https://api.osv.dev/v1`.
     pub base_url: String,
     pub timeout: Duration,
+    pub offline: bool,
 }
 
 impl Default for OsvConfig {
     fn default() -> Self {
+        let offline = env::var("FISH_OFFLINE")
+            .map(|v| {
+                v == "1"
+                    || v.eq_ignore_ascii_case("true")
+                    || v.eq_ignore_ascii_case("yes")
+                    || v.eq_ignore_ascii_case("on")
+            })
+            .unwrap_or(false);
         Self {
             base_url: DEFAULT_OSV_BASE.to_string(),
             timeout: DEFAULT_TIMEOUT,
+            offline,
         }
     }
 }
 
 impl OsvConfig {
+    pub fn with_offline(mut self, offline: bool) -> Self {
+        self.offline = offline;
+        self
+    }
     /// Build a config from environment variables. Returns `Ok(None)` when no
     /// endpoint is configured so callers fall back to the embedded database;
     /// a present-but-invalid configuration is an error.
@@ -61,9 +75,18 @@ impl OsvConfig {
                 "{ENV_OSV_ENDPOINT} must be an http(s) URL, got `{trimmed}`"
             ));
         }
+        let offline = lookup("FISH_OFFLINE")
+            .map(|v| {
+                v == "1"
+                    || v.eq_ignore_ascii_case("true")
+                    || v.eq_ignore_ascii_case("yes")
+                    || v.eq_ignore_ascii_case("on")
+            })
+            .unwrap_or(false);
         let mut config = Self {
             base_url: trimmed,
             timeout: DEFAULT_TIMEOUT,
+            offline,
         };
         if let Some(raw) = lookup(ENV_OSV_TIMEOUT_MS).filter(|v| !v.trim().is_empty()) {
             let ms: u64 = raw
@@ -117,6 +140,21 @@ impl OsvClient {
         &self,
         packages: &[(String, String, String)],
     ) -> SecurityResult<Vec<Vec<Vulnerability>>> {
+        let env_offline = std::env::var("FISH_OFFLINE")
+            .map(|v| {
+                v == "1"
+                    || v.eq_ignore_ascii_case("true")
+                    || v.eq_ignore_ascii_case("yes")
+                    || v.eq_ignore_ascii_case("on")
+            })
+            .unwrap_or(false);
+        if self.config.offline || env_offline {
+            return Err(SecurityError::ApiError(
+                "offline mode enabled (FISH_OFFLINE); remote OSV advisory lookup rejected"
+                    .to_string(),
+            ));
+        }
+
         let mut out: Vec<Vec<Vulnerability>> = vec![Vec::new(); packages.len()];
         let mut cache: HashMap<String, Vulnerability> = HashMap::new();
 
@@ -383,6 +421,7 @@ mod tests {
         let client = OsvClient::new(OsvConfig {
             base_url: base,
             timeout: Duration::from_secs(5),
+            offline: false,
         })
         .unwrap();
 
@@ -448,6 +487,7 @@ mod tests {
         let client = OsvClient::new(OsvConfig {
             base_url: "http://127.0.0.1:1/v1".to_string(),
             timeout: Duration::from_millis(500),
+            offline: false,
         })
         .unwrap();
 
@@ -460,5 +500,25 @@ mod tests {
             .await;
 
         assert!(result.is_err(), "silent empty results would hide outages");
+    }
+
+    #[tokio::test]
+    async fn test_offline_osv_query_fail_fast() {
+        let config = OsvConfig::default().with_offline(true);
+        let client = OsvClient::new(config).unwrap();
+        let result = client
+            .query_packages(&[(
+                "crates.io".to_string(),
+                "serde".to_string(),
+                "1.0.0".to_string(),
+            )])
+            .await;
+
+        match result {
+            Err(SecurityError::ApiError(msg)) => {
+                assert!(msg.contains("offline mode"));
+            }
+            other => panic!("expected SecurityError::ApiError, got {:?}", other),
+        }
     }
 }

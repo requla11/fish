@@ -17,6 +17,7 @@ pub use pipelining::{PipelineStage, PipelinedCompilationCoordinator};
 pub use racing::DynamicRacingExecutor;
 pub use resource_governor::{KernelResourceGovernor, MemoryPressureLevel};
 pub use watcher::FsWatcherDaemon;
+pub use work_stealing::{ExecutionHeuristics, WorkStealingScheduler};
 
 use std::cmp::Reverse;
 use std::sync::mpsc;

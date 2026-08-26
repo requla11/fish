@@ -818,6 +818,8 @@ impl<I: TaskExecutor> CachingExecutor<I> {
     /// Pack every declared artifact into content-addressed objects and return
     /// the manifest's hash for the fingerprint record. Paths are interpreted
     /// relative to the task's working directory, mirroring `Task.artifacts`.
+    /// Directories are walked recursively — every contained file becomes its
+    /// own manifest entry (empty directories are not preserved).
     fn store_artifacts(
         &self,
         task: &Task,
@@ -827,26 +829,52 @@ impl<I: TaskExecutor> CachingExecutor<I> {
         }
         let cwd = task.spec.cwd.clone().unwrap_or_default();
 
-        let mut entries: Vec<ArtifactManifestEntry> = Vec::with_capacity(task.artifacts.len());
+        let mut entries: Vec<ArtifactManifestEntry> = Vec::new();
         for rel in &task.artifacts {
             let absolute = if rel.is_absolute() {
                 rel.clone()
             } else {
                 cwd.join(rel)
             };
-            let bytes = fs::read(&absolute)?;
-            let hash = blake3::hash(&bytes).to_hex().to_string();
-            self.cache.put_object(&hash, &bytes)?;
-            entries.push(ArtifactManifestEntry {
-                path: rel.to_string_lossy().replace('\\', "/"),
-                hash,
-            });
+            let rel_display = rel.to_string_lossy().replace('\\', "/");
+            Self::pack_path(&self.cache, &absolute, &rel_display, &mut entries)?;
+        }
+
+        if entries.is_empty() {
+            return Ok(None);
         }
 
         let manifest = serde_json::to_vec(&entries)?;
         let manifest_hash = blake3::hash(&manifest).to_hex().to_string();
         self.cache.put_object(&manifest_hash, &manifest)?;
         Ok(Some(manifest_hash))
+    }
+
+    fn pack_path(
+        cache: &LocalCache,
+        absolute: &Path,
+        rel: &str,
+        entries: &mut Vec<ArtifactManifestEntry>,
+    ) -> io::Result<()> {
+        if fs::metadata(absolute)?.is_dir() {
+            let mut children: Vec<_> = fs::read_dir(absolute)?.flatten().collect();
+            children.sort_by_key(|entry| entry.file_name());
+            for child in children {
+                let child_rel = format!("{rel}/{}", child.file_name().to_string_lossy());
+                Self::pack_path(cache, &child.path(), &child_rel, entries)?;
+            }
+            return Ok(());
+        }
+        let bytes = fs::read(absolute)?;
+        let hash = blake3::hash(&bytes).to_hex().to_string();
+        cache
+            .put_object(&hash, &bytes)
+            .map_err(|e| io::Error::other(e.to_string()))?;
+        entries.push(ArtifactManifestEntry {
+            path: rel.to_string(),
+            hash,
+        });
+        Ok(())
     }
 
     /// Materialize a cached task's declared artifacts from the object store.
@@ -987,6 +1015,12 @@ mod tests {
             let cwd = task.spec.cwd.clone().unwrap_or_default();
             for rel in &task.artifacts {
                 let out = cwd.join(rel);
+                if rel == Path::new("tree") {
+                    fs::create_dir_all(out.join("sub")).unwrap();
+                    fs::write(out.join("root.txt"), "root-payload").unwrap();
+                    fs::write(out.join("sub").join("deep.bin"), b" ").unwrap();
+                    continue;
+                }
                 fs::create_dir_all(out.parent().unwrap()).unwrap();
                 fs::write(&out, "payload").unwrap();
             }
@@ -1071,6 +1105,50 @@ mod tests {
         assert_eq!(
             fs::read_to_string(work.path().join("out.txt")).unwrap(),
             "payload"
+        );
+    }
+
+    #[test]
+    fn directory_artifacts_roundtrip_the_full_tree() {
+        let (cache, _dir) = cache();
+        let work = tempfile::tempdir().unwrap();
+        let runs = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let executor = CachingExecutor::new(RecordingExecutor { runs: runs.clone() }, cache);
+
+        let mut task = Task::new(
+            "gen-tree",
+            "generate tree",
+            CommandSpec::new("true").cwd(work.path().to_path_buf()),
+        );
+        task = task.with_artifacts(vec![PathBuf::from("tree")]);
+        task = task.with_cache(CacheEntry {
+            key: "tree-key".to_string(),
+            fingerprint: "fp-1".to_string(),
+        });
+
+        TaskExecutor::execute(&executor, &task).unwrap();
+        let root = work.path().join("tree");
+        assert_eq!(
+            fs::read_to_string(root.join("root.txt")).unwrap(),
+            "root-payload"
+        );
+        assert_eq!(
+            fs::read(root.join("sub").join("deep.bin")).unwrap(),
+            vec![0, 1]
+        );
+
+        fs::remove_dir_all(&root).unwrap();
+
+        let second = TaskExecutor::execute(&executor, &task).unwrap();
+        assert_eq!(second.status, TaskStatus::Cached);
+        assert_eq!(runs.load(std::sync::atomic::Ordering::SeqCst), 1);
+        assert_eq!(
+            fs::read_to_string(root.join("root.txt")).unwrap(),
+            "root-payload"
+        );
+        assert_eq!(
+            fs::read(root.join("sub").join("deep.bin")).unwrap(),
+            vec![0, 1]
         );
     }
 

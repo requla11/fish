@@ -132,32 +132,73 @@ impl PyProjectConfig {
         };
 
         let runner = PythonRunner::detect(root);
-        let tasks = vec![
-            PyTaskSpec {
-                name: "lint".to_string(),
-                command: Some("ruff".to_string()),
-                args: vec!["check".to_string(), ".".to_string()],
-                depends_on: vec![],
-            },
-            PyTaskSpec {
-                name: "typecheck".to_string(),
-                command: Some("mypy".to_string()),
-                args: vec![".".to_string()],
-                depends_on: vec!["lint".to_string()],
-            },
-            PyTaskSpec {
-                name: "test".to_string(),
-                command: Some("pytest".to_string()),
-                args: vec![],
-                depends_on: vec!["typecheck".to_string()],
-            },
-            PyTaskSpec {
-                name: "build".to_string(),
-                command: Some("uv".to_string()),
-                args: vec!["build".to_string()],
-                depends_on: vec!["test".to_string()],
-            },
+
+        // Default tasks lean on optional third-party tools (ruff, mypy,
+        // pytest). Omit any whose executable is missing from PATH instead of
+        // failing the whole build, then rewire the chain around whatever
+        // survived. The build step follows the DETECTED runner — hardcoding
+        // one tool here broke Poetry projects.
+        let has_tests = root.join("tests").is_dir() || root.join("test").is_dir();
+        let candidates = [
+            (
+                PyTaskSpec {
+                    name: "lint".to_string(),
+                    command: Some("ruff".to_string()),
+                    args: vec!["check".to_string(), ".".to_string()],
+                    depends_on: vec![],
+                },
+                crate::toolchain::PyToolchain::tool_on_path("ruff"),
+            ),
+            (
+                PyTaskSpec {
+                    name: "typecheck".to_string(),
+                    command: Some("mypy".to_string()),
+                    args: vec![".".to_string()],
+                    depends_on: vec!["lint".to_string()],
+                },
+                crate::toolchain::PyToolchain::tool_on_path("mypy"),
+            ),
+            (
+                PyTaskSpec {
+                    name: "test".to_string(),
+                    command: Some("pytest".to_string()),
+                    args: vec![],
+                    depends_on: vec!["typecheck".to_string()],
+                },
+                has_tests && crate::toolchain::PyToolchain::tool_on_path("pytest"),
+            ),
         ];
+
+        let mut tasks: Vec<PyTaskSpec> = Vec::new();
+        for (spec, available) in candidates {
+            if available {
+                tasks.push(spec);
+            }
+        }
+
+        match runner {
+            // uv and poetry have native build commands; a bare interpreter
+            // has no standard build entry point, so no default build task.
+            PythonRunner::Uv | PythonRunner::Poetry => {
+                if crate::toolchain::PyToolchain::tool_on_path(runner.executable()) {
+                    tasks.push(PyTaskSpec {
+                        name: "build".to_string(),
+                        command: None,
+                        args: vec!["build".to_string()],
+                        depends_on: vec!["test".to_string()],
+                    });
+                }
+            }
+            PythonRunner::Python => {}
+        }
+
+        // Drop dangling references to tasks that were omitted above so the
+        // dependency graph stays valid.
+        let names: std::collections::HashSet<String> =
+            tasks.iter().map(|task| task.name.clone()).collect();
+        for task in &mut tasks {
+            task.depends_on.retain(|dep| names.contains(dep));
+        }
 
         Ok(Self {
             name,

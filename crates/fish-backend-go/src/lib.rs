@@ -58,7 +58,7 @@ impl GoBackend {
         std::fs::create_dir_all(output_dir)?;
         let namespace = FingerprintUtils::compute_namespace(project_dir);
 
-        let fp = fingerprint::compute_go_fingerprint(project_dir, &self.toolchain.version, &config)
+        let fp = fingerprint::compute_go_fingerprint(project_dir, &self.toolchain.version, config)
             .unwrap_or_else(|_| "no_fp".to_string());
 
         // `go vet` honors the documented run_linter knob; opting out skips

@@ -10,6 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Backends declare their concrete build outputs as task artifacts** — go
+  (output binary), cc (linked binary), zig (`zig-out/` tree), java maven
+  (`target/`) and gradle (`build/libs/`), dotnet (`--output` dir when
+  configured) and python pex (`.pex` file). Together with local artifact
+  restore this completes the cache-first loop for every ecosystem, and
+  cross-language inference can now link consumers to just the producing
+  tasks instead of whole projects.
 - **Local cache hits now restore declared task artifacts.** On success,
   `CachingExecutor` packs each task's declared outputs into content-addressed
   objects with a hashed manifest; on a fingerprint hit it re-materializes any

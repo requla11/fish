@@ -806,19 +806,124 @@ impl<I: TaskExecutor> CachingExecutor<I> {
     }
 }
 
+/// One entry of a task's artifact manifest: where the file lives relative to
+/// the task's working directory and the blake3 hash of its bytes.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct ArtifactManifestEntry {
+    path: String,
+    hash: String,
+}
+
+impl<I: TaskExecutor> CachingExecutor<I> {
+    /// Pack every declared artifact into content-addressed objects and return
+    /// the manifest's hash for the fingerprint record. Paths are interpreted
+    /// relative to the task's working directory, mirroring `Task.artifacts`.
+    fn store_artifacts(
+        &self,
+        task: &Task,
+    ) -> Result<Option<String>, Box<dyn std::error::Error + Send + Sync>> {
+        if task.artifacts.is_empty() {
+            return Ok(None);
+        }
+        let cwd = task.spec.cwd.clone().unwrap_or_default();
+
+        let mut entries: Vec<ArtifactManifestEntry> = Vec::with_capacity(task.artifacts.len());
+        for rel in &task.artifacts {
+            let absolute = if rel.is_absolute() {
+                rel.clone()
+            } else {
+                cwd.join(rel)
+            };
+            let bytes = fs::read(&absolute)?;
+            let hash = blake3::hash(&bytes).to_hex().to_string();
+            self.cache.put_object(&hash, &bytes)?;
+            entries.push(ArtifactManifestEntry {
+                path: rel.to_string_lossy().replace('\\', "/"),
+                hash,
+            });
+        }
+
+        let manifest = serde_json::to_vec(&entries)?;
+        let manifest_hash = blake3::hash(&manifest).to_hex().to_string();
+        self.cache.put_object(&manifest_hash, &manifest)?;
+        Ok(Some(manifest_hash))
+    }
+
+    /// Materialize a cached task's declared artifacts from the object store.
+    ///
+    /// Returns true when the caller may treat the fingerprint hit as a full
+    /// result: either nothing was declared, or every file is already on disk.
+    /// Files present on disk are trusted (existence check only - no re-hash),
+    /// matching how developers treat their own build trees; anything missing
+    /// is rewritten from its object, and any gap in the store reports a miss
+    /// so the task rebuilds instead of pretending success.
+    fn restore_artifacts(&self, task: &Task, manifest_hash: Option<&str>) -> bool {
+        if task.artifacts.is_empty() {
+            return true;
+        }
+        let Some(manifest_hash) = manifest_hash else {
+            // A record written before artifact tracking existed cannot prove
+            // the outputs are anywhere - force one honest rebuild.
+            return false;
+        };
+        let Some(bytes) = self.cache.get_object(manifest_hash) else {
+            return false;
+        };
+        let Ok(entries) = serde_json::from_slice::<Vec<ArtifactManifestEntry>>(&bytes) else {
+            return false;
+        };
+
+        let cwd = task.spec.cwd.clone().unwrap_or_default();
+        for entry in &entries {
+            let target = if Path::new(&entry.path).is_absolute() {
+                PathBuf::from(&entry.path)
+            } else {
+                cwd.join(&entry.path)
+            };
+            if target.exists() {
+                continue;
+            }
+            let Some(data) = self.cache.get_object(&entry.hash) else {
+                return false;
+            };
+            if let Some(parent) = target.parent()
+                && fs::create_dir_all(parent).is_err()
+            {
+                return false;
+            }
+            if fs::write(&target, data).is_err() {
+                return false;
+            }
+        }
+        true
+    }
+}
+
 impl<I: TaskExecutor> TaskExecutor for CachingExecutor<I> {
     fn execute(&self, task: &Task) -> Result<TaskOutcome, ExecutorError> {
         if let Some(CacheEntry { key, fingerprint }) = &task.cache
             && self.cache.matches(key, fingerprint)
+            && self.restore_artifacts(task, self.cache.artifact_hash(key).as_deref())
         {
             return Ok(TaskOutcome::cached(task));
         }
         let outcome = self.inner.execute(task)?;
         if outcome.status == TaskStatus::Executed
             && let Some(CacheEntry { key, fingerprint }) = &task.cache
-            && let Err(_error) = self.cache.put(key, fingerprint)
         {
-            self.cache.stats().record_error();
+            let manifest_hash = match self.store_artifacts(task) {
+                Ok(hash) => hash,
+                Err(_error) => {
+                    self.cache.stats().record_error();
+                    None
+                }
+            };
+            if let Err(_error) = self
+                .cache
+                .put_with_artifact(key, fingerprint, manifest_hash)
+            {
+                self.cache.stats().record_error();
+            }
         }
         Ok(outcome)
     }
@@ -827,6 +932,7 @@ impl<I: TaskExecutor> TaskExecutor for CachingExecutor<I> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use fish_executor::CommandSpec;
 
     fn cache() -> (LocalCache, tempfile::TempDir) {
         let dir = tempfile::tempdir().expect("tempdir");
@@ -867,6 +973,126 @@ mod tests {
         fs::write(&path, b"this is not json").unwrap();
         assert!(!cache.matches("bad", "x"));
         assert!(cache.get("bad").is_none());
+    }
+
+    // --- artifact-aware CachingExecutor ---------------------------------
+
+    struct RecordingExecutor {
+        runs: std::sync::Arc<std::sync::atomic::AtomicUsize>,
+    }
+
+    impl TaskExecutor for RecordingExecutor {
+        fn execute(&self, task: &Task) -> Result<TaskOutcome, ExecutorError> {
+            self.runs.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            let cwd = task.spec.cwd.clone().unwrap_or_default();
+            for rel in &task.artifacts {
+                let out = cwd.join(rel);
+                fs::create_dir_all(out.parent().unwrap()).unwrap();
+                fs::write(&out, "payload").unwrap();
+            }
+            Ok(TaskOutcome {
+                status: TaskStatus::Executed,
+                exit_code: Some(0),
+                stdout: String::new(),
+                stderr: String::new(),
+                duration: std::time::Duration::ZERO,
+            })
+        }
+    }
+
+    fn artifact_task(dir: &Path) -> Task {
+        let mut task = Task::new(
+            "gen",
+            "generate output",
+            CommandSpec::new("true").cwd(dir.to_path_buf()),
+        );
+        task = task.with_artifacts(vec![PathBuf::from("out.txt")]);
+        task = task.with_cache(CacheEntry {
+            key: "artifact-key".to_string(),
+            fingerprint: "fp-1".to_string(),
+        });
+        task
+    }
+
+    #[test]
+    fn cached_hit_restores_missing_artifacts_from_objects() {
+        let (cache, _dir) = cache();
+        let work = tempfile::tempdir().unwrap();
+        let runs = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let executor = CachingExecutor::new(RecordingExecutor { runs: runs.clone() }, cache);
+        let task = artifact_task(work.path());
+
+        let first = TaskExecutor::execute(&executor, &task).unwrap();
+        assert_eq!(first.status, TaskStatus::Executed);
+        assert_eq!(runs.load(std::sync::atomic::Ordering::SeqCst), 1);
+        let out_path = work.path().join("out.txt");
+
+        fs::remove_file(&out_path).unwrap();
+
+        let second = TaskExecutor::execute(&executor, &task).unwrap();
+        assert_eq!(second.status, TaskStatus::Cached);
+        assert_eq!(runs.load(std::sync::atomic::Ordering::SeqCst), 1);
+        assert_eq!(fs::read_to_string(&out_path).unwrap(), "payload");
+    }
+
+    #[test]
+    fn hit_with_outputs_present_does_not_rerun() {
+        let (cache, _dir) = cache();
+        let work = tempfile::tempdir().unwrap();
+        let runs = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let executor = CachingExecutor::new(RecordingExecutor { runs: runs.clone() }, cache);
+        let task = artifact_task(work.path());
+
+        TaskExecutor::execute(&executor, &task).unwrap();
+        let second = TaskExecutor::execute(&executor, &task).unwrap();
+        assert_eq!(second.status, TaskStatus::Cached);
+        assert_eq!(runs.load(std::sync::atomic::Ordering::SeqCst), 1);
+        assert!(work.path().join("out.txt").exists());
+    }
+
+    #[test]
+    fn missing_object_store_falls_back_to_real_execution() {
+        let (cache, dir) = cache();
+        let work = tempfile::tempdir().unwrap();
+        let runs = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let executor = CachingExecutor::new(RecordingExecutor { runs: runs.clone() }, cache);
+        let task = artifact_task(work.path());
+
+        TaskExecutor::execute(&executor, &task).unwrap();
+        fs::remove_file(work.path().join("out.txt")).unwrap();
+        // Wipe every stored object: neither manifest nor payloads survive.
+        for entry in fs::read_dir(dir.path().join("objects")).unwrap().flatten() {
+            fs::remove_file(entry.path()).unwrap();
+        }
+
+        let second = TaskExecutor::execute(&executor, &task).unwrap();
+        assert_eq!(second.status, TaskStatus::Executed);
+        assert_eq!(runs.load(std::sync::atomic::Ordering::SeqCst), 2);
+        assert_eq!(
+            fs::read_to_string(work.path().join("out.txt")).unwrap(),
+            "payload"
+        );
+    }
+
+    #[test]
+    fn legacy_record_without_artifact_hash_rebuilds_once() {
+        let (cache, _dir) = cache();
+        let work = tempfile::tempdir().unwrap();
+        let runs = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        cache.put("legacy", "fp-1").unwrap();
+        let executor = CachingExecutor::new(RecordingExecutor { runs: runs.clone() }, cache);
+
+        let mut task = artifact_task(work.path());
+        if let Some(entry) = &mut task.cache {
+            entry.key = "legacy".to_string();
+        }
+
+        // Old records cannot prove where outputs went: rebuild once, and the
+        // refreshed record carries a manifest again.
+        let outcome = TaskExecutor::execute(&executor, &task).unwrap();
+        assert_eq!(outcome.status, TaskStatus::Executed);
+        assert_eq!(runs.load(std::sync::atomic::Ordering::SeqCst), 1);
+        assert!(work.path().join("out.txt").exists());
     }
 
     #[test]

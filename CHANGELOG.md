@@ -48,6 +48,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **python**: default lint/typecheck/test tasks gate on their tool being
   available on PATH, and the build step follows the detected runner
   (uv/poetry) instead of hardcoding uv.
+- **manifest parsing**: project-name extraction became boundary-aware
+  everywhere — gradle `namespace` no longer satisfies the `name` key
+  (`rootProject.name` is preferred), pom coordinates are read after the
+  `<parent>` block instead of the first matching tag, pubspec `hostname:`
+  lookalikes no longer win over the top-level `name:`, and build.zig's
+  `.name_hash` cannot satisfy `.name`.
+- **toolchain detection**: zig/dart/dotnet/java share one cross-platform
+  executable lookup instead of shelling out to Windows-only `where` and
+  blessing installs whose version probe merely spawned.
+
 - **java**: maven `package` always passes `-DskipTests` and gradle `build`
   passes `-x test`, so suites run exactly once through the dedicated cached
   test task; clean-task labels use artifact_id consistently.

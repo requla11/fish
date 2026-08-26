@@ -1,9 +1,7 @@
 name: dogfood
 
 on:
-  workflow_dispatch:
-  schedule:
-    - cron: '0 4 * * 1'
+  workflow_dispatch
 
 env:
   CARGO_TERM_COLOR: always

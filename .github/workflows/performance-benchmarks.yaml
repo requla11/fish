@@ -1,11 +1,7 @@
 name: Performance Benchmarks
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
-  schedule:
-    - cron: '0 5 * * 1'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

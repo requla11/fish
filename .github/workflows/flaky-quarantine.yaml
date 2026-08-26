@@ -1,8 +1,6 @@
 name: Flaky Test Detection & Stress Testing
 
 on:
-  schedule:
-    - cron: '0 2 * * *'
   workflow_dispatch:
 
 env:

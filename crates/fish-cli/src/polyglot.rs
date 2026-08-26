@@ -250,9 +250,20 @@ edition = "2021"
         // subgraphs together; disabling inference must leave them isolated.
         let dir = tempdir().unwrap();
         std::fs::create_dir_all(dir.path().join("py-worker/contracts")).unwrap();
+        // Explicit task configs keep the fixture deterministic: the
+        // default py/ts task sets gate on host tooling (ruff, tsc, uv)
+        // which varies between developer machines and CI runners.
         std::fs::write(
             dir.path().join("py-worker/pyproject.toml"),
-            "[project]\nname = \"pyw\"\nversion = \"0.1.0\"\n",
+            "[project]
+name = \"pyw\"
+version = \"0.1.0\"
+",
+        )
+        .unwrap();
+        std::fs::write(
+            dir.path().join("py-worker/fish.py.json"),
+            "{\"name\": \"pyw\", \"tasks\": [{\"name\": \"validate\", \"command\": \"python\", \"args\": [\"-c\", \"pass\"], \"depends_on\": []}]}",
         )
         .unwrap();
         std::fs::write(
@@ -264,6 +275,11 @@ edition = "2021"
         std::fs::write(
             dir.path().join("web-frontend/package.json"),
             "{\"name\": \"web\"}",
+        )
+        .unwrap();
+        std::fs::write(
+            dir.path().join("web-frontend/fish.ts.json"),
+            "{\"name\": \"web\", \"tasks\": [{\"name\": \"build\", \"command\": \"node\", \"args\": [\"-e\", \"0\"], \"depends_on\": []}]}",
         )
         .unwrap();
         std::fs::write(

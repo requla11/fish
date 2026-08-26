@@ -163,7 +163,8 @@ impl CcBackend {
         let link_label = format!("link {}", config.name);
         let link_desc = link_spec.command_line();
 
-        let link_task = Task::new(link_label, link_desc, link_spec);
+        let link_task =
+            Task::new(link_label, link_desc, link_spec).with_artifacts(vec![final_output]);
         let link_node_id = graph.add_node(link_task);
 
         for &compile_id in &compile_node_ids {

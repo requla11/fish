@@ -137,6 +137,7 @@ impl PyBackend {
                 pex_spec.command_line(),
                 pex_spec,
             )
+            .with_artifacts(vec![out_file.clone()])
             .with_cache(CacheEntry {
                 key: FingerprintUtils::format_cache_key("py", &namespace, "pex", &config.name),
                 fingerprint: pex_fp,

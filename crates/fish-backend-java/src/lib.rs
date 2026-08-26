@@ -161,6 +161,7 @@ impl JavaBackend {
             package_spec.command_line(),
             package_spec,
         )
+        .with_artifacts(vec![project_dir.join("target")])
         .with_cache(package_cache);
         let package_node_id = graph.add_node(package_task);
         graph.add_dependency(compile_node_id, package_node_id)?;
@@ -235,6 +236,7 @@ impl JavaBackend {
             build_spec.command_line(),
             build_spec,
         )
+        .with_artifacts(vec![project_dir.join("build").join("libs")])
         .with_cache(build_cache);
         let build_node_id = graph.add_node(build_task);
         graph.add_dependency(clean_node_id, build_node_id)?;

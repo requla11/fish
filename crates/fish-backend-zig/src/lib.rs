@@ -150,6 +150,7 @@ impl ZigBackend {
             build_spec.command_line(),
             build_spec,
         )
+        .with_artifacts(vec![project_dir.join("zig-out")])
         .with_cache(build_cache);
         let build_node_id = graph.add_node(build_task);
         graph.add_dependency(fetch_node_id, build_node_id)?;

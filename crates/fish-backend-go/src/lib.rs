@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 use fish_core::{BinaryUtils, BuildBackend, FingerprintUtils};
@@ -121,6 +121,7 @@ impl GoBackend {
             build_spec.command_line(),
             build_spec,
         )
+        .with_artifacts(vec![PathBuf::from(&out_path)])
         .with_cache(build_cache);
 
         let build_node_id = graph.add_node(build_task);

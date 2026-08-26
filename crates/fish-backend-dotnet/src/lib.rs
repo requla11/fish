@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 use fish_core::{BuildBackend, FingerprintUtils};
@@ -121,8 +121,14 @@ impl DotnetBackend {
             format!("dotnet build {}", config.project_name),
             build_spec.command_line(),
             build_spec,
-        )
-        .with_cache(build_cache);
+        );
+        // Only an explicit --output gives us a stable path worth declaring;
+        // the default bin/<config> layout varies per framework.
+        let build_task = match &config.output_path {
+            Some(output) => build_task.with_artifacts(vec![PathBuf::from(output)]),
+            None => build_task,
+        };
+        let build_task = build_task.with_cache(build_cache);
         let build_node_id = graph.add_node(build_task);
         graph.add_dependency(restore_node_id, build_node_id)?;
 

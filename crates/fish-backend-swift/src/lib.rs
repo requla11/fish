@@ -66,6 +66,7 @@ impl SwiftBackend {
             project_dir,
             &self.toolchain.swift_version,
             &config.platform,
+            config.release,
         )
         .unwrap_or_else(|_| "no_fp".to_string());
 

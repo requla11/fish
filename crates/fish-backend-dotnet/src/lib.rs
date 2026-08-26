@@ -65,6 +65,7 @@ impl DotnetBackend {
             project_dir,
             &self.toolchain.dotnet_version,
             &config.target_framework,
+            config.release,
         )
         .unwrap_or_else(|_| "no_fp".to_string());
 
@@ -89,14 +90,15 @@ impl DotnetBackend {
         .with_cache(restore_cache);
         let restore_node_id = graph.add_node(restore_task);
 
-        let mut build_args = vec!["build".to_string()];
-        if config.release {
-            build_args.push("--configuration".to_string());
-            build_args.push("Release".to_string());
-        } else {
-            build_args.push("--configuration".to_string());
-            build_args.push("Debug".to_string());
-        }
+        let configuration = if config.release { "Release" } else { "Debug" };
+
+        let mut build_args = vec![
+            "build".to_string(),
+            // Restore ran as its own task right before this one.
+            "--no-restore".to_string(),
+            "--configuration".to_string(),
+            configuration.to_string(),
+        ];
 
         if let Some(output) = &config.output_path {
             build_args.push("--output".to_string());
@@ -125,7 +127,15 @@ impl DotnetBackend {
         graph.add_dependency(restore_node_id, build_node_id)?;
 
         if config.run_tests {
-            let test_args = vec!["test".to_string()];
+            // Restore and build ran as their own tasks immediately above —
+            // without these flags `dotnet test` redid both internally.
+            let test_args = vec![
+                "test".to_string(),
+                "--no-restore".to_string(),
+                "--no-build".to_string(),
+                "--configuration".to_string(),
+                configuration.to_string(),
+            ];
             let test_spec = CommandSpec::new(&self.toolchain.executable)
                 .args(test_args)
                 .cwd(project_dir);

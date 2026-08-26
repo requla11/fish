@@ -8,11 +8,15 @@ pub fn compute_dotnet_fingerprint(
     project_dir: &Path,
     dotnet_version: &str,
     target_framework: &DotnetTargetFramework,
+    release: bool,
 ) -> Result<String, DotnetBackendError> {
     let mut hasher = blake3::Hasher::new();
 
     hasher.update(dotnet_version.as_bytes());
     hasher.update(target_framework.as_str().as_bytes());
+    // Debug and Release builds are different artifacts; the configuration
+    // must participate in cache identity.
+    hasher.update(if release { b"release" } else { b"debug" });
 
     let extensions = &[
         "cs", "fs", "vb", "xaml", "csproj", "fsproj", "vbproj", "sln", "props", "targets", "json",
@@ -64,7 +68,7 @@ mod tests {
         fs::write(&csproj_file, "<Project></Project>").unwrap();
 
         let fingerprint =
-            compute_dotnet_fingerprint(temp.path(), "8.0.0", &DotnetTargetFramework::Net8_0)
+            compute_dotnet_fingerprint(temp.path(), "8.0.0", &DotnetTargetFramework::Net8_0, false)
                 .unwrap();
 
         assert!(!fingerprint.is_empty());
@@ -84,8 +88,9 @@ mod tests {
         )
         .unwrap();
 
-        let fp1 = compute_dotnet_fingerprint(temp.path(), "8.0.0", &DotnetTargetFramework::Net8_0)
-            .unwrap();
+        let fp1 =
+            compute_dotnet_fingerprint(temp.path(), "8.0.0", &DotnetTargetFramework::Net8_0, false)
+                .unwrap();
 
         fs::write(
             &cs_file,
@@ -93,8 +98,9 @@ mod tests {
         )
         .unwrap();
 
-        let fp2 = compute_dotnet_fingerprint(temp.path(), "8.0.0", &DotnetTargetFramework::Net8_0)
-            .unwrap();
+        let fp2 =
+            compute_dotnet_fingerprint(temp.path(), "8.0.0", &DotnetTargetFramework::Net8_0, false)
+                .unwrap();
 
         assert_ne!(fp1, fp2);
     }

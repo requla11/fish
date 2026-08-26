@@ -45,6 +45,7 @@ export default defineConfig({
               { text: 'Configuration Reference', link: '/configuration' },
               { text: 'IDE Integration & LSP', link: '/ide-integration' },
               { text: 'Remote Execution & CAS', link: '/remote-execution' },
+              { text: 'Artifact Signing', link: '/signing' },
               { text: 'Production Deployment', link: '/deployment' },
               { text: 'Starter Examples', link: '/examples-guide' },
               { text: 'CLI Reference', link: '/cli-reference' }
@@ -121,6 +122,7 @@ export default defineConfig({
               { text: 'Cấu hình fish.toml', link: '/vi/configuration' },
               { text: 'Tích hợp IDE & LSP', link: '/vi/ide-integration' },
               { text: 'Thực thi từ xa & CAS', link: '/vi/remote-execution' },
+              { text: 'Ký & Xác thực Artifact', link: '/vi/signing' },
               { text: 'Triển khai sản xuất', link: '/vi/deployment' },
               { text: 'Dự án mẫu Polyglot', link: '/vi/examples-guide' },
               { text: 'Tra cứu lệnh CLI', link: '/vi/cli-reference' }
@@ -196,6 +198,7 @@ export default defineConfig({
               { text: '配置文件参考', link: '/zh-hans/configuration' },
               { text: 'IDE 集成与 LSP', link: '/zh-hans/ide-integration' },
               { text: '远程执行与 CAS', link: '/zh-hans/remote-execution' },
+              { text: '产物签名与校验', link: '/zh-hans/signing' },
               { text: '生产环境部署', link: '/zh-hans/deployment' },
               { text: '多语言示例项目', link: '/zh-hans/examples-guide' },
               { text: 'CLI 命令参考', link: '/zh-hans/cli-reference' }
@@ -271,6 +274,7 @@ export default defineConfig({
               { text: '設定檔案參考', link: '/zh-hant/configuration' },
               { text: 'IDE 整合與 LSP', link: '/zh-hant/ide-integration' },
               { text: '遠端執行與 CAS', link: '/zh-hant/remote-execution' },
+              { text: '產物簽名與驗證', link: '/zh-hant/signing' },
               { text: '生產環境部署', link: '/zh-hant/deployment' },
               { text: '多語言範例專案', link: '/zh-hant/examples-guide' },
               { text: 'CLI 命令參考', link: '/zh-hant/cli-reference' }
@@ -346,6 +350,7 @@ export default defineConfig({
               { text: '設定ファイルリファレンス', link: '/ja/configuration' },
               { text: 'IDE 統合 & LSP', link: '/ja/ide-integration' },
               { text: 'リモート実行 & CAS', link: '/ja/remote-execution' },
+              { text: 'アーティファクト署名と検証', link: '/ja/signing' },
               { text: '本番環境デプロイ', link: '/ja/deployment' },
               { text: 'ポリグロットサンプル', link: '/ja/examples-guide' },
               { text: 'CLI コマンドリファレンス', link: '/ja/cli-reference' }

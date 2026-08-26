@@ -107,3 +107,12 @@ docs/
 2. `docs/<lang-code>/` 配下の Markdown ファイルを作成または編集します。
 3. 英語のコミットメッセージでコミットします (例: `docs: translate getting-started to Japanese`)。
 4. フォーク先にプッシュし、`dev` ブランチに向けて Pull Request を開きます。
+
+### 方法 C: 自動翻訳ツール (Google Translate) から
+組み込みの Markdown 構文保護自動翻訳スクリプトを実行し、4 言語 (`vi`, `zh-hans`, `zh-hant`, `ja`) へ自動同期・翻訳します:
+```bash
+npm run docs:translate
+# またはドキュメントの同期状態をチェック:
+npm run docs:translate:check
+```
+

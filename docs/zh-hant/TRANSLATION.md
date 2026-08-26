@@ -97,13 +97,22 @@ docs/
 2. 点击右上角的 **Edit this file**（铅笔）图标。
 3. 保存修改至新分支并提交 Pull Request。
 
-### 方式 B：通过 Git 命令行
-1. Fork 仓库并克隆到本地：
+### 方式 B：通過 Git 命令列
+1. Fork 存放庫並複製到本機：
    ```bash
    git clone https://github.com/<your-username>/fish.git
    cd fish
    git checkout -b docs/translate-<lang>-<topic>
    ```
-2. 在 `docs/<lang-code>/` 中新增或修改 Markdown 文件。
-3. 使用英文提交信息进行 Commit（例如 `docs: translate getting-started to Chinese`）。
-4. 推送至您的 Fork 分支并向 `dev` 分支发起 Pull Request。
+2. 在 `docs/<lang-code>/` 中新增或修改 Markdown 檔案。
+3. 使用英文提交訊息進行 Commit（例如 `docs: translate getting-started to Chinese`）。
+4. 推送至您的 Fork 分支並向 `dev` 分支發起 Pull Request。
+
+### 方式 C：透過自動化翻譯指令碼 (Google Translate)
+執行內建的 Markdown 語法感知自動翻譯工具，自動同步並翻譯文件至 4 種目標語言（`vi`, `zh-hans`, `zh-hant`, `ja`）：
+```bash
+npm run docs:translate
+# 或檢查文件多語言同步狀態：
+npm run docs:translate:check
+```
+

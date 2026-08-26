@@ -107,3 +107,12 @@ docs/
 2. 在 `docs/<lang-code>/` 中新增或修改 Markdown 文件。
 3. 使用英文提交信息进行 Commit（例如 `docs: translate getting-started to Chinese`）。
 4. 推送至您的 Fork 分支并向 `dev` 分支发起 Pull Request。
+
+### 方式 C：通过自动化翻译脚本 (Google Translate)
+运行内置的 Markdown 语法感知自动翻译工具，自动同步并翻译文档至 4 种目标语言（`vi`, `zh-hans`, `zh-hant`, `ja`）：
+```bash
+npm run docs:translate
+# 或检查文档多语言同步状态：
+npm run docs:translate:check
+```
+

@@ -107,3 +107,12 @@ docs/
 2. Thêm hoặc cập nhật các tệp markdown trong `docs/<lang-code>/`.
 3. Commit thay đổi bằng thông điệp tiếng Anh (ví dụ: `docs: translate getting-started to Vietnamese`).
 4. Push lên fork của bạn và mở Pull Request vào nhánh `dev`.
+
+### Lựa chọn C: Sử dụng Công cụ Tự động Dịch thuật (Google Translate)
+Chạy công cụ dịch thuật tự động có sẵn để đồng bộ hóa và dịch tài liệu sang 4 ngôn ngữ đích (`vi`, `zh-hans`, `zh-hant`, `ja`):
+```bash
+npm run docs:translate
+# Hoặc kiểm tra độ đồng bộ của tài liệu:
+npm run docs:translate:check
+```
+

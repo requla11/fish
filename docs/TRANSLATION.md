@@ -111,8 +111,17 @@ docs/
    ```markdown
    ### Translation Disclosure
    - [ ] 100% Manual Translation (Native/Fluent speaker)
-   - [x] AI/Machine-Assisted with Native Review (Tool used: DeepL / Claude)
+   - [x] AI/Machine-Assisted with Native Review (Tool used: DeepL / Claude / Google Translate)
    - [ ] Automated Draft (Needs Community Native Review) (Tool used: ...)
    ```
 
 4. **Submit a Pull Request** targeting the **`dev`** branch.
+
+### Option C: Via Automated Translation Tool
+Run the built-in syntax-aware translator to automatically update or translate documentation into the 4 target languages (`vi`, `zh-hans`, `zh-hant`, `ja`):
+```bash
+npm run docs:translate
+# Or check translation synchronization:
+npm run docs:translate:check
+```
+

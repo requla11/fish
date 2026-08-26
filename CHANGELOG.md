@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Dependency cycles are now reported with their full path.** `BuildGraph::find_cycle()`
+  returns the actual node sequence forming a cycle (deterministic DFS), `validate()` and
+  `add_dependency()` embed that closed walk — e.g. `dependency cycle detected: 0 -> 1 ->
+  2 -> 0` — instead of a placeholder `edge 0 -> 0` error or bare endpoint names, and the
+  lockless critical-path computation reports the cycle segment it traversed rather than a
+  single node.
+
 ### Changed
 - **Backends declare their concrete build outputs as task artifacts** — go
   (output binary), cc (linked binary), zig (`zig-out/` tree), java maven

@@ -7,6 +7,53 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- **Local cache hits now restore declared task artifacts.** On success,
+  `CachingExecutor` packs each task's declared outputs into content-addressed
+  objects with a hashed manifest; on a fingerprint hit it re-materializes any
+  missing file from that store and falls back to a real rebuild whenever the
+  store is incomplete or the record predates artifact tracking. Previously a
+  local cache hit reported success while leaving no outputs on disk unless a
+  remote cache was configured.
+
+### Fixed
+- **cc**: object files, depfiles, and cache keys are discriminated by the
+  source's project-relative path — same-stem sources in different directories
+  no longer overwrite each other's objects or share one cache record.
+- **rust**: package fingerprints no longer exclude every directory named
+  `bin`; edits to the standard `src/bin/*` binary targets now invalidate the
+  cache instead of serving stale binaries.
+- **go**: build/test fingerprints include race, coverage, ldflags, gcflags,
+  and env; flipping `-race` no longer replays another configuration's cached
+  results. The documented `run_linter` knob is honored (vet skipped when
+  disabled) and vet is cached like its sibling tasks.
+- **zig / dart / swift / dotnet**: fingerprints now include release mode (and
+  dart's target platform), so toggling configurations can no longer replay
+  the other side's cached builds.
+- **zig**: the default test task emits `zig build test` under build.zig
+  projects and resolves a root source file otherwise; with neither present
+  the task is omitted instead of scheduling a guaranteed failure.
+- **dart**: `dart compile exe` resolves its entrypoint and `-o` output
+  (declared as task artifacts) instead of always failing for plain-Dart
+  projects.
+- **python**: default lint/typecheck/test tasks gate on their tool being
+  available on PATH, and the build step follows the detected runner
+  (uv/poetry) instead of hardcoding uv.
+- **java**: maven `package` always passes `-DskipTests` and gradle `build`
+  passes `-x test`, so suites run exactly once through the dedicated cached
+  test task; clean-task labels use artifact_id consistently.
+
+### CI
+- Heavyweight suites (fuzzing, mutation-testing, sanitizers,
+  flaky-quarantine, performance-benchmarks, multi-platform,
+  reproducible-builds, integration-testing, backend-testing, dogfood) are now
+  manual-only (`workflow_dispatch`) — their cron schedules and main-push
+  triggers fired expensive runs on a fresh repository before any baseline
+  existed. `essential-ci` gains push/PR triggers on `main`+`dev` (it was
+  manual-only), and security-audit keeps its weekly heartbeat.
+
 ## [0.6.0] - 2026-08-25
 
 ### Added

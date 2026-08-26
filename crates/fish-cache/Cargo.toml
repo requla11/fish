@@ -12,6 +12,7 @@ fish-executor = { workspace = true }
 fish-cas = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+blake3 = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["fs", "io-util", "rt-multi-thread", "sync"] }
 spin = { workspace = true }

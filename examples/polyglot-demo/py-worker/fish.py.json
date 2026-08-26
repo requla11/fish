@@ -1,0 +1,11 @@
+{
+  "name": "polyglot-demo-py-worker",
+  "tasks": [
+    {
+      "name": "validate",
+      "command": "python",
+      "args": ["worker.py"],
+      "depends_on": []
+    }
+  ]
+}

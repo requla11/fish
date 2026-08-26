@@ -7,6 +7,7 @@ use anstyle::{AnsiColor, Color, Effects, Style};
 use cargo_metadata::PackageId;
 use fish_backend_rust::BuildMode;
 use fish_core::project::Project;
+use fish_executor::Task;
 use fish_graph::BuildGraph;
 
 const BOLD: Style = Style::new().effects(Effects::BOLD);
@@ -368,4 +369,128 @@ pub fn print_graph_dot(project: &Project, graph: &BuildGraph<PackageId>) {
     }
 
     println!("}}");
+}
+
+// ---------------------------------------------------------------------------
+// Task-graph renderers (polyglot builds)
+// ---------------------------------------------------------------------------
+
+/// Render a unified polyglot task graph as a tree, rooted at tasks nothing
+/// else depends on. Mirrors [print_graph_tree] but labels nodes by task.
+pub fn print_task_graph_tree(graph: &BuildGraph<Task>) {
+    let mut roots: Vec<fish_graph::NodeId> = Vec::new();
+    for node in graph.nodes() {
+        if graph.dependents(node.id).unwrap_or(&[]).is_empty() {
+            roots.push(node.id);
+        }
+    }
+
+    roots.sort_by_key(|&id| task_label(graph, id));
+
+    for (i, &root) in roots.iter().enumerate() {
+        print_task_tree_node(graph, root, "", i == roots.len() - 1, true);
+    }
+}
+
+fn print_task_tree_node(
+    graph: &BuildGraph<Task>,
+    node_id: fish_graph::NodeId,
+    prefix: &str,
+    is_last: bool,
+    is_root: bool,
+) {
+    let connector = if is_root {
+        ""
+    } else if is_last {
+        "└── "
+    } else {
+        "├── "
+    };
+
+    println!("{}{}{}", prefix, connector, task_label(graph, node_id));
+
+    let deps_slice = graph.deps(node_id).unwrap_or_default();
+    let mut deps_vec: Vec<fish_graph::NodeId> = deps_slice.to_vec();
+    deps_vec.sort_by_key(|&id| task_label(graph, id));
+
+    let child_prefix = if is_root {
+        String::new()
+    } else if is_last {
+        format!("{}    ", prefix)
+    } else {
+        format!("{}│   ", prefix)
+    };
+
+    for (i, dep) in deps_vec.iter().enumerate() {
+        print_task_tree_node(graph, *dep, &child_prefix, i == deps_vec.len() - 1, false);
+    }
+}
+
+/// Render a unified polyglot task graph as JSON (`nodes` + `levels`).
+pub fn print_task_graph_json(graph: &BuildGraph<Task>) {
+    let mut nodes_json = vec![];
+    for node in graph.nodes() {
+        let mut deps_names: Vec<_> = graph
+            .deps(node.id)
+            .unwrap_or(&[])
+            .iter()
+            .filter_map(|&dep| graph.node(dep))
+            .map(|dep_node| dep_node.payload.label.clone())
+            .collect();
+        deps_names.sort();
+
+        nodes_json.push(serde_json::json!({
+            "name": node.payload.label,
+            "deps": deps_names,
+        }));
+    }
+    nodes_json.sort_by_key(|v| v["name"].as_str().unwrap_or_default().to_string());
+
+    let mut levels_json = Vec::new();
+    for level in graph.levels() {
+        let mut level_names: Vec<_> = level
+            .iter()
+            .filter_map(|&id| graph.node(id))
+            .map(|n| n.payload.label.clone())
+            .collect();
+        level_names.sort();
+        levels_json.push(level_names);
+    }
+
+    let output = serde_json::json!({
+        "nodes": nodes_json,
+        "levels": levels_json,
+    });
+
+    println!("{}", serde_json::to_string_pretty(&output).unwrap());
+}
+
+/// Render a unified polyglot task graph in Graphviz DOT format.
+pub fn print_task_graph_dot(graph: &BuildGraph<Task>) {
+    println!("digraph fish {{");
+    println!("    rankdir=BT;");
+
+    let mut edges = vec![];
+    for node in graph.nodes() {
+        let name = node.payload.label.clone();
+        for &dep in graph.deps(node.id).unwrap_or(&[]) {
+            if let Some(dep_node) = graph.node(dep) {
+                edges.push((dep_node.payload.label.clone(), name.clone()));
+            }
+        }
+    }
+
+    edges.sort();
+    for (from, to) in edges {
+        println!("    \"{from}\" -> \"{to}\";");
+    }
+
+    println!("}}");
+}
+
+fn task_label(graph: &BuildGraph<Task>, id: fish_graph::NodeId) -> String {
+    graph
+        .node(id)
+        .map(|node| node.payload.label.clone())
+        .unwrap_or_default()
 }

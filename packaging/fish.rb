@@ -9,7 +9,7 @@ class Fish < Formula
   desc "Fast, flexible, cache-first build orchestration system for Rust and beyond"
   homepage "https://github.com/requla11/fish"
   url "https://github.com/requla11/fish/archive/refs/tags/v0.5.0.tar.gz"
-  sha256 "0f715ca76c78a94aa541780f314724ddbb60539acdd7aff49350c208bbb22111"
+  sha256 "7b18de2bd5f433c86f228c2d54c9d96e370d0a82c8e5712b9c3171f3643177dd"
   license "MIT"
 
   depends_on "rust" => :build

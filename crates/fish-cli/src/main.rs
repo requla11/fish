@@ -3,13 +3,17 @@
 mod ai_bridge;
 mod args;
 mod attestation;
+mod backend_registry;
 mod backends;
+mod bisect;
 mod build;
 mod commands;
 mod config;
 mod critical_path;
+mod cross_deps;
 pub mod daemon;
 pub mod experimental;
+mod nl_authoring;
 mod nl_query;
 pub mod pgo;
 pub mod pipeline;
@@ -25,6 +29,7 @@ mod tui;
 mod utils;
 mod watch;
 
+use std::path::PathBuf;
 use std::process::ExitCode;
 
 use clap::Parser;
@@ -89,7 +94,7 @@ fn main() -> ExitCode {
         Command::Ai(args) => commands::run_ai(args),
         Command::Why(args) => commands::run_why(args),
         Command::Lsp(_args) => commands::run_lsp(),
-        Command::Init(args) => commands::run_init(args.path, args.force),
+        Command::Init(args) => commands::run_init(args.path, args.force, args.describe),
         Command::New(args) => commands::run_new(&args.name, args.template.as_deref(), args.path),
         Command::Build(args) => run_build_mode(args.common, BuildMode::Build),
         Command::Check(args) => run_build_mode(args.common, BuildMode::Check),
@@ -130,6 +135,43 @@ fn main() -> ExitCode {
         Command::SuperOpt(args) => commands::run_super_opt(args),
         Command::Plugin(args) => commands::run_plugin(args),
         Command::Fix(args) => commands::run_fix(args),
+        Command::SigningKey => commands::signing_key::run_signing_key(),
+        Command::GenDocs(args) => commands::docs_gen::run_gen_docs(args.path),
+        Command::Heal(args) => {
+            let repo = args.path.unwrap_or_else(|| PathBuf::from("."));
+            let words: Vec<String> = if args.cmd.is_empty() {
+                vec!["cargo".into(), "build".into()]
+            } else {
+                args.cmd
+            };
+            match bisect::heal(&repo, args.depth, &words) {
+                Ok(bisect::HealOutcome::NothingBroken) => {
+                    println!("✅ Newest commit builds fine — nothing to heal.");
+                    ExitCode::SUCCESS
+                }
+                Ok(bisect::HealOutcome::NoGoodCommitWithinDepth { depth }) => {
+                    println!(
+                        "❌ All {depth} scanned commits failed. Increase --depth or fix forward."
+                    );
+                    ExitCode::FAILURE
+                }
+                Ok(bisect::HealOutcome::RevertPrepared(plan)) => {
+                    println!(
+                        "🔧 Culprit: `{}` — {}\n",
+                        plan.culprit.hash, plan.culprit.subject
+                    );
+                    println!("Revert branch ready locally: {}\n", plan.branch);
+                    println!("PR title: {}", plan.pr_title);
+                    println!("\n{}\n", plan.pr_body);
+                    println!("Review, push, and open the PR yourself — fish never pushes.");
+                    ExitCode::SUCCESS
+                }
+                Err(e) => {
+                    eprintln!("error: {e}");
+                    ExitCode::FAILURE
+                }
+            }
+        }
         Command::CostEstimate(args) => commands::run_cost_estimate(args),
         Command::Ui(args) => match commands::run_ui(args.port, args.open, args.path) {
             Ok(_) => ExitCode::SUCCESS,

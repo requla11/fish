@@ -1,13 +1,15 @@
 {
-  "name": "web-frontend",
+  "name": "@fish-demo/web-frontend",
   "version": "0.1.0",
-  "description": "TypeScript frontend for polyglot demo",
-  "main": "src/index.ts",
+  "private": true,
+  "description": "TypeScript frontend of the polyglot demo; consumes the TaskEvent contract owned by py-worker.",
   "scripts": {
     "build": "tsc",
-    "dev": "tsc --watch"
+    "typecheck": "tsc --noEmit",
+    "start": "node dist/index.js"
   },
   "devDependencies": {
-    "typescript": "^5.9.3"
+    "@types/node": "^20.14.0",
+    "typescript": "^5.5.0"
   }
 }

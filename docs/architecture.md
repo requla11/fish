@@ -101,7 +101,6 @@ Fish includes 11 dedicated language adapters:
 
 ## Security & Verification
 
-- **Artifact Cryptographic Signing (`fish-signing`)**: Ed25519 digital signature generation and verification.
+- **Artifact Cryptographic Signing**: Ed25519 via `FISH_SIGNING_SEED` — provenance in `fish-security/slsa.rs`, remote-cache gate verifies against `FISH_TRUSTED_KEYS` (see docs/signing.md).
 - **SBOM Generation**: SPDX and CycloneDX Software Bill of Materials export.
 - **Vulnerability Scanner (`fish-security`)**: Automated dependency scanning with CVSS scoring and severity blocking.
-- **Secrets Management (`fish-secrets`)**: HashiCorp Vault, AWS Secrets Manager, and Kubernetes Secret integration with automatic console redaction.

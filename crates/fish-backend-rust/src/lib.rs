@@ -10,6 +10,7 @@ use fish_core::{BinaryUtils, BuildBackend, FingerprintUtils, ToolchainUtils};
 use fish_executor::{CacheEntry, CommandSpec, Task};
 use fish_graph::{BuildGraph, NodeId};
 
+pub mod ecosystem;
 pub mod fingerprint;
 pub mod linker;
 pub mod nextest;
@@ -19,46 +20,13 @@ pub mod rustc;
 pub mod unification;
 pub mod wrapper;
 
+pub use fish_backend_api::BuildMode;
 pub use linker::{FastLinker, RustLinkerOptimizer};
 pub use nextest::{NextestRunner, SingleTestResult, TestStatus};
 pub use pipelining::PipelinedCrateCoordinator;
 pub use rustc::RustcCompiler;
 pub use unification::WorkspaceFeatureUnification;
 pub use wrapper::RustcInvocation;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BuildMode {
-    Build,
-    Check,
-    Test,
-    Clippy,
-    Doc,
-    Bench,
-}
-
-impl BuildMode {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Self::Build => "build",
-            Self::Check => "check",
-            Self::Test => "test",
-            Self::Clippy => "clippy",
-            Self::Doc => "doc",
-            Self::Bench => "bench",
-        }
-    }
-
-    pub fn cargo_subcommand(&self) -> &'static str {
-        match self {
-            Self::Build => "build",
-            Self::Check => "check",
-            Self::Test => "test",
-            Self::Clippy => "clippy",
-            Self::Doc => "doc",
-            Self::Bench => "bench",
-        }
-    }
-}
 
 #[derive(Debug, Error)]
 pub enum BackendError {
@@ -90,7 +58,17 @@ impl BuildBackend for RustBackend {
 }
 
 impl RustBackend {
+    /// Cached process-wide: construction spawns two `rustc`
+    /// subprocesses, previously up to twice per invocation.
     pub fn new() -> Result<Self, BackendError> {
+        static CACHE: std::sync::OnceLock<Result<RustBackend, String>> = std::sync::OnceLock::new();
+        CACHE
+            .get_or_init(|| Self::new_uncached().map_err(|e| e.to_string()))
+            .clone()
+            .map_err(BackendError::Toolchain)
+    }
+
+    fn new_uncached() -> Result<Self, BackendError> {
         let toolchain = ToolchainUtils::get_tool_version("rustc", &["--version"])
             .map_err(BackendError::Toolchain)?;
         let rustc = RustcCompiler::detect().map_err(BackendError::Toolchain)?;
@@ -164,33 +142,31 @@ impl RustBackend {
         let mut task_graph = BuildGraph::new();
 
         for level in &levels {
-            let mut members: Vec<NodeId> = level.to_vec();
-            members.sort_by_key(|id| {
-                let package_id = &package_graph
-                    .node(*id)
-                    .expect("level members are package graph nodes")
-                    .payload;
-                project
-                    .package(package_id)
-                    .expect("level members are metadata packages")
-                    .name
-                    .to_string()
-            });
-
-            let names: Vec<String> = members
+            // Resolve each member's package name once; sort the owned
+            // pairs instead of allocating a fresh String per comparison.
+            let mut named: Vec<(String, NodeId)> = level
                 .iter()
                 .map(|id| {
                     let package_id = &package_graph
                         .node(*id)
                         .expect("level members are package graph nodes")
                         .payload;
-                    project
+                    let name = project
                         .package(package_id)
                         .expect("level members are metadata packages")
                         .name
-                        .to_string()
+                        .to_string();
+                    (name, *id)
                 })
                 .collect();
+            named.sort_by(|a, b| a.0.cmp(&b.0));
+
+            let mut names = Vec::with_capacity(named.len());
+            let mut members = Vec::with_capacity(named.len());
+            for (name, id) in named {
+                names.push(name);
+                members.push(id);
+            }
 
             let label = if names.len() == 1 {
                 names[0].clone()

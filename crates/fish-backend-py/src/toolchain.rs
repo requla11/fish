@@ -10,6 +10,37 @@ impl PyToolchain {
         Self
     }
 
+    /// True when `program` resolves to an existing file — either an explicit
+    /// path or something reachable through PATH (with Windows shim
+    /// extensions). Lets default task sets omit optional tools instead of
+    /// failing the whole build when they are absent.
+    pub fn tool_on_path(program: &str) -> bool {
+        if program.contains(['/', '\\']) {
+            return Path::new(program).exists();
+        }
+        let Some(path) = std::env::var_os("PATH") else {
+            return false;
+        };
+        for dir in std::env::split_paths(&path) {
+            #[cfg(windows)]
+            for candidate in [
+                dir.join(format!("{program}.exe")),
+                dir.join(format!("{program}.cmd")),
+                dir.join(format!("{program}.bat")),
+                dir.join(program),
+            ] {
+                if candidate.is_file() {
+                    return true;
+                }
+            }
+            #[cfg(not(windows))]
+            if dir.join(program).is_file() {
+                return true;
+            }
+        }
+        false
+    }
+
     pub fn build_command(
         &self,
         task: &PyTaskSpec,

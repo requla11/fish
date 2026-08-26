@@ -12,6 +12,62 @@ pub enum QueryExpr {
     Filter(String, Box<QueryExpr>),
     Union(Box<QueryExpr>, Box<QueryExpr>),
     Intersect(Box<QueryExpr>, Box<QueryExpr>),
+    Except(Box<QueryExpr>, Box<QueryExpr>),
+}
+
+fn split_top_level_commas(input: &str) -> Vec<&str> {
+    let mut parts = Vec::new();
+    let mut depth = 0usize;
+    let mut quote: Option<char> = None;
+    let mut start = 0usize;
+
+    for (idx, ch) in input.char_indices() {
+        if let Some(q) = quote {
+            if ch == q {
+                quote = None;
+            }
+            continue;
+        }
+        match ch {
+            '\'' | '"' => quote = Some(ch),
+            '(' => depth += 1,
+            ')' => depth = depth.saturating_sub(1),
+            ',' if depth == 0 => {
+                parts.push(&input[start..idx]);
+                start = idx + ch.len_utf8();
+            }
+            _ => {}
+        }
+    }
+    parts.push(&input[start..]);
+    parts
+}
+
+fn parse_binary_args<F>(
+    prefix: &str,
+    trimmed: &str,
+    name: &str,
+    build: F,
+) -> Result<Option<QueryExpr>, String>
+where
+    F: Fn(Box<QueryExpr>, Box<QueryExpr>) -> QueryExpr,
+{
+    if let Some(args) = trimmed
+        .strip_prefix(prefix)
+        .and_then(|s| s.strip_suffix(')'))
+    {
+        let parts: Vec<&str> = split_top_level_commas(args)
+            .into_iter()
+            .map(|s| s.trim())
+            .collect();
+        if parts.len() != 2 {
+            return Err(format!("{name}() expects exactly 2 arguments"));
+        }
+        let left = parse_query(parts[0])?;
+        let right = parse_query(parts[1])?;
+        return Ok(Some(build(Box::new(left), Box::new(right))));
+    }
+    Ok(None)
 }
 
 pub struct GraphQueryEngine<'a, T> {
@@ -101,6 +157,11 @@ impl<'a, T> GraphQueryEngine<'a, T> {
                 let l = self.eval(left);
                 let r = self.eval(right);
                 l.intersection(&r).copied().collect()
+            }
+            QueryExpr::Except(left, right) => {
+                let l = self.eval(left);
+                let r = self.eval(right);
+                l.difference(&r).copied().collect()
             }
         }
     }
@@ -206,34 +267,56 @@ pub fn parse_query(input: &str) -> Result<QueryExpr, String> {
         .strip_prefix("allpaths(")
         .and_then(|s| s.strip_suffix(')'))
     {
-        let parts: Vec<&str> = args.split(',').map(|s| s.trim()).collect();
-        if parts.len() == 2 {
-            let left = parse_query(parts[0])?;
-            let right = parse_query(parts[1])?;
-            return Ok(QueryExpr::AllPaths(Box::new(left), Box::new(right)));
+        let parts: Vec<&str> = split_top_level_commas(args)
+            .into_iter()
+            .map(|s| s.trim())
+            .collect();
+        if parts.len() != 2 {
+            return Err("allpaths() expects exactly 2 arguments".to_string());
         }
+        let left = parse_query(parts[0])?;
+        let right = parse_query(parts[1])?;
+        return Ok(QueryExpr::AllPaths(Box::new(left), Box::new(right)));
     }
     if let Some(args) = trimmed
         .strip_prefix("somepath(")
         .and_then(|s| s.strip_suffix(')'))
     {
-        let parts: Vec<&str> = args.split(',').map(|s| s.trim()).collect();
-        if parts.len() == 2 {
-            let left = parse_query(parts[0])?;
-            let right = parse_query(parts[1])?;
-            return Ok(QueryExpr::SomePath(Box::new(left), Box::new(right)));
+        let parts: Vec<&str> = split_top_level_commas(args)
+            .into_iter()
+            .map(|s| s.trim())
+            .collect();
+        if parts.len() != 2 {
+            return Err("somepath() expects exactly 2 arguments".to_string());
         }
+        let left = parse_query(parts[0])?;
+        let right = parse_query(parts[1])?;
+        return Ok(QueryExpr::SomePath(Box::new(left), Box::new(right)));
+    }
+    if let Some(expr) = parse_binary_args("union(", trimmed, "union", QueryExpr::Union)? {
+        return Ok(expr);
+    }
+    if let Some(expr) = parse_binary_args("intersect(", trimmed, "intersect", QueryExpr::Intersect)?
+    {
+        return Ok(expr);
+    }
+    if let Some(expr) = parse_binary_args("except(", trimmed, "except", QueryExpr::Except)? {
+        return Ok(expr);
     }
     if let Some(args) = trimmed
         .strip_prefix("filter(")
         .and_then(|s| s.strip_suffix(')'))
     {
-        let parts: Vec<&str> = args.splitn(2, ',').map(|s| s.trim()).collect();
-        if parts.len() == 2 {
-            let pattern = parts[0].trim_matches('"').trim_matches('\'').to_string();
-            let inner = parse_query(parts[1])?;
-            return Ok(QueryExpr::Filter(pattern, Box::new(inner)));
+        let parts: Vec<&str> = split_top_level_commas(args)
+            .into_iter()
+            .map(|s| s.trim())
+            .collect();
+        if parts.len() != 2 {
+            return Err("filter() expects exactly 2 arguments".to_string());
         }
+        let pattern = parts[0].trim_matches('"').trim_matches('\'').to_string();
+        let inner = parse_query(parts[1])?;
+        return Ok(QueryExpr::Filter(pattern, Box::new(inner)));
     }
 
     let target_name = trimmed.trim_start_matches("//").to_string();
@@ -289,5 +372,55 @@ mod tests {
         let filtered = engine.eval(&filter_query);
         assert_eq!(filtered.len(), 1);
         assert!(filtered.contains(&b));
+    }
+
+    #[test]
+    fn test_graph_query_union_intersect_except() {
+        let mut graph = BuildGraph::new();
+        let u = graph.add_node("util");
+        let c = graph.add_node("core");
+        let a = graph.add_node("app");
+
+        graph.add_dependency(u, c).unwrap();
+        graph.add_dependency(c, a).unwrap();
+
+        let engine = GraphQueryEngine::new(&graph, |&s| s.to_string());
+
+        let union_query = parse_query("union(deps(core), rdeps(core))").unwrap();
+        let union_set = engine.eval(&union_query);
+        assert_eq!(union_set.len(), 3);
+
+        let intersect_query = parse_query("intersect(//..., filter('core', //...))").unwrap();
+        let intersect_set = engine.eval(&intersect_query);
+        assert_eq!(intersect_set.len(), 1);
+        assert!(intersect_set.contains(&c));
+
+        let except_query = parse_query("except(deps(app), filter('util', //...))").unwrap();
+        let except_set = engine.eval(&except_query);
+        assert_eq!(except_set.len(), 2);
+        assert!(except_set.contains(&a));
+        assert!(except_set.contains(&c));
+        assert!(!except_set.contains(&u));
+    }
+
+    #[test]
+    fn test_graph_query_nested_args_split() {
+        let mut graph = BuildGraph::new();
+        let u = graph.add_node("util");
+        let a = graph.add_node("app");
+
+        graph.add_dependency(u, a).unwrap();
+
+        let engine = GraphQueryEngine::new(&graph, |&s| s.to_string());
+
+        let nested_query =
+            parse_query("except(union(deps(app), //...), filter('util', //...))").unwrap();
+        let result = engine.eval(&nested_query);
+        assert_eq!(result.len(), 1);
+        assert!(result.contains(&a));
+
+        assert!(parse_query("union(app)").is_err());
+        assert!(parse_query("allpaths(app)").is_err());
+        assert!(parse_query("filter(app)").is_err());
     }
 }

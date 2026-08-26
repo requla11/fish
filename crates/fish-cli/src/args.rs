@@ -55,6 +55,12 @@ pub enum Command {
     SuperOpt(SuperOptArgs),
     Plugin(PluginArgs),
     Fix(FixArgs),
+    SigningKey,
+    /// Bisect recent commits after a failed build and prepare a revert branch.
+    Heal(HealArgs),
+    /// Regenerate docs/cli-reference.md from clap definitions (internal).
+    #[command(hide = true)]
+    GenDocs(GenDocsArgs),
     CostEstimate(CostEstimateArgs),
     #[command(alias = "dashboard")]
     Ui(UiArgs),
@@ -79,6 +85,28 @@ pub struct FixArgs {
     pub apply: bool,
     #[arg(long)]
     pub ai: bool,
+}
+
+/// Arguments for `fish heal`.
+#[derive(Debug, Args)]
+pub struct HealArgs {
+    /// Project directory (defaults to cwd).
+    #[arg(long, short)]
+    pub path: Option<PathBuf>,
+    /// How many recent commits to scan.
+    #[arg(long, default_value_t = 10)]
+    pub depth: usize,
+    /// Build command words to test at each commit (default: cargo build).
+    #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+    pub cmd: Vec<String>,
+}
+
+/// Arguments for the hidden docs generator.
+#[derive(Debug, Args)]
+pub struct GenDocsArgs {
+    /// Output file (defaults to docs/cli-reference.md).
+    #[arg(long, short)]
+    pub path: Option<PathBuf>,
 }
 
 #[derive(Debug, Args)]
@@ -134,6 +162,9 @@ pub struct InitArgs {
     pub path: Option<PathBuf>,
     #[arg(long, short)]
     pub force: bool,
+    /// Plain-language project description, e.g. --describe "rust cli + python tools".
+    #[arg(long)]
+    pub describe: Option<String>,
 }
 
 #[derive(Debug, Args)]
@@ -397,6 +428,11 @@ pub struct CommonArgs {
     pub explain: bool,
     #[arg(long = "otel-endpoint")]
     pub otel_endpoint: Option<String>,
+    /// Disable automatic cross-language dependency inference between detected
+    /// projects (see `cross_deps`); references are then ignored and each
+    /// ecosystem builds independently.
+    #[arg(long = "no-infer-deps")]
+    pub no_infer_deps: bool,
 }
 
 #[derive(Debug, Args)]
@@ -522,6 +558,10 @@ pub struct GraphArgs {
     pub path: Option<PathBuf>,
     #[arg(long, default_value_t = GraphFormat::Tree, value_enum)]
     pub format: GraphFormat,
+    /// Disable automatic cross-language dependency inference so the rendered
+    /// graph matches a `--no-infer-deps` build.
+    #[arg(long = "no-infer-deps")]
+    pub no_infer_deps: bool,
 }
 
 /// Arguments for cache server

@@ -8,11 +8,16 @@ pub fn compute_zig_fingerprint(
     project_dir: &Path,
     zig_version: &str,
     target: &ZigTarget,
+    release: bool,
 ) -> Result<String, ZigBackendError> {
     let mut hasher = blake3::Hasher::new();
 
     hasher.update(zig_version.as_bytes());
     hasher.update(target.as_str().as_bytes());
+    // The optimize mode flips -Doptimize between Debug and ReleaseFast;
+    // ignoring it would let one mode serve the other's cached build.
+    hasher.update(b"release=");
+    hasher.update(if release { b"1" } else { b"0" });
 
     let extensions = &["zig", "zon", "c", "h", "cpp", "hpp"];
     FingerprintUtils::hash_directory_with_extensions(
@@ -56,7 +61,7 @@ mod tests {
         fs::write(&build_file, "const std = @import(\"std\");").unwrap();
 
         let fingerprint =
-            compute_zig_fingerprint(temp.path(), "0.11.0", &ZigTarget::Native).unwrap();
+            compute_zig_fingerprint(temp.path(), "0.11.0", &ZigTarget::Native, false).unwrap();
 
         assert!(!fingerprint.is_empty());
         assert_eq!(fingerprint.len(), 64);
@@ -75,11 +80,13 @@ mod tests {
         )
         .unwrap();
 
-        let fp1 = compute_zig_fingerprint(temp.path(), "0.11.0", &ZigTarget::Native).unwrap();
+        let fp1 =
+            compute_zig_fingerprint(temp.path(), "0.11.0", &ZigTarget::Native, false).unwrap();
 
         fs::write(&zig_file, "const std = @import(\"std\"); pub fn main() !void { std.debug.print(\"Goodbye\\n\"); }").unwrap();
 
-        let fp2 = compute_zig_fingerprint(temp.path(), "0.11.0", &ZigTarget::Native).unwrap();
+        let fp2 =
+            compute_zig_fingerprint(temp.path(), "0.11.0", &ZigTarget::Native, false).unwrap();
 
         assert_ne!(fp1, fp2);
     }

@@ -8,11 +8,15 @@ pub fn compute_swift_fingerprint(
     project_dir: &Path,
     swift_version: &str,
     platform: &SwiftPlatform,
+    release: bool,
 ) -> Result<String, SwiftBackendError> {
     let mut hasher = blake3::Hasher::new();
 
     hasher.update(swift_version.as_bytes());
     hasher.update(platform.as_str().as_bytes());
+    // `-c release` vs debug produce different binaries; both must not share
+    // one cache identity.
+    hasher.update(if release { b"release" } else { b"debug" });
 
     let extensions = &["swift", "m", "mm", "h", "hpp", "c", "cpp", "modulemap"];
     FingerprintUtils::hash_directory_with_extensions(
@@ -59,7 +63,7 @@ mod tests {
         fs::write(&package_file, "// swift-tools-version: 5.9").unwrap();
 
         let fingerprint =
-            compute_swift_fingerprint(temp.path(), "5.9.0", &SwiftPlatform::MacOS).unwrap();
+            compute_swift_fingerprint(temp.path(), "5.9.0", &SwiftPlatform::MacOS, false).unwrap();
 
         assert!(!fingerprint.is_empty());
         assert_eq!(fingerprint.len(), 64);
@@ -74,11 +78,13 @@ mod tests {
         let swift_file = sources_dir.join("main.swift");
         fs::write(&swift_file, "print(\"Hello, World!\")").unwrap();
 
-        let fp1 = compute_swift_fingerprint(temp.path(), "5.9.0", &SwiftPlatform::MacOS).unwrap();
+        let fp1 =
+            compute_swift_fingerprint(temp.path(), "5.9.0", &SwiftPlatform::MacOS, false).unwrap();
 
         fs::write(&swift_file, "print(\"Goodbye, World!\")").unwrap();
 
-        let fp2 = compute_swift_fingerprint(temp.path(), "5.9.0", &SwiftPlatform::MacOS).unwrap();
+        let fp2 =
+            compute_swift_fingerprint(temp.path(), "5.9.0", &SwiftPlatform::MacOS, false).unwrap();
 
         assert_ne!(fp1, fp2);
     }

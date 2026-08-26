@@ -16,6 +16,8 @@ and runs build, check, and test work with local caching and parallel scheduling.
 
 Fish does not replace compilers or package managers. It coordinates tools such
 as Cargo, Go, Node.js, Python, C/C++, Docker, and other supported backends.
+Unrelated to [fish-shell](https://fishshell.com), the interactive shell — they
+share only a name.
 
 > Status: pre-1.0. The CLI and configuration may change. Treat distributed,
 > remote-cache, and experimental features as opt-in and validate them in your
@@ -127,7 +129,7 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for local development and
 | `fish init` | Initialize Fish configuration and generate task definitions for detected project languages. |
 | `fish build`, `check`, `test` | Execute work discovered from the project graph (supports `--explain`, `--pgo-generate`, `--pgo-use`). |
 | `fish ui` | Start the interactive Web Dashboard & DAG visualizer with 5-language telemetry. |
-| `fish query <EXPR>` | Query graph algebra: `deps(...)`, `rdeps(...)`, `allpaths(...)`, `somepath(...)`, `filter(...)`. |
+| `fish query <EXPR>` | Query graph algebra: `deps(...)`, `rdeps(...)`, `allpaths(...)`, `somepath(...)`, `filter(...)`, `union(...)`, `intersect(...)`, `except(...)`. |
 | `fish daemon` | Manage background build daemon (`start`, `status`, `stop`) for sub-millisecond warm builds. |
 | `fish run` | Build and run a selected Rust package or binary. |
 | `fish graph` | Print the graph as stage trees, JSON, or DOT. |
@@ -167,11 +169,11 @@ crates/
   fish-cache/        fingerprint cache and two-phase pruning
   fish-cas/          content-addressable artifact storage with ZSTD compression
   fish-incremental/  change detection, AST inference, and dirty explainer
-  fish-backend-*/    11+ language and toolchain adapters
+  fish-backend-*/    11 language and toolchain adapters behind one EcosystemBackend trait
+  fish-backend-api/  the backend contract crate (trait, BuildMode, Ecosystem)
   fish-worker/       distributed execution server and streaming VFS protocol
   fish-remote-cache/ HTTP remote cache server with Ed25519 signature gating
-  fish-security/     multi-layer security, secret redaction, and CVE scanner
-  fish-signing/      Ed25519 cryptographic artifact signing and SPDX SBOM
+  fish-security/     multi-layer security, CVE scanner, SLSA provenance signing
   fish-cli/          command-line application, daemon IPC, and terminal rendering
 examples/             sample projects
 docs/                 additional documentation

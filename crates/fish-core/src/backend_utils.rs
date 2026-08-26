@@ -40,15 +40,24 @@ impl FingerprintUtils {
     }
 
     pub fn combine_fingerprints(prefix: &str, fingerprints: &[String]) -> String {
+        Self::combine_fingerprint_strs(prefix, fingerprints.iter().map(String::as_str))
+    }
+
+    /// Allocation-light variant: hashes length prefixes as fixed-width
+    /// integers and borrows each fingerprint instead of copying.
+    pub fn combine_fingerprint_strs<'a, I>(prefix: &str, fingerprints: I) -> String
+    where
+        I: IntoIterator<Item = &'a str>,
+    {
         let mut hasher = blake3::Hasher::new();
         if !prefix.is_empty() {
-            hasher.update(format!("prefix[{}]:", prefix.len()).as_bytes());
+            hasher.update(&prefix.len().to_le_bytes());
             hasher.update(prefix.as_bytes());
         }
-        let mut sorted = fingerprints.to_vec();
-        sorted.sort();
+        let mut sorted: Vec<&str> = fingerprints.into_iter().collect();
+        sorted.sort_unstable();
         for fp in &sorted {
-            hasher.update(format!("fp[{}]:", fp.len()).as_bytes());
+            hasher.update(&(fp.len() as u64).to_le_bytes());
             hasher.update(fp.as_bytes());
         }
         hasher.finalize().to_hex().to_string()
@@ -124,12 +133,18 @@ impl FingerprintUtils {
                 let file_name = entry.file_name();
                 let name_str = file_name.to_string_lossy();
 
-                if path.is_dir() {
+                // file_type() comes free from the dirent on most platforms;
+                // avoids 2-3 extra stat() calls per entry.
+                let Ok(ft) = entry.file_type() else {
+                    continue;
+                };
+
+                if ft.is_dir() {
                     if is_excluded_dir(&name_str) {
                         continue;
                     }
                     walk(&path, base, is_excluded_dir, is_allowed_file, hasher)?;
-                } else if path.is_file() && is_allowed_file(&path) {
+                } else if ft.is_file() && is_allowed_file(&path) {
                     let rel = path.strip_prefix(base).unwrap_or(&path);
                     hasher.update(rel.to_string_lossy().replace('\\', "/").as_bytes());
                     hasher.update(b":");

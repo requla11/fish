@@ -1,8 +1,6 @@
 name: Multi-Platform Testing
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 concurrency:

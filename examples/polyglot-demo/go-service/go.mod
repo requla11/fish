@@ -1,3 +1,3 @@
-module github.com/requla11/polyglot-demo/go-service
+module github.com/requla11/fish/examples/polyglot-demo/go-service
 
 go 1.21

@@ -1,0 +1,10 @@
+[package]
+name = "fish-backend-api"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+fish-executor = { workspace = true }
+fish-graph = { workspace = true }

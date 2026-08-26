@@ -1,6 +1,6 @@
-# Changelog
+﻿# Changelog
 
-> 🌐 **Translations & Contributions:** Want to translate or improve this document in your language? See our [Translation Guidelines](TRANSLATION.md).
+> ðŸŒ **Translations & Contributions:** Want to translate or improve this document in your language? See our [Translation Guidelines](TRANSLATION.md).
 
 All notable changes to this project will be documented in this file.
 
@@ -9,23 +9,123 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Backends declare their concrete build outputs as task artifacts** — go
+  (output binary), cc (linked binary), zig (`zig-out/` tree), java maven
+  (`target/`) and gradle (`build/libs/`), dotnet (`--output` dir when
+  configured) and python pex (`.pex` file). Together with local artifact
+  restore this completes the cache-first loop for every ecosystem, and
+  cross-language inference can now link consumers to just the producing
+  tasks instead of whole projects.
+- **Local cache hits now restore declared task artifacts.** On success,
+  `CachingExecutor` packs each task's declared outputs into content-addressed
+  objects with a hashed manifest; on a fingerprint hit it re-materializes any
+  missing file from that store and falls back to a real rebuild whenever the
+  store is incomplete or the record predates artifact tracking. Previously a
+  local cache hit reported success while leaving no outputs on disk unless a
+  remote cache was configured.
+
+### Fixed
+- **cc**: object files, depfiles, and cache keys are discriminated by the
+  source's project-relative path — same-stem sources in different directories
+  no longer overwrite each other's objects or share one cache record.
+- **rust**: package fingerprints no longer exclude every directory named
+  `bin`; edits to the standard `src/bin/*` binary targets now invalidate the
+  cache instead of serving stale binaries.
+- **go**: build/test fingerprints include race, coverage, ldflags, gcflags,
+  and env; flipping `-race` no longer replays another configuration's cached
+  results. The documented `run_linter` knob is honored (vet skipped when
+  disabled) and vet is cached like its sibling tasks.
+- **zig / dart / swift / dotnet**: fingerprints now include release mode (and
+  dart's target platform), so toggling configurations can no longer replay
+  the other side's cached builds.
+- **zig**: the default test task emits `zig build test` under build.zig
+  projects and resolves a root source file otherwise; with neither present
+  the task is omitted instead of scheduling a guaranteed failure.
+- **dart**: `dart compile exe` resolves its entrypoint and `-o` output
+  (declared as task artifacts) instead of always failing for plain-Dart
+  projects.
+- **python**: default lint/typecheck/test tasks gate on their tool being
+  available on PATH, and the build step follows the detected runner
+  (uv/poetry) instead of hardcoding uv.
+- **java**: maven `package` always passes `-DskipTests` and gradle `build`
+  passes `-x test`, so suites run exactly once through the dedicated cached
+  test task; clean-task labels use artifact_id consistently.
+
+### CI
+- Heavyweight suites (fuzzing, mutation-testing, sanitizers,
+  flaky-quarantine, performance-benchmarks, multi-platform,
+  reproducible-builds, integration-testing, backend-testing, dogfood) are now
+  manual-only (`workflow_dispatch`) — their cron schedules and main-push
+  triggers fired expensive runs on a fresh repository before any baseline
+  existed. `essential-ci` gains push/PR triggers on `main`+`dev` (it was
+  manual-only), and security-audit keeps its weekly heartbeat.
+
+## [0.6.0] - 2026-08-25
+
+### Added
+- `fish-backend-api`: the real `EcosystemBackend` trait (id/ecosystems/detect/build_task_graph) — every backend now implements one contract and registers in a single registry; adding an ecosystem is implement-trait + one line
+- `fish heal`: git-bisects recent commits on build failure, prepares a local revert branch with ready-to-paste PR copy (never pushes)
+- `fish init --describe "rust cli + python tools"`: rule-based natural-language scaffolding
+- `fish gen-docs`: renders docs/cli-reference.md from clap definitions; CI fails on drift (`CLI Docs Drift` job)
+- `fish signing-key`: exports the Ed25519 public key from FISH_SIGNING_SEED; docs/signing.md documents the full flow
+
+### Changed
+- Workspace slimmed from 35 to 27 crates: removed 8 dead crates (~3.1k lines) including fish-dashboard, fish-docker-builder, fish-secrets, fish-signing, fish-multiplatform, fish-notifications, fish-flaky-detection, fish-templates
+- polyglot dispatcher is data-driven (was a 170-line per-ecosystem match); BuildMode moved to fish-backend-api
+- Cross-language dependency inference for polyglot workspaces (--no-infer-deps to disable)
+
+### Performance
+- Polyglot builds and `fish graph` now perform a single full-tree ecosystem
+  walk per invocation: command dispatch passes its scan result into the graph
+  builder instead of walking the workspace twice.
+- Tree walkers classify entries through `DirEntry::file_type()` (the type the
+  OS already delivered) instead of two separate `is_dir()`/`is_file()` stat
+  calls per entry.
+- Cross-language inference resolves references lexically before touching the
+  filesystem, eliminating up to hundreds of thousands of pointless `exists()`
+  stats on import-heavy repositories, and no longer allocates for string
+  literals that cannot escape their project.
+- Discovery and cross-project scanning share one prune list, so vendored and
+  dependency trees are skipped consistently by every pass.
+
+### Added
+- Cross-language dependency inference for polyglot workspaces: fish scans each
+  detected project for references into sibling projects (source imports that
+  reach across directories, `go.mod` `replace` pointers, `-e ../` editable
+  requirements) and links the corresponding tasks so producers build first â€”
+  no `depends_on` declarations needed. On by default; disable with
+  `--no-infer-deps`. Every edge cites its evidence file in build logs, and
+  mutual references are refused instead of guessed. `fish graph` now renders
+  the unified task graph (inferred edges included) for multi-ecosystem
+  workspaces instead of walking up to an enclosing Cargo workspace.
+
+### Fixed
+- Docker backend: a Dockerfile using lowercase `as` stage aliases had every
+  instruction collapse into one "default" bucket, emitting N identically-named
+  tasks that ran as N redundant concurrent full-image builds. Stage parsing is
+  now case-insensitive, unnamed `FROM` stages get stable names derived from
+  their image reference, exactly one task is emitted per stage, and the image
+  artifact attaches to the actual last stage instead of the magic name
+  `final`.
+
 ## [0.5.0] - 2026-08-24
 
 ### Added
-#### Mid-term (v0.4–v0.5)
-- Cloud Cost Calculator (`fish cost-estimate`) — TOML pricing catalogs for AWS/GCP/Azure with LPT bin-packing, spot/ondemand comparison, egress/storage pricing, and ranked savings reports.
+#### Mid-term (v0.4â€“v0.5)
+- Cloud Cost Calculator (`fish cost-estimate`) â€” TOML pricing catalogs for AWS/GCP/Azure with LPT bin-packing, spot/ondemand comparison, egress/storage pricing, and ranked savings reports.
 - OpenTelemetry OTLP/HTTP+JSON exporter (`OtlpExporter`) honoring `OTEL_EXPORTER_OTLP_ENDPOINT`; `fish build` exports root + per-task spans at completion.
-- Distributed Trace Aggregation (`merge_worker_traces`) — dedup, trace-id adoption, orphan re-parenting across workers.
-- Build Regression Alerts — median-baseline evaluation over rolling JSONL history, surfaced by `fish build`.
-- Spot Instance Optimization (`PreemptionRetryExecutor`) — retries infrastructure-shaped failures then migrates to an on-demand fallback.
-- Plugin Capability Auditor — risk-ranked static analysis of wasm plugin manifests.
-- Live OSV advisory feed (`OsvClient`, `FISH_OSV_ENDPOINT`) — batched querybatch lookups replacing the stale embedded snapshot for Cargo and npm.
+- Distributed Trace Aggregation (`merge_worker_traces`) â€” dedup, trace-id adoption, orphan re-parenting across workers.
+- Build Regression Alerts â€” median-baseline evaluation over rolling JSONL history, surfaced by `fish build`.
+- Spot Instance Optimization (`PreemptionRetryExecutor`) â€” retries infrastructure-shaped failures then migrates to an on-demand fallback.
+- Plugin Capability Auditor â€” risk-ranked static analysis of wasm plugin manifests.
+- Live OSV advisory feed (`OsvClient`, `FISH_OSV_ENDPOINT`) â€” batched querybatch lookups replacing the stale embedded snapshot for Cargo and npm.
 - RBAC resource-scoped target rules (e.g. `prod/*` requiring higher clearance) and append-only JSONL audit log.
 - CAS synchronous reader (`with_artifact_bytes`).
 - Web Dashboard JSONL persistence (`PersistentMetricsStore`) and `/api/team-stats`.
 - K8s FishCluster CRD manifests, reconciler, and spot-node handling in the Go control plane.
 - Cross-region replication topology (`ReplicationTopology`) with region-aware catalog tracking and TTL eviction.
-- Signature Gate (`SignedArtifactGate`) — Ed25519 verify-on-read for remote artifacts, wired into `fish build` via `FISH_SIGNING_SEED`.
+- Signature Gate (`SignedArtifactGate`) â€” Ed25519 verify-on-read for remote artifacts, wired into `fish build` via `FISH_SIGNING_SEED`.
 
 #### v0.6
 - Toolchain provisioning: hermetic downloader with network fetch, SHA-256 checksums, tar/zip extraction; `fish.lock` lockfile with drift verification.
@@ -52,9 +152,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Response files follow MSVC backslash/quote escaping rules and reject embedded newlines.
 - Work-stealing scheduler records real start offsets and worker ids in Chrome traces.
 - Racing executor checks cancellation before starting each side and documents duplicated-execution semantics.
-- Go Raft election timeout now randomizes correctly over 150–300ms (previous string-modulo produced 48–57ms); tests use a deterministic timeout override.
+- Go Raft election timeout now randomizes correctly over 150â€“300ms (previous string-modulo produced 48â€“57ms); tests use a deterministic timeout override.
 - fs watcher sets its running flag only after a successful start and honors the configured debounce interval.
-- Jobserver pool clamps limit to ≥ 1; resource governor warning threshold no longer saturates at low limits.
+- Jobserver pool clamps limit to â‰¥ 1; resource governor warning threshold no longer saturates at low limits.
 
 ### Removed
 - WASM plugin engine no longer fakes hook execution or substitutes stub bytecode (fails loudly with `Unsupported` until a runtime is embedded).

@@ -3,7 +3,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::depfile::read_depfile;
-use fish_core::FingerprintUtils;
 
 pub fn compute_source_fingerprint(
     source_path: &Path,
@@ -21,7 +20,18 @@ pub fn compute_source_fingerprint(
     }
 
     if source_path.exists() {
-        FingerprintUtils::hash_file_into(source_path, &mut hasher)?;
+        // Read the source once and reuse the buffer for both hashing
+        // and include scanning (previously: two full reads per file).
+        let Ok(content) = fs::read(source_path) else {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                format!(
+                    "source vanished during fingerprinting: {}",
+                    source_path.display()
+                ),
+            ));
+        };
+        hasher.update(&content);
 
         if let Some(deps) = depfile.and_then(read_depfile) {
             let base = source_path.parent().unwrap_or_else(|| Path::new("."));
@@ -34,13 +44,25 @@ pub fn compute_source_fingerprint(
                 if dep == source_path {
                     continue;
                 }
-                if dep.exists() {
-                    let _ = FingerprintUtils::hash_file_into(&dep, &mut hasher);
+                // Read each depfile-listed header once; hash it and keep
+                // the buffer for transitive #include scanning.
+                if let Ok(dep_content) = fs::read(&dep) {
+                    hasher.update(&dep_content);
+                    let mut visited = HashSet::new();
+                    visited.insert(dep.clone());
+                    scan_and_hash_headers(
+                        &dep_content,
+                        dep.parent(),
+                        includes,
+                        &mut hasher,
+                        &mut visited,
+                    )?;
                 }
             }
-        } else if let Ok(content) = fs::read(source_path) {
+        } else {
             let parent = source_path.parent();
             let mut visited = HashSet::new();
+            visited.insert(source_path.to_path_buf());
             scan_and_hash_headers(&content, parent, includes, &mut hasher, &mut visited)?;
         }
     }
@@ -61,11 +83,12 @@ fn scan_and_hash_headers(
         if trimmed.starts_with("#include")
             && let Some(header_name) = extract_header_name(trimmed)
             && let Some(path) = resolve_header(&header_name, source_dir, includes)
-            && path.exists()
             && visited.insert(path.clone())
         {
-            FingerprintUtils::hash_file_into(&path, hasher)?;
+            // Single read per header serves both the hasher and the
+            // recursive scanner.
             if let Ok(header_content) = fs::read(&path) {
+                hasher.update(&header_content);
                 scan_and_hash_headers(&header_content, path.parent(), includes, hasher, visited)?;
             }
         }

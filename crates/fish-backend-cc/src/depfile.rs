@@ -62,8 +62,7 @@ fn parse_deps(after_colon: &str) -> Vec<PathBuf> {
             }
             c if c.is_whitespace() => {
                 if !token.is_empty() {
-                    deps.push(PathBuf::from(token.clone()));
-                    token.clear();
+                    deps.push(PathBuf::from(std::mem::take(&mut token)));
                 }
             }
             _ => token.push(c),

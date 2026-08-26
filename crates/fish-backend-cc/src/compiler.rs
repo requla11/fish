@@ -31,7 +31,22 @@ pub struct CcCompiler {
 }
 
 impl CcCompiler {
+    /// Cached per language: detection probes up to 4 compiler
+    /// candidates with a `--version` subprocess each, previously once
+    /// per project directory.
     pub fn detect(language: CcLanguage) -> Result<Self, String> {
+        static C_CACHE: std::sync::OnceLock<Result<CcCompiler, String>> =
+            std::sync::OnceLock::new();
+        static CPP_CACHE: std::sync::OnceLock<Result<CcCompiler, String>> =
+            std::sync::OnceLock::new();
+        let cell = match language {
+            CcLanguage::C => &C_CACHE,
+            CcLanguage::Cpp => &CPP_CACHE,
+        };
+        cell.get_or_init(|| Self::detect_uncached(language)).clone()
+    }
+
+    fn detect_uncached(language: CcLanguage) -> Result<Self, String> {
         let candidates = match language {
             CcLanguage::C => vec!["gcc", "clang", "cc", "cl"],
             CcLanguage::Cpp => vec!["g++", "clang++", "c++", "cl"],

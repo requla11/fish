@@ -36,7 +36,20 @@ pub fn package_input_fingerprint(
     mode: BuildMode,
 ) -> Result<String, BackendError> {
     let mut hasher = blake3::Hasher::new();
-    hash_directory(package_dir, &mut hasher)?;
+    // Rust-specific input policy: prune only Cargo's build directory. The
+    // generic DEFAULT_EXCLUDED_DIRS also pruned any directory named "bin" at
+    // any depth, which made the standard src/bin/* binary targets invisible
+    // to the fingerprint — edits there served stale cached binaries.
+    FingerprintUtils::hash_directory_filtered(
+        package_dir,
+        |name| name == "target",
+        |_| true,
+        &mut hasher,
+    )
+    .map_err(|source| BackendError::Read {
+        path: package_dir.to_path_buf(),
+        source,
+    })?;
     if let Some(lock) = lock_file {
         hasher.update(b"lock:");
         hash_file_into(lock, &mut hasher)?;
@@ -162,6 +175,27 @@ mod tests {
         )
         .unwrap();
         assert_ne!(a, b);
+    }
+
+    #[test]
+    fn package_fingerprint_includes_src_bin_targets() {
+        // Regression: the generic exclusion list pruned ANY directory named
+        // "bin", hiding the standard src/bin/* binary targets — edits there
+        // never invalidated the cache and stale binaries were served.
+        let dir = temp_dir();
+        fs::create_dir_all(dir.path().join("src/bin")).unwrap();
+        fs::write(dir.path().join("src/lib.rs"), "pub fn f() {}").unwrap();
+        fs::write(dir.path().join("src/bin/foo.rs"), "fn main() {}").unwrap();
+
+        let a = package_input_fingerprint(dir.path(), None, "t", BuildMode::Build).unwrap();
+        fs::write(
+            dir.path().join("src/bin/foo.rs"),
+            "fn main() { println!(\"changed\"); }",
+        )
+        .unwrap();
+        let b = package_input_fingerprint(dir.path(), None, "t", BuildMode::Build).unwrap();
+
+        assert_ne!(a, b, "edits under src/bin/ must change the fingerprint");
     }
 
     #[test]

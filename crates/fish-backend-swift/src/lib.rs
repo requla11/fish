@@ -8,6 +8,7 @@ use fish_executor::{CacheEntry, CommandSpec, Task};
 use fish_graph::BuildGraph;
 
 pub mod config;
+pub mod ecosystem;
 pub mod fingerprint;
 pub mod toolchain;
 
@@ -65,6 +66,7 @@ impl SwiftBackend {
             project_dir,
             &self.toolchain.swift_version,
             &config.platform,
+            config.release,
         )
         .unwrap_or_else(|_| "no_fp".to_string());
 

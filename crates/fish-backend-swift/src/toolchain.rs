@@ -17,7 +17,18 @@ pub enum SwiftCompiler {
 }
 
 impl SwiftToolchain {
+    /// Cached process-wide: `swift --version` + 2 PATH probes per call
+    /// previously ran once per project directory.
     pub fn detect() -> Result<Self, SwiftBackendError> {
+        static CACHE: std::sync::OnceLock<Result<SwiftToolchain, String>> =
+            std::sync::OnceLock::new();
+        CACHE
+            .get_or_init(|| Self::detect_uncached().map_err(|e| e.to_string()))
+            .clone()
+            .map_err(SwiftBackendError::Toolchain)
+    }
+
+    fn detect_uncached() -> Result<Self, SwiftBackendError> {
         let swift_executable = Self::find_executable("swift")
             .ok_or_else(|| SwiftBackendError::Toolchain("Swift not found in PATH".to_string()))?;
 

@@ -8,14 +8,22 @@ This document outlines the strategic development roadmap for Fish, structured ac
 
 ## 🎯 Vision
 
-Fish aims to be the most efficient, resilient, and developer-friendly build orchestration system for polyglot monorepos and distributed development environments. Today Fish is a **Rust-only workspace**; the Python and Go service layers described in earlier revisions are planned future work, not shipped code.
+Fish aims to be the most efficient, resilient, and developer-friendly build orchestration system for polyglot monorepos and distributed development environments.
+
+Today Fish ships as three cooperating layers, all present in this repository:
+
+- **Rust core** (`crates/`) — the CLI and build engine; the primary product surface.
+- **Go control plane** (`go/`) — coordinator, worker gateway, DB migrator, and Kubernetes operator binaries with their own test suites.
+- **Python AI services** (`py/`) — build-time prediction, flaky-test quarantine, speculative pre-warming, analytics, and an advice server, invoked from the CLI through the JSON-RPC `AiBridge` / daemon IPC.
+
+The shared Protobuf contracts under `proto/` remain design drafts that no crate references yet; cross-service IPC currently speaks JSON-RPC instead.
 
 ---
 
 ## 🚀 Current Milestone (v0.2.x) — Completed
 
 ### Phase 1: Core Engine & Polyglot Foundations
-- [ ] **Tri-Engine Architecture**: *Planned, not implemented.* Only the Rust high-performance core exists today; there are no Python AI or Go cloud services in the repository.
+- [x] **Tri-Engine Architecture**: Rust core (`crates/`), Go control plane (`go/`: coordinator, worker gateway, DB migrator, K8s operator), and Python AI services (`py/`). The layers are wired together over JSON-RPC IPC rather than the originally envisioned shared Protobuf contracts.
 - [x] **11 Language Backends**: Rust, Go, TypeScript/Node.js, Python, C/C++, Docker, Java, .NET, Swift, Dart, Zig.
 - [ ] **Shared Protobuf Contracts**: *Drafts only.* `build.proto`, `ai.proto`, and `coordinator.proto` exist under `proto/` but are referenced by no crate (no gRPC dependencies in the workspace).
 - [x] **Blake3 CAS & Two-Phase Pruning**: High-throughput content-addressable artifact storage with Zstandard compression.
@@ -35,23 +43,24 @@ Fish aims to be the most efficient, resilient, and developer-friendly build orch
 ### 2. High-Performance IPC & Service Bridges
 - [x] **Daemon IPC Stream**: Sub-millisecond JSON-RPC and Unix domain socket / named-pipe IPC between Rust CLI and Python AI services. *(JSON-RPC 2.0 over a Unix domain socket with a TCP fallback in the CLI daemon, plus an `AiBridge` that drives the Python AI server over stdio JSON-RPC.)*
 - [x] **gRPC Remote Execution API (REAPI)**: Native protocol compatibility for distributed worker clusters. *(Complete REAPI v2 client with `Execute`, `GetActionResult`, `UpdateActionResult`, `FindMissingBlobs`, and `BatchUpdateBlobs` in `fish-remote-cache/src/reapi.rs`.)*
-- [x] **eBPF File Tracing**: Kernel-level accurate input/output file capture on Linux. *(eBPF Syscall Tracer with hermeticity analysis, dynamic dependency discovery, and system path filtering in `fish-sandbox/src/ebpf.rs`.)*
+- [ ] **eBPF File Tracing**: Kernel-level accurate input/output file capture on Linux. *(Partially implemented: the event model and hermeticity analysis exist in `fish-sandbox/src/file_events.rs`, but that module's own documentation states that attaching an automatic capture source — eBPF tracepoints, strace, platform APIs — "is deliberately out of scope until a real implementation lands". No kernel attachment exists today; events must be pushed manually via `FileEventRecorder::record_access`.)*
 
 ### 3. Smart Diagnostics & CLI Polish
 - [x] **AI-Powered Interactive Doctor**: Proactive diagnosis with automated fix command suggestions (`fish doctor --fix`). *(`--fix` performs real remediation — schema-correct `fish.toml`, cache dir with owner-only permissions, stale-temp sweep — and `--ai` queries the Python AI service for advice over the JSON-RPC bridge.)*
 - [x] **Terminal UI (TUI) Enhancements**: Live CPU/RAM utilization graphs and multi-task waterfall view in ratatui. *(Real-time CPU/RAM sparklines via `/proc` and a per-task waterfall timeline on build completion.)*
 
-> **v0.3.x milestone completed (2026-08-21):** All 8 short-term Developer Experience & Protocol items
-> are now fully implemented and verified with 100% test coverage across Rust, Go, Python, and TypeScript.
+> **v0.3.x milestone completed (2026-08-21):** 7 of the 8 short-term Developer Experience & Protocol
+> items are fully implemented; eBPF file tracing ships only its event-model and hermeticity-analysis
+> foundation (automatic kernel capture is still open, tracked above).
 
 ---
 
 ## 🌟 Medium-term Goals (v0.4.x - v0.5.x) — Focus: Distributed Infrastructure & AI
 
 ### 1. Cloud-Native Distributed Infrastructure
-- [ ] **Kubernetes Operator (Go)**: Custom Resource Definitions (CRDs) for auto-scaling elastic worker fleets.
-- [ ] **Spot Instance Optimization**: Fault-tolerant task migration upon cloud node preemption.
-- [ ] **Cross-Region Cache Replication**: Peer-to-peer CAS artifact synchronization with geo-distributed L2 caches.
+- [x] **Kubernetes Operator (Go)**: Custom Resource Definitions (CRDs) for auto-scaling elastic worker fleets. *(`go/cmd/fish-k8s-operator` with the FishCluster CRD, controller, reconciler, and spot-node handling in `go/pkg/k8s`; shipped with v0.5.0 per CHANGELOG.)*
+- [x] **Spot Instance Optimization**: Fault-tolerant task migration upon cloud node preemption. *(Rust-side `PreemptionRetryExecutor` in `fish-scheduler/src/preemption.rs` retries infrastructure-shaped failures then migrates to an on-demand fallback; spot-node logic in `go/pkg/k8s/spot.go`.)*
+- [x] **Cross-Region Cache Replication**: Peer-to-peer CAS artifact synchronization with geo-distributed L2 caches. *(Region-aware `ReplicationTopology` with catalog tracking and TTL eviction in `fish-remote-cache/src/replication.rs`.)*
 
 ### 2. Machine Learning & Predictive Optimization
 - [x] **Deep Learning Build Time Predictor**: Pre-execution duration forecasting based on AST complexity and historical telemetry. *(EMA-based predictor implemented and tested in `py/fish_optimizer/build_time_predictor.py`.)*
@@ -59,9 +68,9 @@ Fish aims to be the most efficient, resilient, and developer-friendly build orch
 - [x] **Speculative Pre-Warming**: Predicting likely changed packages and pre-compiling on background idle cores. *(Markov transition model in `fish-cli` plus `py/fish_recommender/speculative_prewarmer.py`, whose transitive impact propagation was fixed.)*
 
 ### 3. Telemetry, Observability & Team Collaboration
-- [ ] **OpenTelemetry Integration**: End-to-end distributed tracing across all build steps and network nodes.
-- [ ] **Web Team Analytics Dashboard**: Aggregated build speedups, cache hit efficiency, and team velocity metrics.
-- [ ] **Cloud Cost Calculator**: Real-time cloud compute and storage savings estimates.
+- [x] **OpenTelemetry Integration**: End-to-end distributed tracing across all build steps and network nodes. *(OTLP/HTTP+JSON `OtlpExporter` honoring `OTEL_EXPORTER_OTLP_ENDPOINT` in `fish-analytics/src/otel_export.rs`; `fish build` exports root + per-task spans; cross-worker trace merging in the same crate.)*
+- [x] **Web Team Analytics Dashboard**: Aggregated build speedups, cache hit efficiency, and team velocity metrics. *(JSONL persistence via `PersistentMetricsStore` and the `/api/team-stats` endpoint in `fish-dashboard/src/api.rs`.)*
+- [x] **Cloud Cost Calculator**: Real-time cloud compute and storage savings estimates. *(`fish cost-estimate` with TOML pricing catalogs for AWS/GCP/Azure, LPT bin-packing, and spot/ondemand comparison.)*
 
 ### 4. Plugin Ecosystem
 - [ ] **WebAssembly Plugin Engine**: Sandboxed Wasm plugins using Extism/WASI for custom toolchain adapters.
@@ -89,7 +98,7 @@ Fish aims to be the most efficient, resilient, and developer-friendly build orch
 | :--- | :--- | :--- | :--- |
 | **v0.2.x** | Tri-Engine Core, 11 Backends, CAS, 5-Language Docs | Q3 2026 | ✅ Completed |
 | **v0.3.x** | IDE Plugins, IPC Bridges, eBPF Tracing, LSP | Current | ✅ Completed |
-| **v0.4.x - v0.5.x** | K8s Operator, Predictive ML, OpenTelemetry, Wasm | Q1 - Q2 2027 | 🟡 Up Next |
+| **v0.4.x - v0.5.x** | K8s Operator, Predictive ML, OpenTelemetry, Wasm | Q1 - Q2 2027 | 🟡 In Progress (infra, ML, and telemetry shipped; Wasm plugin engine + marketplace remain) |
 | **v1.0** | MicroVM Sandboxing, Enterprise SSO, P2P Mesh, SLSA L3 | Q3 2027+ | ⚪ Vision |
 
 ---

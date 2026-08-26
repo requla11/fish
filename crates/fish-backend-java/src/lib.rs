@@ -8,6 +8,7 @@ use fish_executor::{CacheEntry, CommandSpec, Task};
 use fish_graph::BuildGraph;
 
 pub mod config;
+pub mod ecosystem;
 pub mod fingerprint;
 pub mod toolchain;
 
@@ -112,7 +113,7 @@ impl JavaBackend {
         let clean_args = vec!["clean".to_string()];
         let clean_spec = CommandSpec::new(maven).args(clean_args).cwd(project_dir);
         let clean_task = Task::new(
-            format!("mvn clean {}", config.group_id),
+            format!("mvn clean {}", config.artifact_id),
             clean_spec.command_line(),
             clean_spec,
         );
@@ -142,9 +143,9 @@ impl JavaBackend {
         graph.add_dependency(clean_node_id, compile_node_id)?;
 
         let mut package_args = vec!["package".to_string()];
-        if config.skip_tests {
-            package_args.push("-DskipTests".to_string());
-        }
+        // The dedicated `mvn test` task below is the single test runner;
+        // without this flag the package lifecycle executed every suite again.
+        package_args.push("-DskipTests".to_string());
         let package_spec = CommandSpec::new(maven).args(package_args).cwd(project_dir);
         let package_cache = CacheEntry {
             key: FingerprintUtils::format_cache_key(
@@ -160,6 +161,7 @@ impl JavaBackend {
             package_spec.command_line(),
             package_spec,
         )
+        .with_artifacts(vec![project_dir.join("target")])
         .with_cache(package_cache);
         let package_node_id = graph.add_node(package_task);
         graph.add_dependency(compile_node_id, package_node_id)?;
@@ -207,17 +209,18 @@ impl JavaBackend {
         let clean_args = vec!["clean".to_string()];
         let clean_spec = CommandSpec::new(gradle).args(clean_args).cwd(project_dir);
         let clean_task = Task::new(
-            format!("gradle clean {}", config.group_id),
+            format!("gradle clean {}", config.artifact_id),
             clean_spec.command_line(),
             clean_spec,
         );
         let clean_node_id = graph.add_node(clean_task);
 
         let mut build_args = vec!["build".to_string()];
-        if config.skip_tests {
-            build_args.push("-x".to_string());
-            build_args.push("test".to_string());
-        }
+        // The dedicated cached `gradle test` task below is the single test
+        // runner; leaving `test` inside the build lifecycle executed every
+        // suite twice per uncached build.
+        build_args.push("-x".to_string());
+        build_args.push("test".to_string());
         let build_spec = CommandSpec::new(gradle).args(build_args).cwd(project_dir);
         let build_cache = CacheEntry {
             key: FingerprintUtils::format_cache_key(
@@ -233,6 +236,7 @@ impl JavaBackend {
             build_spec.command_line(),
             build_spec,
         )
+        .with_artifacts(vec![project_dir.join("build").join("libs")])
         .with_cache(build_cache);
         let build_node_id = graph.add_node(build_task);
         graph.add_dependency(clean_node_id, build_node_id)?;

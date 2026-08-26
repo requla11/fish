@@ -14,7 +14,18 @@ pub enum ZigCompiler {
 }
 
 impl ZigToolchain {
+    /// Cached process-wide: PATH probe + `zig version` per call
+    /// previously ran once per project directory.
     pub fn detect() -> Result<Self, ZigBackendError> {
+        static CACHE: std::sync::OnceLock<Result<ZigToolchain, String>> =
+            std::sync::OnceLock::new();
+        CACHE
+            .get_or_init(|| Self::detect_uncached().map_err(|e| e.to_string()))
+            .clone()
+            .map_err(ZigBackendError::Toolchain)
+    }
+
+    fn detect_uncached() -> Result<Self, ZigBackendError> {
         let zig_executable = Self::find_executable("zig")
             .ok_or_else(|| ZigBackendError::Toolchain("Zig not found in PATH".to_string()))?;
 

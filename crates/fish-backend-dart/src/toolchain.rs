@@ -17,7 +17,18 @@ pub enum DartCompiler {
 }
 
 impl DartToolchain {
+    /// Probes `dart --version` + `flutter --version` (2 subprocesses).
+    /// Cached process-wide so multi-module workspaces detect once.
     pub fn detect() -> Result<Self, DartBackendError> {
+        static CACHE: std::sync::OnceLock<Result<DartToolchain, String>> =
+            std::sync::OnceLock::new();
+        CACHE
+            .get_or_init(|| Self::detect_uncached().map_err(|e| e.to_string()))
+            .clone()
+            .map_err(DartBackendError::Toolchain)
+    }
+
+    fn detect_uncached() -> Result<Self, DartBackendError> {
         let dart_executable = Self::find_executable("dart");
         let dart_version = dart_executable
             .as_ref()

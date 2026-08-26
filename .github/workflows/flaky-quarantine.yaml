@@ -1,8 +1,6 @@
 name: Flaky Test Detection & Stress Testing
 
 on:
-  schedule:
-    - cron: '0 2 * * *'
   workflow_dispatch:
 
 env:
@@ -35,6 +33,6 @@ jobs:
         run: |
           for i in {1..5}; do
             echo "Running test iteration $i of 5..."
-            cargo test -p fish-executor -p fish-scheduler -p fish-cache -p fish-flaky-detection -- --test-threads=4
+            cargo test -p fish-executor -p fish-scheduler -p fish-cache -- --test-threads=4
           done
           echo "All stress test iterations passed without flakiness."

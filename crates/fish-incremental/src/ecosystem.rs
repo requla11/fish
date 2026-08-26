@@ -76,6 +76,26 @@ pub fn is_build_relevant_file(path: &Path) -> bool {
     }
 }
 
+/// Directories never worth descending into during ecosystem discovery or
+/// cross-project scanning. Shared by every tree walker so all passes agree on
+/// the pruned shape of the workspace.
+pub const PRUNED_DIRS: &[&str] = &[
+    ".fish",
+    ".git",
+    ".github",
+    ".idea",
+    ".venv",
+    "__pycache__",
+    "build",
+    "deps",
+    "dist",
+    "editors",
+    "fixtures",
+    "node_modules",
+    "target",
+    "vendor",
+];
+
 pub fn detect_ecosystems(root: &Path) -> Vec<EcosystemInfo> {
     let mut results = Vec::new();
     let mut stack = vec![root.to_path_buf()];
@@ -107,24 +127,31 @@ pub fn detect_ecosystems(root: &Path) -> Vec<EcosystemInfo> {
 
         for entry in entries.flatten() {
             let path = entry.path();
-            if path.is_dir() {
+            // One classification per entry: DirEntry::file_type carries the
+            // type the OS delivered with readdir, so only symlinks need a
+            // follow-up stat (to keep the historical follows-symlink walk).
+            let file_type = match entry.file_type() {
+                Ok(ft) if !ft.is_symlink() => ft,
+                Ok(_) => match path.metadata() {
+                    Ok(meta) if meta.is_dir() => {
+                        let name = entry.file_name();
+                        let name_str = name.to_string_lossy();
+                        if !PRUNED_DIRS.contains(&name_str.as_ref()) {
+                            subdirs.push(path);
+                        }
+                        continue;
+                    }
+                    _ => continue,
+                },
+                Err(_) => continue,
+            };
+            if file_type.is_dir() {
                 let name = entry.file_name();
                 let name_str = name.to_string_lossy();
-                if name_str != "target"
-                    && name_str != "node_modules"
-                    && name_str != ".git"
-                    && name_str != ".venv"
-                    && name_str != "__pycache__"
-                    && name_str != "dist"
-                    && name_str != "build"
-                    && name_str != "fixtures"
-                    && name_str != "editors"
-                    && name_str != ".fish"
-                    && name_str != ".github"
-                {
+                if !PRUNED_DIRS.contains(&name_str.as_ref()) {
                     subdirs.push(path);
                 }
-            } else if path.is_file()
+            } else if file_type.is_file()
                 && let Some(file_name) = path.file_name().and_then(|n| n.to_str())
             {
                 match file_name {

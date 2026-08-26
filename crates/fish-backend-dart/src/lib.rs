@@ -8,6 +8,7 @@ use fish_executor::{CacheEntry, CommandSpec, Task};
 use fish_graph::BuildGraph;
 
 pub mod config;
+pub mod ecosystem;
 pub mod fingerprint;
 pub mod toolchain;
 
@@ -66,6 +67,8 @@ impl DartBackend {
             &self.toolchain.dart_version,
             &self.toolchain.flutter_version,
             &config.project_type,
+            config.target_platform.as_str(),
+            config.release,
         )
         .unwrap_or_else(|_| "no_fp".to_string());
 
@@ -89,7 +92,7 @@ impl DartBackend {
         &self,
         config: &DartProjectConfig,
         project_dir: &Path,
-        _output_dir: &Path,
+        output_dir: &Path,
         namespace: &str,
         fp: &str,
         graph: &mut BuildGraph<Task>,
@@ -152,7 +155,34 @@ impl DartBackend {
         }
 
         if config.compile {
-            let compile_args = vec!["compile".to_string(), "exe".to_string()];
+            // `dart compile exe` requires an entrypoint and an -o output;
+            // without them the command is a guaranteed failure. Resolve the
+            // conventional entrypoints or omit the task entirely.
+            let entrypoint = ["bin/main.dart", "lib/main.dart"]
+                .iter()
+                .map(|rel| project_dir.join(rel))
+                .find(|path| path.exists())
+                .or_else(|| {
+                    let candidate = project_dir
+                        .join("bin")
+                        .join(format!("{}.dart", config.project_name));
+                    candidate.exists().then_some(candidate)
+                })
+                .filter(|path| path.exists());
+
+            let Some(entrypoint) = entrypoint else {
+                return Ok(());
+            };
+            let out_name = fish_core::BinaryUtils::add_binary_extension(&config.project_name);
+            let out_path = output_dir.join(&out_name);
+
+            let compile_args = vec![
+                "compile".to_string(),
+                "exe".to_string(),
+                entrypoint.to_string_lossy().to_string(),
+                "-o".to_string(),
+                out_path.to_string_lossy().to_string(),
+            ];
             let compile_spec = CommandSpec::new(dart).args(compile_args).cwd(project_dir);
             let compile_cache = CacheEntry {
                 key: FingerprintUtils::format_cache_key(
@@ -168,6 +198,7 @@ impl DartBackend {
                 compile_spec.command_line(),
                 compile_spec,
             )
+            .with_artifacts(vec![out_path])
             .with_cache(compile_cache);
             let compile_node_id = graph.add_node(compile_task);
             graph.add_dependency(analyze_node_id, compile_node_id)?;

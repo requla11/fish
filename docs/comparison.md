@@ -12,10 +12,24 @@ Fish is engineered from the ground up in Rust 2024 for modern polyglot monorepos
 | **CAS Compression** | Zstandard (Zstd L1-L22) + CoW | Tar.gz / Gzip | Zstd / Custom | Zstd / Custom |
 | **Local Materialization** | Reflink / Copy-on-Write (0ms) | File copy | Symlinks / Hardlinks | Reflink / CoW |
 | **Content Chunking** | FastCDC (16KB - 256KB block dedup) | Whole artifact archive | Whole artifact archive | Chunked CAS |
-| **VFS Resolution** | In-Memory Snapshot Tree (<2ms) | FS scan | Inotify / Watchman daemon | Watchman / EdenFS |
+| **VFS Resolution** | In-Memory Snapshot Tree (see benchmarks) | FS scan | Inotify / Watchman daemon | Watchman / EdenFS |
 | **Semantic Invalidation** | AST Interface Hash (.rmeta / ABI) | File hash only | Header-only compile | Header / rmeta compile |
 | **AI Diagnostics** | Native IPC + Heuristics + Error Explainer | None | None | None |
 | **Interactive Dashboard** | Built-in Web GUI + TUI | Vercel Web App | Third-party UI | Open-source console |
+
+### Implementation evidence
+
+Each Fish-specific capability above maps to real code in this repository:
+
+| Capability | Where it lives |
+| :--- | :--- |
+| Blake3 hashing, Zstd compression, CoW/reflink materialization, FastCDC chunking | `crates/fish-cas/src/` (`reflink.rs`, `chunking.rs`) and `crates/fish-cache/src/` |
+| In-memory VFS snapshot tree | `crates/fish-incremental/src/vfs.rs` (`VfsSnapshotTree`) — latency depends on tree size; see [benchmarks](benchmarks.md) for what is measured today |
+| Semantic/ABI invalidation | `crates/fish-incremental/src/abi_extractor.rs` |
+| AI diagnostics bridge | `crates/fish-cli/src/ai_bridge.rs` over the JSON-RPC daemon IPC |
+| Web dashboard + TUI | `crates/fish-dashboard/` and `crates/fish-cli/src/tui.rs` |
+
+Competitor columns describe those tools as publicly documented; we do not maintain their code.
 
 ---
 

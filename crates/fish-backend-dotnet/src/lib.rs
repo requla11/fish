@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 use fish_core::{BuildBackend, FingerprintUtils};
@@ -8,6 +8,7 @@ use fish_executor::{CacheEntry, CommandSpec, Task};
 use fish_graph::BuildGraph;
 
 pub mod config;
+pub mod ecosystem;
 pub mod fingerprint;
 pub mod toolchain;
 
@@ -64,6 +65,7 @@ impl DotnetBackend {
             project_dir,
             &self.toolchain.dotnet_version,
             &config.target_framework,
+            config.release,
         )
         .unwrap_or_else(|_| "no_fp".to_string());
 
@@ -88,14 +90,15 @@ impl DotnetBackend {
         .with_cache(restore_cache);
         let restore_node_id = graph.add_node(restore_task);
 
-        let mut build_args = vec!["build".to_string()];
-        if config.release {
-            build_args.push("--configuration".to_string());
-            build_args.push("Release".to_string());
-        } else {
-            build_args.push("--configuration".to_string());
-            build_args.push("Debug".to_string());
-        }
+        let configuration = if config.release { "Release" } else { "Debug" };
+
+        let mut build_args = vec![
+            "build".to_string(),
+            // Restore ran as its own task right before this one.
+            "--no-restore".to_string(),
+            "--configuration".to_string(),
+            configuration.to_string(),
+        ];
 
         if let Some(output) = &config.output_path {
             build_args.push("--output".to_string());
@@ -118,13 +121,27 @@ impl DotnetBackend {
             format!("dotnet build {}", config.project_name),
             build_spec.command_line(),
             build_spec,
-        )
-        .with_cache(build_cache);
+        );
+        // Only an explicit --output gives us a stable path worth declaring;
+        // the default bin/<config> layout varies per framework.
+        let build_task = match &config.output_path {
+            Some(output) => build_task.with_artifacts(vec![PathBuf::from(output)]),
+            None => build_task,
+        };
+        let build_task = build_task.with_cache(build_cache);
         let build_node_id = graph.add_node(build_task);
         graph.add_dependency(restore_node_id, build_node_id)?;
 
         if config.run_tests {
-            let test_args = vec!["test".to_string()];
+            // Restore and build ran as their own tasks immediately above —
+            // without these flags `dotnet test` redid both internally.
+            let test_args = vec![
+                "test".to_string(),
+                "--no-restore".to_string(),
+                "--no-build".to_string(),
+                "--configuration".to_string(),
+                configuration.to_string(),
+            ];
             let test_spec = CommandSpec::new(&self.toolchain.executable)
                 .args(test_args)
                 .cwd(project_dir);

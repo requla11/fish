@@ -21,7 +21,7 @@ Installers:
   - Architecture: x64
     InstallerType: zip
     InstallerUrl: https://github.com/requla11/fish/releases/download/v0.5.0/fish-0.5.0-x86_64-pc-windows-msvc.zip
-    InstallerSha256: 5ED01E15FC11D9C857187DE5E1CCCE384FF9F2ADA36CA90A6AF3F246A62DD335
+    InstallerSha256: CC2804604C1D9018246072C44DBD2AAC28B2DA2E26F7610B05A00E7D4AF7C9F8
     NestedInstallerType: portable
     NestedInstallerFiles:
       - RelativeFilePath: fish-0.5.0-x86_64-pc-windows-msvc\fish.exe

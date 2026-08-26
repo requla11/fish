@@ -76,8 +76,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Cross-language dependency inference for polyglot workspaces (--no-infer-deps to disable)
 
 ### Performance
-
-### Performance
 - Polyglot builds and `fish graph` now perform a single full-tree ecosystem
   walk per invocation: command dispatch passes its scan result into the graph
   builder instead of walking the workspace twice.

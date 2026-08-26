@@ -58,23 +58,33 @@ impl GoBackend {
         std::fs::create_dir_all(output_dir)?;
         let namespace = FingerprintUtils::compute_namespace(project_dir);
 
-        let fp =
-            fingerprint::compute_go_fingerprint(project_dir, &self.toolchain.version, &config.tags)
-                .unwrap_or_else(|_| "no_fp".to_string());
+        let fp = fingerprint::compute_go_fingerprint(project_dir, &self.toolchain.version, &config)
+            .unwrap_or_else(|_| "no_fp".to_string());
 
-        let vet_args = self.toolchain.vet_args(&config.package_path);
-        let mut vet_spec = CommandSpec::new(&self.toolchain.executable)
-            .args(vet_args)
-            .cwd(project_dir);
-        for (k, v) in &config.env {
-            vet_spec = vet_spec.env(k, v);
-        }
-        let vet_task = Task::new(
-            format!("go vet {}", config.name),
-            vet_spec.command_line(),
-            vet_spec,
-        );
-        let vet_node_id = graph.add_node(vet_task);
+        // `go vet` honors the documented run_linter knob; opting out skips
+        // the task entirely instead of paying for an uncacheable invocation.
+        let vet_edge_source = if config.run_linter {
+            let vet_args = self.toolchain.vet_args(&config.package_path);
+            let mut vet_spec = CommandSpec::new(&self.toolchain.executable)
+                .args(vet_args)
+                .cwd(project_dir);
+            for (k, v) in &config.env {
+                vet_spec = vet_spec.env(k, v);
+            }
+            let vet_cache = CacheEntry {
+                key: FingerprintUtils::format_cache_key("go", &namespace, "vet", &config.name),
+                fingerprint: fp.clone(),
+            };
+            let vet_task = Task::new(
+                format!("go vet {}", config.name),
+                vet_spec.command_line(),
+                vet_spec,
+            )
+            .with_cache(vet_cache);
+            Some(graph.add_node(vet_task))
+        } else {
+            None
+        };
 
         let default_out = output_dir
             .join(BinaryUtils::add_binary_extension(&config.name))
@@ -114,7 +124,9 @@ impl GoBackend {
         .with_cache(build_cache);
 
         let build_node_id = graph.add_node(build_task);
-        graph.add_dependency(vet_node_id, build_node_id)?;
+        if let Some(vet_node_id) = vet_edge_source {
+            graph.add_dependency(vet_node_id, build_node_id)?;
+        }
 
         if config.run_tests {
             let test_args = self.toolchain.test_args(
@@ -202,7 +214,7 @@ mod tests {
             race: true,
             coverage: true,
             run_benchmarks: true,
-            run_linter: false,
+            run_linter: true,
             output_binary: None,
             env: HashMap::new(),
         };

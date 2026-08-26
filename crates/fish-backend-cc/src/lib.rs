@@ -78,16 +78,34 @@ impl CcBackend {
                 .and_then(|s| s.to_str())
                 .unwrap_or("source");
 
+            // Same-stem sources in different directories (src/a/util.c vs
+            // src/b/util.c) must not share one object file, depfile, or cache
+            // record; discriminate by a short hash of the project-relative
+            // source path.
+            let rel_source = source
+                .strip_prefix(project_dir)
+                .unwrap_or(source)
+                .to_string_lossy()
+                .replace('\\', "/");
+            let discriminator = {
+                let digest = blake3::hash(rel_source.as_bytes());
+                digest.to_hex().as_str()[..8].to_string()
+            };
+
             let obj_ext =
                 BinaryUtils::object_extension(self.compiler.family == CompilerFamily::Msvc);
-            let obj_filename = format!("{stem}.{obj_ext}");
+            let obj_filename = format!("{stem}-{discriminator}.{obj_ext}");
             let obj_path = output_dir.join("objs").join(&obj_filename);
             object_paths.push(obj_path.clone());
 
             let depfile = if self.compiler.family == CompilerFamily::Msvc {
                 None
             } else {
-                Some(output_dir.join("objs").join(format!("{stem}.d")))
+                Some(
+                    output_dir
+                        .join("objs")
+                        .join(format!("{stem}-{discriminator}.d")),
+                )
             };
 
             let (prog, args) = self.compiler.compile_object_args(
@@ -117,7 +135,12 @@ impl CcBackend {
             .unwrap_or_else(|_| "no_fp".to_string());
 
             let cache_entry = CacheEntry {
-                key: FingerprintUtils::format_cache_key("cc", &namespace, &config.name, stem),
+                key: FingerprintUtils::format_cache_key(
+                    "cc",
+                    &namespace,
+                    &config.name,
+                    &rel_source,
+                ),
                 fingerprint: fingerprint_val,
             };
 
@@ -192,5 +215,69 @@ mod tests {
         let last_node_id = topo.last().copied().unwrap();
         let last_node = graph.node(last_node_id).unwrap();
         assert!(last_node.payload.label.starts_with("link"));
+    }
+
+    #[test]
+    fn same_stem_sources_get_distinct_objects_and_cache_keys() {
+        let dummy_compiler = CcCompiler {
+            executable: "gcc".to_string(),
+            family: CompilerFamily::Gcc,
+            version: "gcc 13.2.0".to_string(),
+            language: CcLanguage::C,
+        };
+        let backend = CcBackend::with_compiler(dummy_compiler);
+
+        let config = CcProjectConfig {
+            name: "collide".to_string(),
+            language: CcLanguage::C,
+            sources: vec!["src/a/util.c".to_string(), "src/b/util.c".to_string()],
+            includes: vec![],
+            cflags: vec![],
+            cxxflags: vec![],
+            ldflags: vec![],
+            output_type: CcOutputType::Executable,
+        };
+
+        let temp = tempdir().unwrap();
+        for src in &config.sources {
+            let full = temp.path().join(src);
+            std::fs::create_dir_all(full.parent().unwrap()).unwrap();
+            std::fs::write(full, "int x;\n").unwrap();
+        }
+
+        let graph = backend
+            .create_tasks_from_config(&config, temp.path(), &temp.path().join("build"))
+            .unwrap();
+
+        let mut obj_paths: Vec<String> = Vec::new();
+        let mut cache_keys: Vec<String> = Vec::new();
+        for node in graph.nodes() {
+            if node.payload.label.starts_with("compile ") {
+                for arg in &node.payload.spec.args {
+                    if arg.ends_with(".o") {
+                        obj_paths.push(arg.clone());
+                    }
+                }
+                if let Some(entry) = &node.payload.cache {
+                    cache_keys.push(entry.key.clone());
+                }
+            }
+        }
+
+        obj_paths.sort();
+        obj_paths.dedup();
+        assert_eq!(
+            obj_paths.len(),
+            2,
+            "same-stem sources must map to distinct object files: {obj_paths:?}"
+        );
+
+        cache_keys.sort();
+        cache_keys.dedup();
+        assert_eq!(
+            cache_keys.len(),
+            2,
+            "same-stem sources must not share a cache record: {cache_keys:?}"
+        );
     }
 }

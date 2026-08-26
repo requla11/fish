@@ -90,26 +90,32 @@ impl ZigProjectConfig {
     fn extract_project_name(content: &str) -> Option<String> {
         for line in content.lines() {
             let trimmed = line.trim();
-            if let Some(rest) = trimmed.strip_prefix(".name") {
-                let rest = rest.trim().strip_prefix('=').unwrap_or(rest).trim();
-                let val = rest
-                    .trim_matches(|c| c == ',' || c == ' ')
-                    .trim_matches(|c| c == '\'' || c == '"');
-                if !val.is_empty() {
-                    return Some(val.to_string());
-                }
-            }
-            if let Some(rest) = trimmed.strip_prefix("name") {
-                let rest = rest.trim().strip_prefix('=').unwrap_or(rest).trim();
-                let val = rest
-                    .trim_matches(|c| c == ',' || c == ' ')
-                    .trim_matches(|c| c == '\'' || c == '"');
-                if !val.is_empty() {
-                    return Some(val.to_string());
-                }
+            if let Some(val) = Self::value_after_key(trimmed, ".name")
+                .or_else(|| Self::value_after_key(trimmed, "name"))
+            {
+                return Some(val);
             }
         }
         None
+    }
+
+    /// Value of a `key = "value",` style assignment, requiring the key to end
+    /// at a delimiter so `.name_hash` never satisfies `.name`.
+    fn value_after_key(trimmed: &str, key: &str) -> Option<String> {
+        let rest = trimmed.strip_prefix(key)?;
+        let next = rest.chars().next()?;
+        if !(next.is_whitespace() || next == '=' || next == '"' || next == '\'') {
+            return None;
+        }
+        let rest = rest.trim().strip_prefix('=').unwrap_or(rest).trim();
+        let val = rest
+            .trim_matches(|c| c == ',' || c == ' ')
+            .trim_matches(|c| c == '\'' || c == '"');
+        if val.is_empty() {
+            None
+        } else {
+            Some(val.to_string())
+        }
     }
 
     fn detect_target(content: &str) -> ZigTarget {
@@ -140,6 +146,21 @@ impl ZigProjectConfig {
 mod tests {
     use super::*;
     use tempfile::tempdir;
+
+    #[test]
+    fn name_key_requires_delimiter() {
+        // Regression: `.name_hash = 5` used to satisfy the `.name` prefix and
+        // yield "_hash" as the project name.
+        let content = ".name_hash = 5,\n.name = \"real_zig_app\",\n";
+        assert_eq!(
+            ZigProjectConfig::extract_project_name(content).unwrap_or_default(),
+            "real_zig_app"
+        );
+        assert_eq!(
+            ZigProjectConfig::extract_project_name(".namex = 1,\n"),
+            None
+        );
+    }
 
     #[test]
     fn test_build_zig_config_detection() {

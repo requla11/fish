@@ -1,16 +1,20 @@
 # 性能基准测试 (Benchmarks)
 
-Fish 专为超低延迟构建调度与无锁高并发而设计。
+Fish 专为高效、低延迟的多语言任务编排与无锁并发而设计。
 
 ## 性能对比概览
 
-| 构建系统 | 冷构建 (100 包) | 热缓存重构 | 内存占用 | 多语言支持 |
+> ⚠️ **测试范围与方法说明:** 下表为在*单台测试机上的合成基准测试数据*，反映特定样本多语言工作区下的测量参考值，并非任何环境下的绝对结论。
+> 
+> ℹ️ **架构定位说明:** Fish 定位为零配置多语言任务编排工具（在工作流层级类似于 Turborepo、Nx 或 Pants），而非编译器底层的细粒度密封动作图（如 Bazel 或 Buck2）。对比数据主要体现流水线调度与本地缓存效率。
+
+| 构建系统 | 冷构建 (100 包) | 热缓存重构 | 内存占用 | 架构定位类型 |
 | :--- | :--- | :--- | :--- | :--- |
-| **Fish 0.6.0** | **18.4s** | **0.01s (Cache Hit)** | **~24 MB** | **原生支持 11+ 语言** |
-| Turborepo | 24.2s | 0.05s | ~85 MB | 专注于 JS/TS |
-| Nx | 31.8s | 0.12s | ~180 MB | JS/TS Monorepo |
-| Bazel | 22.1s | 0.04s | ~650 MB (JVM) | 多语言支持 |
-| Cargo (仅 Rust) | 42.6s | 0.85s | ~120 MB | 仅支持 Rust |
+| **Fish 0.6.0** | **18.4s** | **0.01s (Cache Hit)** | **~24 MB** | Zero-Config Polyglot Task Runner |
+| Turborepo | 24.2s | 0.05s | ~85 MB | JS/TS Focused Task Runner |
+| Nx | 31.8s | 0.12s | ~180 MB | Monorepo Task Runner |
+| Bazel | 22.1s | 0.04s | ~650 MB (JVM) | Fine-Grained Hermetic Build System |
+| Cargo (仅 Rust) | 42.6s | 0.85s | ~120 MB | Native Language Package Manager |
 
 ## 调度器开销预算 (< 100µs)
 
@@ -22,7 +26,7 @@ Fish 设定了严格的 **每次任务分发决策 < 100µs** 开销预算。通
 | 200 nodes | < 18 µs | < 7 µs | **< 28 µs** |
 | 1,000 nodes | < 95 µs | < 35 µs | **< 75 µs** |
 
-## 同类调度模型对比测试 (Fish vs Ninja vs Bazel)
+## 同类调度模型对比测试 (Fish vs Ninja vs Bazel 模型)
 
 `peer_comparison` 基准测试套件提供了可重复的多语言 Monorepo 模拟（代码生成、C++、Rust、TypeScript、Go 编译、链接及集成测试）：
 

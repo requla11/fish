@@ -52,6 +52,7 @@ pub use security::{
 pub use testing::{
     Benchmark, BenchmarkResult, IntegrationTestEnvironment, ParallelTestRunner, PropertyTestResult,
 };
+pub use toolchain::find_executable_in_path;
 pub use toolchain::{ToolchainKind, ToolchainRegistry, ToolchainSpec};
 pub use toolchain_downloader::{RemoteToolchainSource, ToolchainDownloader};
 

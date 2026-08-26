@@ -1180,6 +1180,7 @@ name = "fish-cache"
 version = "0.6.0"
 dependencies = [
  "anyhow",
+ "blake3",
  "criterion",
  "crossbeam-channel",
  "dashmap",

@@ -13,6 +13,7 @@ Usage: fish [OPTIONS] <COMMAND>
 | Flag | Description | Default |
 |---|---|---|
 | `--experimental` | Enable experimental features (use at your own risk) | `false` |
+| `--offline` | Disallow network access and fail-fast on remote operations | `false` |
 
 **Subcommands:** [`version`](#fish-version), [`init`](#fish-init), [`new`](#fish-new), [`build`](#fish-build), [`check`](#fish-check), [`test`](#fish-test), [`clean`](#fish-clean), [`run`](#fish-run), [`graph`](#fish-graph), [`watch`](#fish-watch), [`cache-server`](#fish-cache-server), [`worker`](#fish-worker), [`affected`](#fish-affected), [`doctor`](#fish-doctor), [`cache`](#fish-cache), [`ci`](#fish-ci), [`history`](#fish-history), [`rewind`](#fish-rewind), [`attest`](#fish-attest), [`verify`](#fish-verify), [`live-patch`](#fish-live-patch), [`jit`](#fish-jit), [`super-opt`](#fish-super-opt), [`plugin`](#fish-plugin), [`fix`](#fish-fix), [`signing-key`](#fish-signing-key), [`heal`](#fish-heal), [`cost-estimate`](#fish-cost-estimate), [`ui`](#fish-ui), [`query`](#fish-query), [`daemon`](#fish-daemon), [`ai`](#fish-ai), [`lsp`](#fish-lsp), [`why`](#fish-why)
 

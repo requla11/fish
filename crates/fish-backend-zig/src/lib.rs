@@ -66,6 +66,7 @@ impl ZigBackend {
             project_dir,
             &self.toolchain.zig_version,
             &config.target,
+            config.release,
         )
         .unwrap_or_else(|_| "no_fp".to_string());
 
@@ -154,27 +155,42 @@ impl ZigBackend {
         graph.add_dependency(fetch_node_id, build_node_id)?;
 
         if config.run_tests {
-            let test_args = vec!["test".to_string()];
-            let test_spec = CommandSpec::new(&self.toolchain.executable)
-                .args(test_args)
-                .cwd(project_dir);
-            let test_cache = CacheEntry {
-                key: FingerprintUtils::format_cache_key(
-                    "zig",
-                    &namespace,
-                    "test",
-                    &config.project_name,
-                ),
-                fingerprint: fp,
+            // Bare `zig test` requires the root source file, and projects
+            // driven by build.zig must go through the build system's test
+            // step instead. Without either, emitting a test task would be a
+            // guaranteed failure — omit it.
+            let test_args: Option<Vec<String>> = if project_dir.join("build.zig").exists() {
+                Some(vec!["build".to_string(), "test".to_string()])
+            } else {
+                ["src/main.zig", "main.zig"]
+                    .iter()
+                    .map(|rel| project_dir.join(rel))
+                    .find(|path| path.exists())
+                    .map(|root| vec!["test".to_string(), root.to_string_lossy().to_string()])
             };
-            let test_task = Task::new(
-                format!("zig test {}", config.project_name),
-                test_spec.command_line(),
-                test_spec,
-            )
-            .with_cache(test_cache);
-            let test_node_id = graph.add_node(test_task);
-            graph.add_dependency(build_node_id, test_node_id)?;
+
+            if let Some(test_args) = test_args {
+                let test_spec = CommandSpec::new(&self.toolchain.executable)
+                    .args(test_args)
+                    .cwd(project_dir);
+                let test_cache = CacheEntry {
+                    key: FingerprintUtils::format_cache_key(
+                        "zig",
+                        &namespace,
+                        "test",
+                        &config.project_name,
+                    ),
+                    fingerprint: fp.clone(),
+                };
+                let test_task = Task::new(
+                    format!("zig test {}", config.project_name),
+                    test_spec.command_line(),
+                    test_spec,
+                )
+                .with_cache(test_cache);
+                let test_node_id = graph.add_node(test_task);
+                graph.add_dependency(build_node_id, test_node_id)?;
+            }
         }
 
         Ok(graph)
@@ -185,6 +201,25 @@ impl ZigBackend {
 mod tests {
     use super::*;
     use tempfile::tempdir;
+
+    #[test]
+    fn zig_fingerprint_distinguishes_release_mode() {
+        let dir = tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("src")).unwrap();
+        std::fs::write(
+            dir.path().join("src").join("main.zig"),
+            "pub fn main() void {}",
+        )
+        .unwrap();
+
+        let debug =
+            fingerprint::compute_zig_fingerprint(dir.path(), "0.11.0", &ZigTarget::Native, false)
+                .unwrap();
+        let release =
+            fingerprint::compute_zig_fingerprint(dir.path(), "0.11.0", &ZigTarget::Native, true)
+                .unwrap();
+        assert_ne!(debug, release);
+    }
 
     #[test]
     fn test_zig_backend_task_graph_construction() {
@@ -203,6 +238,13 @@ mod tests {
         };
 
         let temp = tempdir().unwrap();
+        // A runnable root source keeps the default test task emittable.
+        std::fs::create_dir_all(temp.path().join("src")).unwrap();
+        std::fs::write(
+            temp.path().join("src").join("main.zig"),
+            "pub fn main() void {}",
+        )
+        .unwrap();
         let graph = backend
             .create_tasks_from_config(&config, temp.path(), &temp.path().join("build"))
             .unwrap();

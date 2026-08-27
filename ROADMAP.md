@@ -74,7 +74,7 @@ North-star outcomes we optimize for, in order:
 
 ### 4. Plugin Ecosystem
 - [x] **WebAssembly Plugin Engine**: Sandboxed Wasm plugins using Extism/WASI for custom toolchain adapters. *(Full implementation with embedded `wasmi` interpreter in `fish-plugin/src/wasm.rs` behind `wasm` feature flag: module compilation, instantiation without host imports, exported function lookup and invocation, trap handling, memory limits from capability policy. Undeclared hooks rejected at manifest level; missing exports produce `NotFound`.)*
-- [ ] **Plugin Marketplace Registry**: Decentralized plugin discovery and signed artifact distribution. *(Ed25519 signing and verification infrastructure already exists in `fish-signing`.)*
+- [x] **Plugin Marketplace Registry**: Decentralized plugin discovery and signed artifact distribution. *(Full implementation in `crates/fish-plugin/src/marketplace.rs` with `PluginRegistry` index fetching, local cache persistence, search, Ed25519 signature verification against configurable trusted key sets, SHA-256 integrity verification on download, installation/uninstallation lifecycle, signing tool for plugin authors, and CLI subcommands in `fish plugin search|install|uninstall|publish`.)*
 - [x] **Plugin Capability Auditor**: Static analysis of plugin manifests flagging overly broad read/write/host permissions before install. *(`fish-plugin/src/audit.rs`: risk-ranked findings (Lowâ†’Critical) for wildcard/system-path reads, source- and git-mutating writes, absolute escape paths, secret-bearing environment grants, and oversized resource limits; `audit_registry` ranks a whole plugin directory worst-first with an accept/reject verdict.)*
 
 ### 5. Performance Engineering (new)

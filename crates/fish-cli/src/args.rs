@@ -605,19 +605,47 @@ pub struct PluginArgs {
 /// Plugin subcommands
 #[derive(Debug, Subcommand)]
 pub enum PluginAction {
-    /// List all available script plugins
     List,
-    /// Execute a specific plugin command
-    Execute {
-        /// Plugin name
+    Search {
+        query: Option<String>,
+        #[arg(long, env = "FISH_PLUGIN_REGISTRY")]
+        registry: Option<String>,
+    },
+    Install {
         name: String,
-        /// Command to execute
+        #[arg(long)]
+        version: Option<String>,
+        #[arg(long, env = "FISH_PLUGIN_REGISTRY")]
+        registry: Option<String>,
+        #[arg(long, env = "FISH_TRUSTED_KEYS")]
+        trusted_key: Option<String>,
+        #[arg(long)]
+        insecure: bool,
+    },
+    Uninstall {
+        name: String,
+    },
+    Publish {
+        wasm_path: PathBuf,
+        #[arg(long)]
+        name: String,
+        #[arg(long)]
+        version: String,
+        #[arg(long)]
+        url: String,
+        #[arg(long)]
+        description: Option<String>,
+        #[arg(long, env = "FISH_SIGNING_SEED")]
+        seed: Option<String>,
+    },
+    Execute {
+        name: String,
         command: String,
-        /// Additional arguments for the command
         #[arg(allow_hyphen_values = true)]
         args: Vec<String>,
     },
 }
+
 
 /// Graph output format
 #[derive(Debug, Clone, clap::ValueEnum, Default)]

@@ -1,34 +1,29 @@
-//! Plugin Marketplace Registry — decentralized plugin discovery and
-//! signed artifact distribution.
-//!
-//! The registry is a JSON index file hosted at any reachable URL. Each entry
-//! carries the plugin's download URL, SHA-256 digest, and an Ed25519
-//! signature over `name@version` + digest. Consumers verify signatures
-//! against a configurable trust set before downloading and installing.
-
 use std::path::{Path, PathBuf};
 
 use base64::{Engine as _, engine::general_purpose};
 use serde::{Deserialize, Serialize};
 use sha2::Digest;
 
-/// A single plugin entry in the registry index.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RegistryEntry {
     pub name: String,
     pub version: String,
     pub description: Option<String>,
-    /// URL to download the `.wasm` binary.
     pub url: String,
-    /// Hex-encoded SHA-256 of the downloaded artifact.
     pub sha256: String,
-    /// Base64 Ed25519 signature over `"{name}@{version}:{sha256}"`.
     pub signature: String,
-    /// Base64 Ed25519 public key of the signer.
     pub signer: String,
 }
 
-/// The full registry index document.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct InstalledPluginInfo {
+    pub name: String,
+    pub version: String,
+    pub path: PathBuf,
+    pub manifest_path: PathBuf,
+    pub size_bytes: u64,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PluginRegistry {
     pub version: u32,
@@ -37,7 +32,10 @@ pub struct PluginRegistry {
 }
 
 impl PluginRegistry {
-    /// Fetch and parse the registry index from a URL.
+    pub fn new(version: u32, plugins: Vec<RegistryEntry>) -> Self {
+        Self { version, plugins }
+    }
+
     pub fn fetch(endpoint: &str) -> Result<Self, String> {
         let offline = std::env::var("FISH_OFFLINE")
             .map(|v| {
@@ -71,17 +69,83 @@ impl PluginRegistry {
         serde_json::from_str(&body).map_err(|e| format!("invalid registry JSON: {e}"))
     }
 
-    /// Search entries by name substring (case-insensitive).
     pub fn search(&self, query: &str) -> Vec<&RegistryEntry> {
         let lower = query.to_ascii_lowercase();
         self.plugins
             .iter()
-            .filter(|e| e.name.to_ascii_lowercase().contains(&lower))
+            .filter(|e| {
+                e.name.to_ascii_lowercase().contains(&lower)
+                    || e.description
+                        .as_ref()
+                        .map(|d| d.to_ascii_lowercase().contains(&lower))
+                        .unwrap_or(false)
+            })
             .collect()
+    }
+
+    pub fn find(&self, name: &str, version: Option<&str>) -> Option<&RegistryEntry> {
+        self.plugins.iter().find(|e| {
+            if !e.name.eq_ignore_ascii_case(name) {
+                return false;
+            }
+            if let Some(ver) = version {
+                e.version == ver
+            } else {
+                true
+            }
+        })
+    }
+
+    pub fn save_to_cache(&self, cache_path: &Path) -> Result<(), String> {
+        if let Some(parent) = cache_path.parent() {
+            std::fs::create_dir_all(parent)
+                .map_err(|e| format!("cannot create cache dir {}: {e}", parent.display()))?;
+        }
+        let json = serde_json::to_string_pretty(self)
+            .map_err(|e| format!("registry serialization failed: {e}"))?;
+        std::fs::write(cache_path, json)
+            .map_err(|e| format!("cannot write cache file {}: {e}", cache_path.display()))?;
+        Ok(())
+    }
+
+    pub fn load_from_cache(cache_path: &Path) -> Result<Self, String> {
+        let content = std::fs::read_to_string(cache_path)
+            .map_err(|e| format!("cannot read cache file {}: {e}", cache_path.display()))?;
+        serde_json::from_str(&content).map_err(|e| format!("invalid cached registry JSON: {e}"))
     }
 }
 
-/// Verify that an entry's signature matches its content fields.
+pub fn create_signed_entry(
+    name: &str,
+    version: &str,
+    description: Option<String>,
+    url: &str,
+    wasm_bytes: &[u8],
+    signing_seed: &[u8; 32],
+) -> Result<RegistryEntry, String> {
+    use ed25519_dalek::{Signer, SigningKey};
+
+    let sha256: String = sha2::Sha256::digest(wasm_bytes)
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect();
+
+    let signing_key = SigningKey::from_bytes(signing_seed);
+    let message = format!("{name}@{version}:{sha256}");
+    let signature_bytes = signing_key.sign(message.as_bytes()).to_bytes();
+    let public_bytes = signing_key.verifying_key().to_bytes();
+
+    Ok(RegistryEntry {
+        name: name.to_string(),
+        version: version.to_string(),
+        description,
+        url: url.to_string(),
+        sha256,
+        signature: general_purpose::STANDARD.encode(signature_bytes),
+        signer: general_purpose::STANDARD.encode(public_bytes),
+    })
+}
+
 pub fn verify_entry_signature(entry: &RegistryEntry) -> Result<(), String> {
     use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 
@@ -106,9 +170,43 @@ pub fn verify_entry_signature(entry: &RegistryEntry) -> Result<(), String> {
         .map_err(|_| "signature verification failed".to_string())
 }
 
-/// Download a plugin artifact from a verified registry entry.
-///
-/// Verifies SHA-256 integrity after download. Returns raw WASM bytes.
+pub fn verify_entry_with_trusted_keys(
+    entry: &RegistryEntry,
+    trusted_keys: &[String],
+) -> Result<(), String> {
+    verify_entry_signature(entry)?;
+
+    if trusted_keys.is_empty() {
+        return Ok(());
+    }
+
+    let signer_trimmed = entry.signer.trim();
+    let is_trusted = trusted_keys.iter().any(|k| {
+        let k_trimmed = k.trim();
+        if k_trimmed.eq_ignore_ascii_case(signer_trimmed) {
+            return true;
+        }
+
+        if let (Ok(k_raw), Ok(signer_raw)) = (
+            general_purpose::STANDARD.decode(k_trimmed),
+            general_purpose::STANDARD.decode(signer_trimmed),
+        ) {
+            return k_raw == signer_raw;
+        }
+
+        false
+    });
+
+    if !is_trusted {
+        return Err(format!(
+            "plugin `{}` signed by untrusted key `{}`",
+            entry.name, entry.signer
+        ));
+    }
+
+    Ok(())
+}
+
 pub fn download_plugin(entry: &RegistryEntry) -> Result<Vec<u8>, String> {
     let offline = std::env::var("FISH_OFFLINE")
         .map(|v| {
@@ -152,7 +250,6 @@ pub fn download_plugin_with_offline(
     Ok(bytes)
 }
 
-/// Install a downloaded plugin into the local `.fish/plugins/` directory.
 pub fn install_plugin(
     name: &str,
     wasm_bytes: &[u8],
@@ -165,7 +262,6 @@ pub fn install_plugin(
     let dest = plugin_dir.join("plugin.wasm");
     std::fs::write(&dest, wasm_bytes).map_err(|e| format!("cannot write plugin binary: {e}"))?;
 
-    // Generate a minimal manifest so discovery finds it.
     let manifest = serde_json::json!({
         "name": name,
         "version": "installed",
@@ -182,38 +278,84 @@ pub fn install_plugin(
     Ok(dest)
 }
 
+pub fn uninstall_plugin(name: &str, plugins_dir: &Path) -> Result<bool, String> {
+    let plugin_dir = plugins_dir.join(name);
+    if !plugin_dir.exists() {
+        return Ok(false);
+    }
+    std::fs::remove_dir_all(&plugin_dir)
+        .map_err(|e| format!("cannot remove plugin dir {}: {e}", plugin_dir.display()))?;
+    Ok(true)
+}
+
+pub fn list_installed_plugins(plugins_dir: &Path) -> Result<Vec<InstalledPluginInfo>, String> {
+    if !plugins_dir.exists() {
+        return Ok(Vec::new());
+    }
+
+    let mut result = Vec::new();
+    let entries =
+        std::fs::read_dir(plugins_dir).map_err(|e| format!("cannot read plugins dir: {e}"))?;
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            let plugin_name = path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or_default()
+                .to_string();
+            let wasm_file = path.join("plugin.wasm");
+            let manifest_path = path.join("plugin.json");
+
+            if wasm_file.exists() {
+                let size_bytes = wasm_file.metadata().map(|m| m.len()).unwrap_or(0);
+                let version = if manifest_path.exists() {
+                    std::fs::read_to_string(&manifest_path)
+                        .ok()
+                        .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+                        .and_then(|v| {
+                            v.get("version")
+                                .and_then(|ver| ver.as_str())
+                                .map(ToString::to_string)
+                        })
+                        .unwrap_or_else(|| "installed".to_string())
+                } else {
+                    "installed".to_string()
+                };
+
+                result.push(InstalledPluginInfo {
+                    name: plugin_name,
+                    version,
+                    path: wasm_file,
+                    manifest_path,
+                    size_bytes,
+                });
+            }
+        }
+    }
+
+    result.sort_by(|a, b| a.name.cmp(&b.name));
+    Ok(result)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ed25519_dalek::{Signer, SigningKey};
     use tempfile::tempdir;
 
     fn make_signed_entry(name: &str, version: &str, seed: &[u8; 32]) -> (RegistryEntry, String) {
-        let signing_key = SigningKey::from_bytes(seed);
-        let sha256: String = sha2::Sha256::digest(b"wasm-bytes")
-            .iter()
-            .map(|b| format!("{b:02x}"))
-            .collect();
-        let message = format!("{name}@{version}:{sha256}");
-        let signature = signing_key.sign(message.as_bytes()).to_bytes();
-        let public = signing_key.verifying_key().to_bytes();
-
-        (
-            RegistryEntry {
-                name: name.to_string(),
-                version: version.to_string(),
-                description: Some("test plugin".to_string()),
-                url: "https://example.com/plugin.wasm".to_string(),
-                sha256,
-                signature: general_purpose::STANDARD.encode(signature),
-                signer: general_purpose::STANDARD.encode(public),
-            },
-            b64(&public),
+        let entry = create_signed_entry(
+            name,
+            version,
+            Some("test plugin".to_string()),
+            "https://example.com/plugin.wasm",
+            b"wasm-bytes",
+            seed,
         )
-    }
-
-    fn b64(bytes: &[u8]) -> String {
-        general_purpose::STANDARD.encode(bytes)
+        .unwrap();
+        let signer = entry.signer.clone();
+        (entry, signer)
     }
 
     fn make_stub(name: &str) -> RegistryEntry {
@@ -245,32 +387,81 @@ mod tests {
     }
 
     #[test]
-    fn test_search_by_name_substring() {
-        let registry = PluginRegistry {
-            version: 1,
-            plugins: vec![make_stub("proto-gen"), make_stub("linter")],
-        };
-
-        assert_eq!(registry.search("proto").len(), 1);
-        assert_eq!(registry.search("LINT").len(), 1);
-        assert_eq!(registry.search("nonexistent").len(), 0);
+    fn test_verify_entry_with_trusted_keys() {
+        let (entry, signer) = make_signed_entry("proto-gen", "1.0.0", &[2u8; 32]);
+        assert!(verify_entry_with_trusted_keys(&entry, &[signer.clone()]).is_ok());
+        assert!(verify_entry_with_trusted_keys(&entry, &[]).is_ok());
+        let untrusted = "dGVzdC11bnRydXN0ZWQta2V5LWZvci10ZXN0aW5nMTIzNDU=".to_string();
+        assert!(verify_entry_with_trusted_keys(&entry, &[untrusted]).is_err());
     }
 
     #[test]
-    fn test_install_plugin_creates_directory_and_manifest() {
+    fn test_search_and_find_plugins() {
+        let registry = PluginRegistry::new(
+            1,
+            vec![
+                RegistryEntry {
+                    name: "proto-gen".to_string(),
+                    version: "1.0.0".to_string(),
+                    description: Some("Protobuf codegen compiler plugin".to_string()),
+                    url: "https://example.com/proto.wasm".to_string(),
+                    sha256: "abc".to_string(),
+                    signature: "sig".to_string(),
+                    signer: "signer".to_string(),
+                },
+                make_stub("linter"),
+            ],
+        );
+
+        assert_eq!(registry.search("proto").len(), 1);
+        assert_eq!(registry.search("compiler").len(), 1);
+        assert_eq!(registry.search("LINT").len(), 1);
+        assert_eq!(registry.search("nonexistent").len(), 0);
+
+        assert!(registry.find("proto-gen", Some("1.0.0")).is_some());
+        assert!(registry.find("proto-gen", Some("2.0.0")).is_none());
+        assert!(registry.find("proto-gen", None).is_some());
+        assert!(registry.find("missing", None).is_none());
+    }
+
+    #[test]
+    fn test_install_list_and_uninstall_plugin() {
         let dir = tempdir().unwrap();
         let plugins_dir = dir.path().join(".fish/plugins");
 
         let dest = install_plugin("my_plugin", b"\0asm\x01\0\0\0", &plugins_dir).unwrap();
-
         assert!(dest.exists());
         assert!(dest.parent().unwrap().join("plugin.json").exists());
 
-        let manifest: serde_json::Value = serde_json::from_str(
-            &std::fs::read_to_string(dest.parent().unwrap().join("plugin.json")).unwrap(),
-        )
-        .unwrap();
-        assert_eq!(manifest["name"], "my_plugin");
+        let list = list_installed_plugins(&plugins_dir).unwrap();
+        assert_eq!(list.len(), 1);
+        assert_eq!(list[0].name, "my_plugin");
+        assert_eq!(list[0].size_bytes, 8);
+
+        let uninstalled = uninstall_plugin("my_plugin", &plugins_dir).unwrap();
+        assert!(uninstalled);
+        assert!(!dest.exists());
+
+        let list_after = list_installed_plugins(&plugins_dir).unwrap();
+        assert!(list_after.is_empty());
+
+        let uninstalled_again = uninstall_plugin("my_plugin", &plugins_dir).unwrap();
+        assert!(!uninstalled_again);
+    }
+
+    #[test]
+    fn test_save_and_load_cache() {
+        let dir = tempdir().unwrap();
+        let cache_file = dir.path().join("cache/registry.json");
+
+        let registry = PluginRegistry::new(1, vec![make_stub("cached-plugin")]);
+        registry.save_to_cache(&cache_file).unwrap();
+        assert!(cache_file.exists());
+
+        let loaded = PluginRegistry::load_from_cache(&cache_file).unwrap();
+        assert_eq!(loaded.version, 1);
+        assert_eq!(loaded.plugins.len(), 1);
+        assert_eq!(loaded.plugins[0].name, "cached-plugin");
     }
 
     #[test]
@@ -284,3 +475,4 @@ mod tests {
         assert!(dl_err.contains("offline mode"));
     }
 }
+

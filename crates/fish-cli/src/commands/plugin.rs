@@ -33,7 +33,6 @@ fn resolve_registry(endpoint: Option<&str>, cache_path: &Path) -> Result<PluginR
     }
 }
 
-
 pub fn run_plugin(args: PluginArgs) -> ExitCode {
     let start_dir = match crate::utils::resolve_start_dir(args.path.as_deref()) {
         Ok(dir) => dir,

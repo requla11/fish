@@ -927,6 +927,7 @@ Usage: fish fix [OPTIONS]
 |---|---|---|
 | `--path`, `-p` `<PATH>` |  |  |
 | `--apply` |  | `false` |
+| `--diff` |  | `false` |
 | `--ai` |  | `false` |
 
 ### fish-signing-key

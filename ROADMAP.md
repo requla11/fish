@@ -104,14 +104,14 @@ North-star outcomes we optimize for, in order:
 
 ---
 
-## ðŸ¤– v0.7.x â€” Focus: AI-Native Builds (new)
+## 🤖 v0.7.x — Focus: AI-Native Builds (new)
 
 All AI features follow the house rule established in v0.4: **refuse loudly rather than simulate success**. A feature ships only when it performs real computation.
 
-- [ ] **Compiler-Grounded Fix Suggestions**: Extend `fish fix` beyond real `cargo check` parsing to propose edits for the top recurring error classes, always showing diffs â€” never applying without confirmation. *(Real diagnostics parsing shipped in v0.4.)*
+- [x] **Compiler-Grounded Fix Suggestions**: Extend `fish fix` beyond real `cargo check` parsing to propose edits for the top recurring error classes, always showing diffs — never applying without confirmation. *(Full implementation in `fish-cli/src/commands/fix.rs`: JSON span suggestion extraction from compiler diagnostics, rule-based inference for missing `mut`, unused variables `_`, and missing `;`, unified diff generation in git format, safe byte-offset code edit application, and `--diff`/`--apply` CLI flags.)*
 - [x] **Natural-Language Build Queries**: `fish why --ask "why did core rebuild?"` answered from actual trace/fingerprint data, with citations to specific tasks. *(Rule-based NL parser in `fish-cli/src/nl_query.rs`: recognizes why-rebuilt/drift/stats question templates, consults the real LocalCache fingerprint records, reports cached fingerprint or cold-miss verdict. No LLM dependency.)*
 - [x] **Learned Resource Governor**: Predict per-task memory footprint from history to size job pools dynamically. *(Percentile-based predictor in `fish-scheduler/src/resource_predictor.rs`: P90 peak-RAM and median-duration per task key with a bounded ring buffer of samples; static governor remains for hard limits.)*
-- [x] **Test Selection Model**: Skip tests that cannot be affected by the changed file set, computed from the semantic impact graph plus historical coverage data â€” with an escape hatch to force full runs. *(Graph+path heuristic selector in fish-incremental/src/test_selector.rs: symbol-to-test mappings, crate-dir prefix rules, integration-test name extraction, deterministic ordering.)*
+- [x] **Test Selection Model**: Skip tests that cannot be affected by the changed file set, computed from the semantic impact graph plus historical coverage data — with an escape hatch to force full runs. *(Graph+path heuristic selector in fish-incremental/src/test_selector.rs: symbol-to-test mappings, crate-dir prefix rules, integration-test name extraction, deterministic ordering.)*
 - [x] **Build Time-Series Storage**: Persist per-run metrics locally (SQLite/Parquet) so every learning feature trains on your own data instead of baked-in constants. *(SQLite store in `fish-analytics/src/time_series.rs` via bundled rusqlite: WAL journaling, indexed inserts, stats/daily-rollup/slowest queries over project/branch/time windows.)*
 
 ---

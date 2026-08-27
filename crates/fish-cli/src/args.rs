@@ -88,6 +88,8 @@ pub struct FixArgs {
     #[arg(long)]
     pub apply: bool,
     #[arg(long)]
+    pub diff: bool,
+    #[arg(long)]
     pub ai: bool,
 }
 

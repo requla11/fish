@@ -38,8 +38,9 @@ impl MmapArtifact {
         let mmap = unsafe { MmapOptions::new().map(&file).map_err(CasError::Io)? };
 
         if let Some(ref algo_str) = metadata.compression {
-            if let Ok(algo) = CompressionAlgorithm::from_str(algo_str)
-                && algo != CompressionAlgorithm::None
+            if let Some(algo) = CompressionAlgorithm::from_str(algo_str)
+                .ok()
+                .filter(|a| *a != CompressionAlgorithm::None)
             {
                 let decompressed = crate::compression::decompress(&mmap, algo)?;
                 let computed = ArtifactHash::from_bytes(&decompressed)?;

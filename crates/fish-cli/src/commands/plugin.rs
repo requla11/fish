@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::ExitCode;
 
 use fish_plugin::marketplace::{
@@ -14,7 +14,10 @@ const DEFAULT_REGISTRY_URL: &str =
     "https://raw.githubusercontent.com/requla11/fish-registry/main/index.json";
 
 fn resolve_registry(endpoint: Option<&str>, cache_path: &Path) -> Result<PluginRegistry, String> {
-    let url = endpoint.unwrap_or(DEFAULT_REGISTRY_URL);
+    let env_url = std::env::var("FISH_PLUGIN_REGISTRY").ok();
+    let url = endpoint
+        .or(env_url.as_deref())
+        .unwrap_or(DEFAULT_REGISTRY_URL);
     match PluginRegistry::fetch(url) {
         Ok(reg) => {
             let _ = reg.save_to_cache(cache_path);
@@ -29,6 +32,7 @@ fn resolve_registry(endpoint: Option<&str>, cache_path: &Path) -> Result<PluginR
         }
     }
 }
+
 
 pub fn run_plugin(args: PluginArgs) -> ExitCode {
     let start_dir = match crate::utils::resolve_start_dir(args.path.as_deref()) {

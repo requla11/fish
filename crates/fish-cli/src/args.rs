@@ -608,16 +608,16 @@ pub enum PluginAction {
     List,
     Search {
         query: Option<String>,
-        #[arg(long, env = "FISH_PLUGIN_REGISTRY")]
+        #[arg(long)]
         registry: Option<String>,
     },
     Install {
         name: String,
         #[arg(long)]
         version: Option<String>,
-        #[arg(long, env = "FISH_PLUGIN_REGISTRY")]
+        #[arg(long)]
         registry: Option<String>,
-        #[arg(long, env = "FISH_TRUSTED_KEYS")]
+        #[arg(long)]
         trusted_key: Option<String>,
         #[arg(long)]
         insecure: bool,
@@ -635,7 +635,7 @@ pub enum PluginAction {
         url: String,
         #[arg(long)]
         description: Option<String>,
-        #[arg(long, env = "FISH_SIGNING_SEED")]
+        #[arg(long)]
         seed: Option<String>,
     },
     Execute {

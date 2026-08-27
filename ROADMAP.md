@@ -80,7 +80,7 @@ North-star outcomes we optimize for, in order:
 ### 5. Performance Engineering (new)
 - [x] **Benchmark Suite vs Peers**: Repeatable harness comparing Fish against Ninja, Bazel, and Buck2 on synthetic polyglot monorepos, published per release. *(Full Criterion benchmark in `crates/fish-scheduler/benches/peer_comparison.rs` comparing Fish work-stealing/critical-path scheduling against simulated Ninja topological wavefronts and Bazel phased-barrier execution across multi-language diamond graphs.)*
 - [x] **Scheduler Overhead Budget**: Target < 100µs per task dispatch decision; measured by criterion benchmarks in CI with regression gates. *(Criterion benchmark suite in `crates/fish-scheduler/benches/scheduler_performance.rs` covering topological sorting, ready-node calculation, zero-overhead task dispatch latency on 50/200/1000 node graphs, and critical-path calculations.)*
-- [ ] **Zero-Copy CAS Reads**: Serve hot artifacts through `memmap2` windows instead of buffer copies on Linux/macOS.
+- [x] **Zero-Copy CAS Reads**: Serve hot artifacts through `memmap2` windows instead of buffer copies on Linux/macOS/Windows. *(Full implementation in `fish-cas/src/mmap.rs`: `MmapArtifact` providing zero-copy slice access over read-only memory maps, automatic fallback for compressed artifacts, BLAKE3 digest verification over mapped extents, wired into `LocalCasBackend` and `CasStorage`, with Criterion benchmark suite in `crates/fish-cas/benches/cas_performance.rs`.)*
 - [ ] **io_uring Async Executor Backend**: Optional Linux backend for high-fanout I/O during cache fetch storms.
 
 ---

@@ -356,7 +356,7 @@ fn collect_cargo_diagnostics(project_dir: &Path) -> Result<Vec<Diagnostic>, Stri
 
 pub fn run_fix(args: FixArgs) -> ExitCode {
     let target_path = args.path.unwrap_or_else(|| PathBuf::from("."));
-    println!("=== Fish Compiler-Grounded Fix Engine ===");
+    println!("=== Fish Auto-Healer & AI Diagnostics ===");
     println!("Scanning project at: {}", target_path.display());
 
     if !target_path.join("Cargo.toml").exists() {

@@ -13,10 +13,7 @@ use crate::backends;
 const DEFAULT_REGISTRY_URL: &str =
     "https://raw.githubusercontent.com/requla11/fish-registry/main/index.json";
 
-fn resolve_registry(
-    endpoint: Option<&str>,
-    cache_path: &Path,
-) -> Result<PluginRegistry, String> {
+fn resolve_registry(endpoint: Option<&str>, cache_path: &Path) -> Result<PluginRegistry, String> {
     let url = endpoint.unwrap_or(DEFAULT_REGISTRY_URL);
     match PluginRegistry::fetch(url) {
         Ok(reg) => {
@@ -191,22 +188,20 @@ pub fn run_plugin(args: PluginArgs) -> ExitCode {
                 }
             }
         }
-        PluginAction::Uninstall { name } => {
-            match uninstall_plugin(&name, &plugins_dir) {
-                Ok(true) => {
-                    println!("Successfully uninstalled plugin '{}'", name);
-                    ExitCode::SUCCESS
-                }
-                Ok(false) => {
-                    eprintln!("error: plugin '{}' is not installed", name);
-                    ExitCode::FAILURE
-                }
-                Err(err) => {
-                    eprintln!("error: uninstall failed: {err}");
-                    return ExitCode::FAILURE;
-                }
+        PluginAction::Uninstall { name } => match uninstall_plugin(&name, &plugins_dir) {
+            Ok(true) => {
+                println!("Successfully uninstalled plugin '{}'", name);
+                ExitCode::SUCCESS
             }
-        }
+            Ok(false) => {
+                eprintln!("error: plugin '{}' is not installed", name);
+                ExitCode::FAILURE
+            }
+            Err(err) => {
+                eprintln!("error: uninstall failed: {err}");
+                return ExitCode::FAILURE;
+            }
+        },
         PluginAction::Publish {
             wasm_path,
             name,
@@ -240,19 +235,18 @@ pub fn run_plugin(args: PluginArgs) -> ExitCode {
                 return ExitCode::FAILURE;
             }
 
-            match create_signed_entry(&name, &version, description, &url, &wasm_bytes, &seed_bytes) {
-                Ok(entry) => {
-                    match serde_json::to_string_pretty(&entry) {
-                        Ok(json) => {
-                            println!("{json}");
-                            ExitCode::SUCCESS
-                        }
-                        Err(err) => {
-                            eprintln!("error: JSON serialization failed: {err}");
-                            ExitCode::FAILURE
-                        }
+            match create_signed_entry(&name, &version, description, &url, &wasm_bytes, &seed_bytes)
+            {
+                Ok(entry) => match serde_json::to_string_pretty(&entry) {
+                    Ok(json) => {
+                        println!("{json}");
+                        ExitCode::SUCCESS
                     }
-                }
+                    Err(err) => {
+                        eprintln!("error: JSON serialization failed: {err}");
+                        ExitCode::FAILURE
+                    }
+                },
                 Err(err) => {
                     eprintln!("error: entry signing failed: {err}");
                     ExitCode::FAILURE
@@ -299,4 +293,3 @@ pub fn run_plugin(args: PluginArgs) -> ExitCode {
         },
     }
 }
-

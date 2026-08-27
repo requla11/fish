@@ -646,7 +646,6 @@ pub enum PluginAction {
     },
 }
 
-
 /// Graph output format
 #[derive(Debug, Clone, clap::ValueEnum, Default)]
 pub enum GraphFormat {

@@ -475,4 +475,3 @@ mod tests {
         assert!(dl_err.contains("offline mode"));
     }
 }
-

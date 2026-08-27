@@ -22,7 +22,7 @@ impl MmapArtifact {
 
         if file_len == 0 {
             let computed = ArtifactHash::from_bytes(&[])?;
-            if &computed != &metadata.hash {
+            if computed != metadata.hash {
                 return Err(CasError::Hash(format!(
                     "mmap empty artifact hash mismatch: declared {}, got {}",
                     metadata.hash, computed
@@ -38,27 +38,27 @@ impl MmapArtifact {
         let mmap = unsafe { MmapOptions::new().map(&file).map_err(CasError::Io)? };
 
         if let Some(ref algo_str) = metadata.compression {
-            if let Ok(algo) = CompressionAlgorithm::from_str(algo_str) {
-                if algo != CompressionAlgorithm::None {
-                    let decompressed = crate::compression::decompress(&mmap, algo)?;
-                    let computed = ArtifactHash::from_bytes(&decompressed)?;
-                    if &computed != &metadata.hash {
-                        return Err(CasError::Hash(format!(
-                            "mmap decompressed artifact hash mismatch: declared {}, got {}",
-                            metadata.hash, computed
-                        )));
-                    }
-                    return Ok(Self {
-                        metadata,
-                        mmap: Some(mmap),
-                        decompressed: Some(decompressed),
-                    });
+            if let Ok(algo) = CompressionAlgorithm::from_str(algo_str)
+                && algo != CompressionAlgorithm::None
+            {
+                let decompressed = crate::compression::decompress(&mmap, algo)?;
+                let computed = ArtifactHash::from_bytes(&decompressed)?;
+                if computed != metadata.hash {
+                    return Err(CasError::Hash(format!(
+                        "mmap decompressed artifact hash mismatch: declared {}, got {}",
+                        metadata.hash, computed
+                    )));
                 }
+                return Ok(Self {
+                    metadata,
+                    mmap: Some(mmap),
+                    decompressed: Some(decompressed),
+                });
             }
         }
 
         let computed = ArtifactHash::from_bytes(&mmap)?;
-        if &computed != &metadata.hash {
+        if computed != metadata.hash {
             return Err(CasError::Hash(format!(
                 "mmap artifact hash mismatch: declared {}, got {}",
                 metadata.hash, computed

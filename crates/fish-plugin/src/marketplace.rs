@@ -384,10 +384,10 @@ mod tests {
     #[test]
     fn test_verify_entry_with_trusted_keys() {
         let (entry, signer) = make_signed_entry("proto-gen", "1.0.0", &[2u8; 32]);
-        assert!(verify_entry_with_trusted_keys(&entry, &[signer.clone()]).is_ok());
+        assert!(verify_entry_with_trusted_keys(&entry, std::slice::from_ref(&signer)).is_ok());
         assert!(verify_entry_with_trusted_keys(&entry, &[]).is_ok());
         let untrusted = "dGVzdC11bnRydXN0ZWQta2V5LWZvci10ZXN0aW5nMTIzNDU=".to_string();
-        assert!(verify_entry_with_trusted_keys(&entry, &[untrusted]).is_err());
+        assert!(verify_entry_with_trusted_keys(&entry, std::slice::from_ref(&untrusted)).is_err());
     }
 
     #[test]

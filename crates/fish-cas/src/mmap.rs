@@ -37,25 +37,26 @@ impl MmapArtifact {
 
         let mmap = unsafe { MmapOptions::new().map(&file).map_err(CasError::Io)? };
 
-        if let Some(ref algo_str) = metadata.compression {
-            if let Some(algo) = CompressionAlgorithm::from_str(algo_str)
-                .ok()
-                .filter(|a| *a != CompressionAlgorithm::None)
-            {
-                let decompressed = crate::compression::decompress(&mmap, algo)?;
-                let computed = ArtifactHash::from_bytes(&decompressed)?;
-                if computed != metadata.hash {
-                    return Err(CasError::Hash(format!(
-                        "mmap decompressed artifact hash mismatch: declared {}, got {}",
-                        metadata.hash, computed
-                    )));
-                }
-                return Ok(Self {
-                    metadata,
-                    mmap: Some(mmap),
-                    decompressed: Some(decompressed),
-                });
+        let compression_algo = metadata
+            .compression
+            .as_deref()
+            .and_then(|algo_str| CompressionAlgorithm::from_str(algo_str).ok())
+            .filter(|algo| *algo != CompressionAlgorithm::None);
+
+        if let Some(algo) = compression_algo {
+            let decompressed = crate::compression::decompress(&mmap, algo)?;
+            let computed = ArtifactHash::from_bytes(&decompressed)?;
+            if computed != metadata.hash {
+                return Err(CasError::Hash(format!(
+                    "mmap decompressed artifact hash mismatch: declared {}, got {}",
+                    metadata.hash, computed
+                )));
             }
+            return Ok(Self {
+                metadata,
+                mmap: Some(mmap),
+                decompressed: Some(decompressed),
+            });
         }
 
         let computed = ArtifactHash::from_bytes(&mmap)?;

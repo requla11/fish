@@ -159,9 +159,12 @@ pub fn run_plugin(args: PluginArgs) -> ExitCode {
                 }
 
                 if !trusted_keys.is_empty() {
-                    if let Err(err) = verify_entry_with_trusted_keys(entry, &trusted_keys) {
-                        eprintln!("error: trust verification failed: {err}");
-                        return ExitCode::FAILURE;
+                    match verify_entry_with_trusted_keys(entry, &trusted_keys) {
+                        Ok(()) => {}
+                        Err(err) => {
+                            eprintln!("error: trust verification failed: {err}");
+                            return ExitCode::FAILURE;
+                        }
                     }
                 }
             }
@@ -187,7 +190,7 @@ pub fn run_plugin(args: PluginArgs) -> ExitCode {
                 }
                 Err(err) => {
                     eprintln!("error: installation failed: {err}");
-                    return ExitCode::FAILURE;
+                    ExitCode::FAILURE
                 }
             }
         }
@@ -202,7 +205,7 @@ pub fn run_plugin(args: PluginArgs) -> ExitCode {
             }
             Err(err) => {
                 eprintln!("error: uninstall failed: {err}");
-                return ExitCode::FAILURE;
+                ExitCode::FAILURE
             }
         },
         PluginAction::Publish {

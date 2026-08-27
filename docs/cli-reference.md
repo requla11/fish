@@ -823,7 +823,6 @@ Usage: fish plugin install [OPTIONS] <NAME>
 | Flag | Description | Default |
 |---|---|---|
 | name `<NAME>` |  |  |
-| `--version` `<VERSION>` |  |  |
 | `--registry` `<REGISTRY>` |  |  |
 | `--trusted-key` `<TRUSTED_KEY>` |  |  |
 | `--insecure` |  | `false` |
@@ -848,7 +847,6 @@ Usage: fish plugin publish [OPTIONS] --name <NAME> --version <VERSION> --url <UR
 |---|---|---|
 | wasm_path `<WASM_PATH>` |  |  |
 | `--name` `<NAME>` |  |  |
-| `--version` `<VERSION>` |  |  |
 | `--url` `<URL>` |  |  |
 | `--description` `<DESCRIPTION>` |  |  |
 | `--seed` `<SEED>` |  |  |
@@ -918,7 +916,6 @@ Print this message or the help of the given subcommand(s)
 ```
 Usage: fish plugin help help
 ```
-
 
 ### fish-fix
 
@@ -1469,19 +1466,39 @@ Arguments for plugin command
 Usage: fish help plugin [COMMAND]
 ```
 
-**Subcommands:** [`list`](#fish-help-plugin-list), [`execute`](#fish-help-plugin-execute)
+**Subcommands:** [`list`](#fish-help-plugin-list), [`search`](#fish-help-plugin-search), [`install`](#fish-help-plugin-install), [`uninstall`](#fish-help-plugin-uninstall), [`publish`](#fish-help-plugin-publish), [`execute`](#fish-help-plugin-execute)
 
 ##### fish-help-plugin-list
-
-List all available script plugins
 
 ```
 Usage: fish help plugin list
 ```
 
-##### fish-help-plugin-execute
+##### fish-help-plugin-search
 
-Execute a specific plugin command
+```
+Usage: fish help plugin search
+```
+
+##### fish-help-plugin-install
+
+```
+Usage: fish help plugin install
+```
+
+##### fish-help-plugin-uninstall
+
+```
+Usage: fish help plugin uninstall
+```
+
+##### fish-help-plugin-publish
+
+```
+Usage: fish help plugin publish
+```
+
+##### fish-help-plugin-execute
 
 ```
 Usage: fish help plugin execute

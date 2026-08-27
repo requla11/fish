@@ -37,14 +37,12 @@ impl PluginRegistry {
     }
 
     pub fn fetch(endpoint: &str) -> Result<Self, String> {
-        let offline = std::env::var("FISH_OFFLINE")
-            .map(|v| {
-                v == "1"
-                    || v.eq_ignore_ascii_case("true")
-                    || v.eq_ignore_ascii_case("yes")
-                    || v.eq_ignore_ascii_case("on")
-            })
-            .unwrap_or(false);
+        let offline = std::env::var("FISH_OFFLINE").is_ok_and(|v| {
+            v == "1"
+                || v.eq_ignore_ascii_case("true")
+                || v.eq_ignore_ascii_case("yes")
+                || v.eq_ignore_ascii_case("on")
+        });
         Self::fetch_with_offline(endpoint, offline)
     }
 
@@ -77,8 +75,7 @@ impl PluginRegistry {
                 e.name.to_ascii_lowercase().contains(&lower)
                     || e.description
                         .as_ref()
-                        .map(|d| d.to_ascii_lowercase().contains(&lower))
-                        .unwrap_or(false)
+                        .is_some_and(|d| d.to_ascii_lowercase().contains(&lower))
             })
             .collect()
     }
@@ -208,14 +205,12 @@ pub fn verify_entry_with_trusted_keys(
 }
 
 pub fn download_plugin(entry: &RegistryEntry) -> Result<Vec<u8>, String> {
-    let offline = std::env::var("FISH_OFFLINE")
-        .map(|v| {
-            v == "1"
-                || v.eq_ignore_ascii_case("true")
-                || v.eq_ignore_ascii_case("yes")
-                || v.eq_ignore_ascii_case("on")
-        })
-        .unwrap_or(false);
+    let offline = std::env::var("FISH_OFFLINE").is_ok_and(|v| {
+        v == "1"
+            || v.eq_ignore_ascii_case("true")
+            || v.eq_ignore_ascii_case("yes")
+            || v.eq_ignore_ascii_case("on")
+    });
     download_plugin_with_offline(entry, offline)
 }
 

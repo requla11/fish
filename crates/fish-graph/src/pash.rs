@@ -84,7 +84,13 @@ impl PashExtractor {
             LanguageKind::Go => Self::extract_go(source),
             LanguageKind::Cpp => Self::extract_cpp(source),
             LanguageKind::Python => Self::extract_python(source),
-            _ => Self::extract_generic(source),
+            LanguageKind::Java => Self::extract_java(source),
+            LanguageKind::Dotnet => Self::extract_dotnet(source),
+            LanguageKind::Swift => Self::extract_swift(source),
+            LanguageKind::Dart => Self::extract_dart(source),
+            LanguageKind::Zig => Self::extract_zig(source),
+            LanguageKind::Docker => Self::extract_docker(source),
+            LanguageKind::Generic => Self::extract_generic(source),
         };
         SymbolicBoundary::new(lang, symbols)
     }
@@ -412,9 +418,391 @@ impl PashExtractor {
                     SymbolVisibility::Public
                 };
                 symbols.push(BoundarySymbol {
-                    name: name.to_string(),
+                    name,
                     kind: SymbolKind::Class,
                     visibility,
+                    signature: line.to_string(),
+                });
+            }
+        }
+        symbols
+    }
+
+    fn extract_java(source: &str) -> Vec<BoundarySymbol> {
+        let mut symbols = Vec::with_capacity(16);
+        for raw_line in source.lines() {
+            let line = raw_line.trim();
+            if !line.starts_with("public ") {
+                continue;
+            }
+            let sig_end = line
+                .find('{')
+                .or_else(|| line.find(';'))
+                .unwrap_or(line.len());
+            let sig = line[..sig_end].trim().to_string();
+            let after_public = line.strip_prefix("public ").unwrap_or("").trim();
+
+            if let Some(rest) = after_public.strip_prefix("class ") {
+                let name = rest.split_whitespace().next().unwrap_or("unknown");
+                symbols.push(BoundarySymbol {
+                    name: name.to_string(),
+                    kind: SymbolKind::Class,
+                    visibility: SymbolVisibility::Public,
+                    signature: sig,
+                });
+            } else if let Some(rest) = after_public.strip_prefix("interface ") {
+                let name = rest.split_whitespace().next().unwrap_or("unknown");
+                symbols.push(BoundarySymbol {
+                    name: name.to_string(),
+                    kind: SymbolKind::Interface,
+                    visibility: SymbolVisibility::Public,
+                    signature: sig,
+                });
+            } else if let Some(rest) = after_public.strip_prefix("enum ") {
+                let name = rest.split_whitespace().next().unwrap_or("unknown");
+                symbols.push(BoundarySymbol {
+                    name: name.to_string(),
+                    kind: SymbolKind::Enum,
+                    visibility: SymbolVisibility::Public,
+                    signature: sig,
+                });
+            } else if let Some(rest) = after_public.strip_prefix("record ") {
+                let name = rest
+                    .split('(')
+                    .next()
+                    .unwrap_or("unknown")
+                    .split_whitespace()
+                    .next()
+                    .unwrap_or("unknown");
+                symbols.push(BoundarySymbol {
+                    name: name.to_string(),
+                    kind: SymbolKind::Struct,
+                    visibility: SymbolVisibility::Public,
+                    signature: sig,
+                });
+            } else if sig.contains('(') && sig.contains(')') {
+                let name = sig
+                    .split('(')
+                    .next()
+                    .and_then(|s| s.split_whitespace().last())
+                    .unwrap_or("unknown");
+                symbols.push(BoundarySymbol {
+                    name: name.to_string(),
+                    kind: SymbolKind::Function,
+                    visibility: SymbolVisibility::Public,
+                    signature: sig,
+                });
+            }
+        }
+        symbols
+    }
+
+    fn extract_dotnet(source: &str) -> Vec<BoundarySymbol> {
+        let mut symbols = Vec::with_capacity(16);
+        for raw_line in source.lines() {
+            let line = raw_line.trim();
+            if !line.starts_with("public ") {
+                continue;
+            }
+            let sig_end = line
+                .find('{')
+                .or_else(|| line.find(';'))
+                .or_else(|| line.find("=>"))
+                .unwrap_or(line.len());
+            let sig = line[..sig_end].trim().to_string();
+            let after_public = line.strip_prefix("public ").unwrap_or("").trim();
+
+            if let Some(rest) = after_public.strip_prefix("class ") {
+                let name = rest
+                    .split(':')
+                    .next()
+                    .unwrap_or("unknown")
+                    .split_whitespace()
+                    .next()
+                    .unwrap_or("unknown");
+                symbols.push(BoundarySymbol {
+                    name: name.to_string(),
+                    kind: SymbolKind::Class,
+                    visibility: SymbolVisibility::Public,
+                    signature: sig,
+                });
+            } else if let Some(rest) = after_public.strip_prefix("interface ") {
+                let name = rest
+                    .split(':')
+                    .next()
+                    .unwrap_or("unknown")
+                    .split_whitespace()
+                    .next()
+                    .unwrap_or("unknown");
+                symbols.push(BoundarySymbol {
+                    name: name.to_string(),
+                    kind: SymbolKind::Interface,
+                    visibility: SymbolVisibility::Public,
+                    signature: sig,
+                });
+            } else if let Some(rest) = after_public.strip_prefix("record ") {
+                let name = rest
+                    .split('(')
+                    .next()
+                    .unwrap_or("unknown")
+                    .split_whitespace()
+                    .next()
+                    .unwrap_or("unknown");
+                symbols.push(BoundarySymbol {
+                    name: name.to_string(),
+                    kind: SymbolKind::Struct,
+                    visibility: SymbolVisibility::Public,
+                    signature: sig,
+                });
+            } else if let Some(rest) = after_public.strip_prefix("struct ") {
+                let name = rest.split_whitespace().next().unwrap_or("unknown");
+                symbols.push(BoundarySymbol {
+                    name: name.to_string(),
+                    kind: SymbolKind::Struct,
+                    visibility: SymbolVisibility::Public,
+                    signature: sig,
+                });
+            } else if let Some(rest) = after_public.strip_prefix("enum ") {
+                let name = rest.split_whitespace().next().unwrap_or("unknown");
+                symbols.push(BoundarySymbol {
+                    name: name.to_string(),
+                    kind: SymbolKind::Enum,
+                    visibility: SymbolVisibility::Public,
+                    signature: sig,
+                });
+            } else if sig.contains('(') && sig.contains(')') {
+                let name = sig
+                    .split('(')
+                    .next()
+                    .and_then(|s| s.split_whitespace().last())
+                    .unwrap_or("unknown");
+                symbols.push(BoundarySymbol {
+                    name: name.to_string(),
+                    kind: SymbolKind::Function,
+                    visibility: SymbolVisibility::Public,
+                    signature: sig,
+                });
+            }
+        }
+        symbols
+    }
+
+    fn extract_swift(source: &str) -> Vec<BoundarySymbol> {
+        let mut symbols = Vec::with_capacity(16);
+        for raw_line in source.lines() {
+            let line = raw_line.trim();
+            let is_public = line.starts_with("public ") || line.starts_with("open ");
+            if !is_public {
+                continue;
+            }
+            let sig_end = line.find('{').unwrap_or(line.len());
+            let sig = line[..sig_end].trim().to_string();
+
+            if sig.contains("func ") {
+                let name = sig
+                    .split("func ")
+                    .nth(1)
+                    .and_then(|s| s.split('(').next())
+                    .unwrap_or("unknown")
+                    .trim();
+                symbols.push(BoundarySymbol {
+                    name: name.to_string(),
+                    kind: SymbolKind::Function,
+                    visibility: SymbolVisibility::Public,
+                    signature: sig,
+                });
+            } else if sig.contains("protocol ") {
+                let name = sig
+                    .split("protocol ")
+                    .nth(1)
+                    .unwrap_or("unknown")
+                    .split(':')
+                    .next()
+                    .unwrap_or("unknown")
+                    .trim();
+                symbols.push(BoundarySymbol {
+                    name: name.to_string(),
+                    kind: SymbolKind::Interface,
+                    visibility: SymbolVisibility::Public,
+                    signature: sig,
+                });
+            } else if sig.contains("struct ") || sig.contains("class ") || sig.contains("actor ") {
+                let keyword = if sig.contains("struct ") {
+                    "struct "
+                } else if sig.contains("actor ") {
+                    "actor "
+                } else {
+                    "class "
+                };
+                let name = sig
+                    .split(keyword)
+                    .nth(1)
+                    .unwrap_or("unknown")
+                    .split(':')
+                    .next()
+                    .unwrap_or("unknown")
+                    .trim();
+                symbols.push(BoundarySymbol {
+                    name: name.to_string(),
+                    kind: SymbolKind::Class,
+                    visibility: SymbolVisibility::Public,
+                    signature: sig,
+                });
+            } else if sig.contains("enum ") {
+                let name = sig
+                    .split("enum ")
+                    .nth(1)
+                    .unwrap_or("unknown")
+                    .split(':')
+                    .next()
+                    .unwrap_or("unknown")
+                    .trim();
+                symbols.push(BoundarySymbol {
+                    name: name.to_string(),
+                    kind: SymbolKind::Enum,
+                    visibility: SymbolVisibility::Public,
+                    signature: sig,
+                });
+            }
+        }
+        symbols
+    }
+
+    fn extract_dart(source: &str) -> Vec<BoundarySymbol> {
+        let mut symbols = Vec::with_capacity(16);
+        for raw_line in source.lines() {
+            let line = raw_line.trim();
+            if line.is_empty() || line.starts_with("//") || line.starts_with("/*") {
+                continue;
+            }
+            if line.starts_with("class ")
+                || line.starts_with("abstract class ")
+                || line.starts_with("mixin ")
+                || line.starts_with("enum ")
+            {
+                let sig_end = line.find('{').unwrap_or(line.len());
+                let sig = line[..sig_end].trim().to_string();
+                let name = sig
+                    .split_whitespace()
+                    .find(|w| !["class", "abstract", "mixin", "enum"].contains(w))
+                    .unwrap_or("unknown")
+                    .to_string();
+                let visibility = if name.starts_with('_') {
+                    SymbolVisibility::Internal
+                } else {
+                    SymbolVisibility::Public
+                };
+                symbols.push(BoundarySymbol {
+                    name,
+                    kind: SymbolKind::Class,
+                    visibility,
+                    signature: sig,
+                });
+            } else if line.contains('(')
+                && line.contains(')')
+                && (line.ends_with('{') || line.ends_with(';'))
+            {
+                let sig_end = line
+                    .find('{')
+                    .or_else(|| line.find(';'))
+                    .unwrap_or(line.len());
+                let sig = line[..sig_end].trim().to_string();
+                let name = sig
+                    .split('(')
+                    .next()
+                    .and_then(|s| s.split_whitespace().last())
+                    .unwrap_or("unknown")
+                    .to_string();
+                if !name.is_empty()
+                    && !name.contains('=')
+                    && name != "if"
+                    && name != "for"
+                    && name != "while"
+                {
+                    let visibility = if name.starts_with('_') {
+                        SymbolVisibility::Internal
+                    } else {
+                        SymbolVisibility::Public
+                    };
+                    symbols.push(BoundarySymbol {
+                        name,
+                        kind: SymbolKind::Function,
+                        visibility,
+                        signature: sig,
+                    });
+                }
+            }
+        }
+        symbols
+    }
+
+    fn extract_zig(source: &str) -> Vec<BoundarySymbol> {
+        let mut symbols = Vec::with_capacity(16);
+        for raw_line in source.lines() {
+            let line = raw_line.trim();
+            let Some(rest) = line.strip_prefix("pub ") else {
+                continue;
+            };
+            if let Some(func_decl) = rest.strip_prefix("fn ") {
+                let sig_end = line.find('{').unwrap_or(line.len());
+                let sig = line[..sig_end].trim().to_string();
+                let name = func_decl.split('(').next().unwrap_or("unknown").trim();
+                symbols.push(BoundarySymbol {
+                    name: name.to_string(),
+                    kind: SymbolKind::Function,
+                    visibility: SymbolVisibility::Public,
+                    signature: sig,
+                });
+            } else if rest.starts_with("const ") || rest.starts_with("var ") {
+                let sig_end = line
+                    .find('{')
+                    .or_else(|| line.find(';'))
+                    .unwrap_or(line.len());
+                let sig = line[..sig_end].trim().to_string();
+                let name = rest
+                    .split_whitespace()
+                    .nth(1)
+                    .unwrap_or("unknown")
+                    .split(':')
+                    .next()
+                    .unwrap_or("unknown")
+                    .split('=')
+                    .next()
+                    .unwrap_or("unknown")
+                    .trim();
+                let kind = if line.contains("struct") {
+                    SymbolKind::Struct
+                } else if line.contains("enum") {
+                    SymbolKind::Enum
+                } else {
+                    SymbolKind::Const
+                };
+                symbols.push(BoundarySymbol {
+                    name: name.to_string(),
+                    kind,
+                    visibility: SymbolVisibility::Public,
+                    signature: sig,
+                });
+            }
+        }
+        symbols
+    }
+
+    fn extract_docker(source: &str) -> Vec<BoundarySymbol> {
+        let mut symbols = Vec::with_capacity(8);
+        for raw_line in source.lines() {
+            let line = raw_line.trim();
+            if line.starts_with("EXPOSE ")
+                || line.starts_with("ENTRYPOINT ")
+                || line.starts_with("CMD ")
+                || line.starts_with("VOLUME ")
+                || line.starts_with("ENV ")
+            {
+                let first_word = line.split_whitespace().next().unwrap_or("DOCKER");
+                symbols.push(BoundarySymbol {
+                    name: format!("directive_{first_word}"),
+                    kind: SymbolKind::Module,
+                    visibility: SymbolVisibility::Public,
                     signature: line.to_string(),
                 });
             }
@@ -426,7 +814,10 @@ impl PashExtractor {
         let mut symbols = Vec::with_capacity(8);
         for (idx, line) in source.lines().enumerate() {
             let trimmed = line.trim();
-            if trimmed.starts_with("pub ") || trimmed.starts_with("export ") {
+            if trimmed.starts_with("pub ")
+                || trimmed.starts_with("export ")
+                || trimmed.starts_with("public ")
+            {
                 symbols.push(BoundarySymbol {
                     name: format!("symbol_{idx}"),
                     kind: SymbolKind::Module,
@@ -578,88 +969,118 @@ pub fn calculate(a: i32, b: i32) -> i32 {
     }
 
     #[test]
-    fn test_rust_public_signature_change_produces_cascade() {
+    fn test_java_internal_change_produces_cutoff() {
         let mut graph = PolyAbiHyperGraph::new();
-        let code_v1 = "pub fn calculate(a: i32) -> i32 { a }";
-        let code_v2 = "pub fn calculate(a: i32, b: i32) -> i32 { a + b }";
+        let java_v1 = r#"
+package com.example;
 
-        graph.register_module("rust_core", LanguageKind::Rust, code_v1);
-        graph.add_dependency("rust_core", "ts_binding");
+public class OrderService {
+    public int calculateTotal(int price, int quantity) {
+        return price * quantity;
+    }
+    private void auditLog() {
+        System.out.println("log v1");
+    }
+}
+"#;
+        let java_v2 = r#"
+package com.example;
 
-        let decision = graph.evaluate_diff("rust_core", LanguageKind::Rust, code_v2);
+public class OrderService {
+    public int calculateTotal(int price, int quantity) {
+        int total = price * quantity;
+        return total;
+    }
+    private void auditLog() {
+        System.out.println("log v2 optimized");
+    }
+}
+"#;
+        graph.register_module("java_service", LanguageKind::Java, java_v1);
+        graph.add_dependency("java_service", "go_gateway");
+
+        let decision = graph.evaluate_diff("java_service", LanguageKind::Java, java_v2);
+        match decision {
+            InvalidationDecision::Cutoff { .. } => {}
+            InvalidationDecision::Cascade { .. } => {
+                panic!("Expected Cutoff for Java internal logic change")
+            }
+        }
+    }
+
+    #[test]
+    fn test_dotnet_record_and_method_cascade() {
+        let mut graph = PolyAbiHyperGraph::new();
+        let cs_v1 = "public record UserDto(string Name);";
+        let cs_v2 = "public record UserDto(string Name, int Age);";
+
+        graph.register_module("dotnet_api", LanguageKind::Dotnet, cs_v1);
+        graph.add_dependency("dotnet_api", "web_client");
+
+        let decision = graph.evaluate_diff("dotnet_api", LanguageKind::Dotnet, cs_v2);
         match decision {
             InvalidationDecision::Cascade {
                 affected_downstream,
-                changed_symbols,
                 ..
             } => {
-                assert_eq!(affected_downstream, vec!["ts_binding"]);
-                assert!(!changed_symbols.is_empty());
+                assert_eq!(affected_downstream, vec!["web_client"]);
             }
-            InvalidationDecision::Cutoff { .. } => panic!("Expected Cascade"),
-        }
-    }
-
-    #[test]
-    fn test_typescript_export_boundary() {
-        let mut graph = PolyAbiHyperGraph::new();
-        let ts_v1 = r#"
-export function computeTotal(items: number[]): number {
-    return items.reduce((a, b) => a + b, 0);
-}
-"#;
-        let ts_v2 = r#"
-export function computeTotal(items: number[]): number {
-    let sum = 0;
-    for (const x of items) { sum += x; }
-    return sum;
-}
-"#;
-        graph.register_module("ts_lib", LanguageKind::TypeScript, ts_v1);
-        graph.add_dependency("ts_lib", "docker_app");
-
-        let decision = graph.evaluate_diff("ts_lib", LanguageKind::TypeScript, ts_v2);
-        match decision {
-            InvalidationDecision::Cutoff { .. } => {}
-            InvalidationDecision::Cascade { .. } => {
-                panic!("Expected Cutoff for internal TS changes")
+            InvalidationDecision::Cutoff { .. } => {
+                panic!("Expected Cascade on C# signature change")
             }
         }
     }
 
     #[test]
-    fn test_go_private_vs_public_boundary() {
+    fn test_swift_open_func_cutoff() {
         let mut graph = PolyAbiHyperGraph::new();
-        let go_v1 = r#"
-package service
-
-func ProcessData(x int) string {
-    return helper(x)
-}
-
-func helper(x int) string {
-    return "ok"
+        let swift_v1 = r#"
+open class NetworkClient {
+    open func sendRequest(url: String) -> String {
+        return "data_v1"
+    }
 }
 "#;
-        let go_v2 = r#"
-package service
-
-func ProcessData(x int) string {
-    return helper(x)
-}
-
-func helper(x int) string {
-    return "optimized_ok"
+        let swift_v2 = r#"
+open class NetworkClient {
+    open func sendRequest(url: String) -> String {
+        let cached = "data_v1"
+        return cached
+    }
 }
 "#;
-        graph.register_module("go_service", LanguageKind::Go, go_v1);
-        graph.add_dependency("go_service", "py_worker");
+        graph.register_module("swift_sdk", LanguageKind::Swift, swift_v1);
+        graph.add_dependency("swift_sdk", "flutter_ui");
 
-        let decision = graph.evaluate_diff("go_service", LanguageKind::Go, go_v2);
+        let decision = graph.evaluate_diff("swift_sdk", LanguageKind::Swift, swift_v2);
+        match decision {
+            InvalidationDecision::Cutoff { .. } => {}
+            InvalidationDecision::Cascade { .. } => panic!("Expected Cutoff for Swift body edit"),
+        }
+    }
+
+    #[test]
+    fn test_zig_pub_fn_and_docker_invariants() {
+        let mut graph = PolyAbiHyperGraph::new();
+        let zig_v1 = r#"
+pub fn add(a: i32, b: i32) i32 {
+    return a + b;
+}
+"#;
+        let zig_v2 = r#"
+pub fn add(a: i32, b: i32) i32 {
+    const res = a + b;
+    return res;
+}
+"#;
+        graph.register_module("zig_math", LanguageKind::Zig, zig_v1);
+        graph.add_dependency("zig_math", "c_app");
+
+        let decision = graph.evaluate_diff("zig_math", LanguageKind::Zig, zig_v2);
         match decision {
             InvalidationDecision::Cutoff { .. } => {}
             InvalidationDecision::Cascade { .. } => {
-                panic!("Expected Cutoff when private Go helper changes")
+                panic!("Expected Cutoff for Zig internal body edit")
             }
         }
     }

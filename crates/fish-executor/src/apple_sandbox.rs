@@ -1,5 +1,4 @@
 use crate::command::CommandSpec;
-use std::path::PathBuf;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AppleSandboxConfig {
@@ -7,7 +6,6 @@ pub struct AppleSandboxConfig {
     pub offline: bool,
     pub memory_limit_mb: Option<u64>,
     pub timeout_seconds: Option<u64>,
-    pub scratch_dir: Option<PathBuf>,
 }
 
 impl Default for AppleSandboxConfig {
@@ -17,7 +15,6 @@ impl Default for AppleSandboxConfig {
             offline: true,
             memory_limit_mb: Some(4096),
             timeout_seconds: Some(300),
-            scratch_dir: Some(PathBuf::from(".apple-scratch")),
         }
     }
 }
@@ -67,6 +64,7 @@ impl AppleSandboxAdapter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
 
     #[test]
     fn test_apple_sandbox_adapter_wraps_command() {

@@ -1,0 +1,4 @@
+[submodule "submodules/apple"]
+	path = submodules/apple
+	url = https://github.com/requla11/apple.git
+	branch = dev

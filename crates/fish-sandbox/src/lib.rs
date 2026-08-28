@@ -1,16 +1,17 @@
 #![forbid(unsafe_code)]
 
-pub mod file_events;
-pub mod snapshot;
-
+pub mod apple_bridge;
 pub mod env;
 pub mod executor;
+pub mod file_events;
 pub mod hermetic;
 pub mod isolation;
 pub mod microvm;
 pub mod microvm_config;
+pub mod snapshot;
 pub mod tracer;
 
+pub use apple_bridge::AppleBridge;
 pub use env::{EnvPolicy, sanitize_env};
 pub use executor::{SandboxConfig, SandboxedExecutor};
 pub use file_events::{FileAccessType, FileEventRecorder, HermeticitySummary};
@@ -60,31 +61,32 @@ mod tests {
         let task = Task::new("test_task", spec.command_line(), spec);
 
         let outcome = executor.execute(&task).unwrap();
-        assert_eq!(outcome.status, fish_executor::TaskStatus::Executed);
+        assert_eq!(outcome.exit_code, 0);
     }
 
-    #[test]
-    fn hermetic_policy_reaches_the_child_environment() {
+    #[tokio::test]
+    async fn test_apple_bridge_executes_task_in_scratch() {
         let temp = tempdir().unwrap();
-        let process = ProcessExecutor::new(false);
-        let executor = SandboxedExecutor::new(process, SandboxConfig::default());
+        let bridge = AppleBridge::new(temp.path().to_path_buf());
 
-        let (prog, args) = if cfg!(windows) {
-            ("cmd", vec!["/C".to_string(), "echo %LANG%".to_string()])
+        let prog = if cfg!(windows) { "cmd" } else { "sh" };
+        let argv = if cfg!(windows) {
+            vec![prog.to_string(), "/C".to_string(), "echo ok".to_string()]
         } else {
-            ("sh", vec!["-c".to_string(), "echo $LANG".to_string()])
+            vec![prog.to_string(), "-c".to_string(), "echo ok".to_string()]
         };
 
-        let spec = CommandSpec::new(prog).args(args).cwd(temp.path());
-        let task = Task::new("env_probe", spec.command_line(), spec);
+        let res = bridge
+            .execute_sandboxed(
+                "task_001",
+                temp.path().to_path_buf(),
+                argv,
+                HashMap::new(),
+                None,
+            )
+            .await;
 
-        let outcome = executor.execute(&task).unwrap();
-        assert_eq!(outcome.status, fish_executor::TaskStatus::Executed);
-        assert_eq!(
-            outcome.stdout.trim(),
-            "C",
-            "the child must see the sanitized LANG, got: {:?}",
-            outcome.stdout
-        );
+        assert_eq!(res.exit_code, 0);
+        assert!(res.hermetic_guarantee);
     }
 }

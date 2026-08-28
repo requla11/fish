@@ -157,7 +157,7 @@ impl WaveletSchedulerEngine {
             hasher.update(new_content.as_bytes());
             let source_hash = *hasher.finalize().as_bytes();
 
-            let mut symbols = Vec::new();
+            let mut symbols = Vec::with_capacity(8);
             for line in new_content.lines() {
                 let trimmed = line.trim();
                 if trimmed.starts_with("fn ")

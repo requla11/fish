@@ -55,7 +55,7 @@ pub struct SymbolicBoundary {
 
 impl SymbolicBoundary {
     pub fn new(language: LanguageKind, mut symbols: Vec<BoundarySymbol>) -> Self {
-        symbols.sort_by(|a, b| a.name.cmp(&b.name));
+        symbols.sort_unstable_by(|a, b| a.name.cmp(&b.name));
         let mut hasher = blake3::Hasher::new();
         hasher.update(&[language as u8]);
         for sym in &symbols {
@@ -90,7 +90,7 @@ impl PashExtractor {
     }
 
     fn extract_rust(source: &str) -> Vec<BoundarySymbol> {
-        let mut symbols = Vec::new();
+        let mut symbols = Vec::with_capacity(16);
         for raw_line in source.lines() {
             let line = raw_line.trim();
             let Some(rest) = line.strip_prefix("pub ") else {
@@ -114,15 +114,15 @@ impl PashExtractor {
                     visibility: SymbolVisibility::Public,
                     signature: sig,
                 });
-            } else if rest.starts_with("struct ") {
+            } else if let Some(body) = rest.strip_prefix("struct ") {
                 let sig_end = line
                     .find('{')
                     .or_else(|| line.find(';'))
                     .unwrap_or(line.len());
                 let sig = line[..sig_end].trim().to_string();
-                let name = sig
+                let name = body
                     .split_whitespace()
-                    .nth(2)
+                    .next()
                     .unwrap_or("unknown")
                     .to_string();
                 symbols.push(BoundarySymbol {
@@ -131,12 +131,12 @@ impl PashExtractor {
                     visibility: SymbolVisibility::Public,
                     signature: sig,
                 });
-            } else if rest.starts_with("enum ") {
+            } else if let Some(body) = rest.strip_prefix("enum ") {
                 let sig_end = line.find('{').unwrap_or(line.len());
                 let sig = line[..sig_end].trim().to_string();
-                let name = sig
+                let name = body
                     .split_whitespace()
-                    .nth(2)
+                    .next()
                     .unwrap_or("unknown")
                     .to_string();
                 symbols.push(BoundarySymbol {
@@ -145,12 +145,12 @@ impl PashExtractor {
                     visibility: SymbolVisibility::Public,
                     signature: sig,
                 });
-            } else if rest.starts_with("trait ") {
+            } else if let Some(body) = rest.strip_prefix("trait ") {
                 let sig_end = line.find('{').unwrap_or(line.len());
                 let sig = line[..sig_end].trim().to_string();
-                let name = sig
+                let name = body
                     .split_whitespace()
-                    .nth(2)
+                    .next()
                     .unwrap_or("unknown")
                     .to_string();
                 symbols.push(BoundarySymbol {
@@ -159,12 +159,12 @@ impl PashExtractor {
                     visibility: SymbolVisibility::Public,
                     signature: sig,
                 });
-            } else if rest.starts_with("type ") {
+            } else if let Some(body) = rest.strip_prefix("type ") {
                 let sig_end = line.find(';').unwrap_or(line.len());
                 let sig = line[..sig_end].trim().to_string();
-                let name = sig
+                let name = body
                     .split_whitespace()
-                    .nth(2)
+                    .next()
                     .unwrap_or("unknown")
                     .to_string();
                 symbols.push(BoundarySymbol {
@@ -196,7 +196,7 @@ impl PashExtractor {
     }
 
     fn extract_ts(source: &str) -> Vec<BoundarySymbol> {
-        let mut symbols = Vec::new();
+        let mut symbols = Vec::with_capacity(16);
         for raw_line in source.lines() {
             let line = raw_line.trim();
             let Some(rest) = line.strip_prefix("export ") else {
@@ -217,12 +217,12 @@ impl PashExtractor {
                     visibility: SymbolVisibility::Public,
                     signature: sig,
                 });
-            } else if rest.starts_with("interface ") {
+            } else if let Some(body) = rest.strip_prefix("interface ") {
                 let sig_end = line.find('{').unwrap_or(line.len());
                 let sig = line[..sig_end].trim().to_string();
-                let name = sig
+                let name = body
                     .split_whitespace()
-                    .nth(2)
+                    .next()
                     .unwrap_or("unknown")
                     .to_string();
                 symbols.push(BoundarySymbol {
@@ -231,12 +231,12 @@ impl PashExtractor {
                     visibility: SymbolVisibility::Public,
                     signature: sig,
                 });
-            } else if rest.starts_with("type ") {
+            } else if let Some(body) = rest.strip_prefix("type ") {
                 let sig_end = line.find(';').unwrap_or(line.len());
                 let sig = line[..sig_end].trim().to_string();
-                let name = sig
+                let name = body
                     .split_whitespace()
-                    .nth(2)
+                    .next()
                     .unwrap_or("unknown")
                     .split('=')
                     .next()
@@ -249,12 +249,12 @@ impl PashExtractor {
                     visibility: SymbolVisibility::Public,
                     signature: sig,
                 });
-            } else if rest.starts_with("class ") {
+            } else if let Some(body) = rest.strip_prefix("class ") {
                 let sig_end = line.find('{').unwrap_or(line.len());
                 let sig = line[..sig_end].trim().to_string();
-                let name = sig
+                let name = body
                     .split_whitespace()
-                    .nth(2)
+                    .next()
                     .unwrap_or("unknown")
                     .to_string();
                 symbols.push(BoundarySymbol {
@@ -289,7 +289,7 @@ impl PashExtractor {
     }
 
     fn extract_go(source: &str) -> Vec<BoundarySymbol> {
-        let mut symbols = Vec::new();
+        let mut symbols = Vec::with_capacity(16);
         for raw_line in source.lines() {
             let line = raw_line.trim();
             if let Some(rest) = line.strip_prefix("func ") {
@@ -321,11 +321,11 @@ impl PashExtractor {
                         signature: sig,
                     });
                 }
-            } else if line.starts_with("type ") {
-                let parts: Vec<&str> = line.split_whitespace().collect();
-                if parts.len() >= 3 {
-                    let name = parts[1];
-                    let kind_str = parts[2];
+            } else if let Some(rest) = line.strip_prefix("type ") {
+                let parts: Vec<&str> = rest.split_whitespace().collect();
+                if parts.len() >= 2 {
+                    let name = parts[0];
+                    let kind_str = parts[1];
                     let kind = if kind_str.starts_with("struct") {
                         SymbolKind::Struct
                     } else if kind_str.starts_with("interface") {
@@ -351,7 +351,7 @@ impl PashExtractor {
     }
 
     fn extract_cpp(source: &str) -> Vec<BoundarySymbol> {
-        let mut symbols = Vec::new();
+        let mut symbols = Vec::with_capacity(16);
         for raw_line in source.lines() {
             let line = raw_line.trim();
             let is_cpp_decl = line.starts_with("extern \"C\"")
@@ -380,7 +380,7 @@ impl PashExtractor {
     }
 
     fn extract_python(source: &str) -> Vec<BoundarySymbol> {
-        let mut symbols = Vec::new();
+        let mut symbols = Vec::with_capacity(16);
         for raw_line in source.lines() {
             let line = raw_line.trim();
             if let Some(stripped) = line.strip_prefix("def ") {
@@ -423,7 +423,7 @@ impl PashExtractor {
     }
 
     fn extract_generic(source: &str) -> Vec<BoundarySymbol> {
-        let mut symbols = Vec::new();
+        let mut symbols = Vec::with_capacity(8);
         for (idx, line) in source.lines().enumerate() {
             let trimmed = line.trim();
             if trimmed.starts_with("pub ") || trimmed.starts_with("export ") {

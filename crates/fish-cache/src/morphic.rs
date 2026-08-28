@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -10,43 +10,35 @@ pub struct DualKeyFingerprint {
     pub normalizations_applied: Vec<String>,
 }
 
-#[derive(Debug, Clone)]
-pub struct MorphicEnvironmentFilter {
-    whitelist: HashSet<String>,
-}
+const WHITELIST_ENV: &[&str] = &[
+    "CGO_ENABLED",
+    "CFLAGS",
+    "CXXFLAGS",
+    "DOTNET_CONFIGURATION",
+    "FISH_OFFLINE",
+    "FISH_SANDBOX_PROFILE",
+    "GOARCH",
+    "GOOS",
+    "LDFLAGS",
+    "NODE_ENV",
+    "PYTHONOPTIMIZE",
+    "RUSTFLAGS",
+    "SWIFT_FLAGS",
+];
 
-impl Default for MorphicEnvironmentFilter {
-    fn default() -> Self {
-        let mut set = HashSet::new();
-        for key in [
-            "RUSTFLAGS",
-            "CFLAGS",
-            "CXXFLAGS",
-            "LDFLAGS",
-            "GOOS",
-            "GOARCH",
-            "CGO_ENABLED",
-            "NODE_ENV",
-            "PYTHONOPTIMIZE",
-            "DOTNET_CONFIGURATION",
-            "SWIFT_FLAGS",
-            "FISH_OFFLINE",
-            "FISH_SANDBOX_PROFILE",
-        ] {
-            set.insert(key.to_string());
-        }
-        Self { whitelist: set }
-    }
-}
+#[derive(Debug, Clone, Default)]
+pub struct MorphicEnvironmentFilter;
 
 impl MorphicEnvironmentFilter {
     pub fn sanitize_env(&self, env: &HashMap<String, String>) -> Vec<(String, String)> {
         let mut filtered: Vec<(String, String)> = env
             .iter()
-            .filter(|(k, _)| self.whitelist.contains(*k) || k.starts_with("FISH_BUILD_"))
+            .filter(|(k, _)| {
+                WHITELIST_ENV.binary_search(&k.as_str()).is_ok() || k.starts_with("FISH_BUILD_")
+            })
             .map(|(k, v)| (k.clone(), v.clone()))
             .collect();
-        filtered.sort_by(|a, b| a.0.cmp(&b.0));
+        filtered.sort_unstable_by(|a, b| a.0.cmp(&b.0));
         filtered
     }
 }
@@ -96,7 +88,7 @@ impl Default for MorphicFingerprintEngine {
 impl MorphicFingerprintEngine {
     pub fn new() -> Self {
         Self {
-            env_filter: MorphicEnvironmentFilter::default(),
+            env_filter: MorphicEnvironmentFilter,
         }
     }
 
@@ -115,7 +107,7 @@ impl MorphicFingerprintEngine {
             exact_hasher.update(arg.as_bytes());
         }
         let mut sorted_raw_env: Vec<(&String, &String)> = raw_env.iter().collect();
-        sorted_raw_env.sort_by(|a, b| a.0.cmp(b.0));
+        sorted_raw_env.sort_unstable_by(|a, b| a.0.cmp(b.0));
         for (k, v) in sorted_raw_env {
             exact_hasher.update(k.as_bytes());
             exact_hasher.update(v.as_bytes());
@@ -142,10 +134,10 @@ impl MorphicFingerprintEngine {
             morphic_hasher.update(v.as_bytes());
         }
 
-        let mut sorted_files = input_files.to_vec();
-        sorted_files.sort_by(|a, b| a.0.cmp(&b.0));
+        let mut sorted_files: Vec<&(PathBuf, &str)> = input_files.iter().collect();
+        sorted_files.sort_unstable_by(|a, b| a.0.cmp(&b.0));
         for (path, content) in sorted_files {
-            let canon_path = MorphicPathNormalizer::canonicalize_path(&path, workspace_root);
+            let canon_path = MorphicPathNormalizer::canonicalize_path(path, workspace_root);
             if canon_path.starts_with("$WORKSPACE") {
                 normalizations.push(format!("path_relativized:{canon_path}"));
             }

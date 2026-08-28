@@ -84,7 +84,13 @@ impl VLinkSpliceEngine {
     }
 
     pub fn emit_runtime_overlay(table: &VirtualBinaryDispatchTable) -> Vec<u8> {
-        let mut image = Vec::with_capacity(table.overlay_arena.len() + 64);
+        let entries_size: usize = table
+            .jump_entries
+            .values()
+            .map(|e| 2 + e.symbol_name.len() + 8 + 4 + 4)
+            .sum();
+        let total_capacity = 24 + 4 + entries_size + table.overlay_arena.len();
+        let mut image = Vec::with_capacity(total_capacity);
         image.extend_from_slice(b"VLINK_DISPATCH_HEADER_V1");
         let count = table.jump_entries.len() as u32;
         image.extend_from_slice(&count.to_le_bytes());

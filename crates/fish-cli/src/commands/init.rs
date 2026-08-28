@@ -19,13 +19,12 @@ pub fn detect_workspace_languages(dir: &Path) -> Vec<DetectedLanguage> {
             if path.is_dir() {
                 let dir_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
                 if ["packages", "apps", "crates", "services", "modules", "src"].contains(&dir_name)
+                    && let Ok(sub_entries) = std::fs::read_dir(&path)
                 {
-                    if let Ok(sub_entries) = std::fs::read_dir(&path) {
-                        for sub in sub_entries.flatten() {
-                            let sub_path = sub.path();
-                            if sub_path.is_dir() {
-                                scan_directory_languages(&sub_path, &mut detected);
-                            }
+                    for sub in sub_entries.flatten() {
+                        let sub_path = sub.path();
+                        if sub_path.is_dir() {
+                            scan_directory_languages(&sub_path, &mut detected);
                         }
                     }
                 }

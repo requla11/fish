@@ -418,7 +418,7 @@ impl PashExtractor {
                     SymbolVisibility::Public
                 };
                 symbols.push(BoundarySymbol {
-                    name,
+                    name: name.to_string(),
                     kind: SymbolKind::Class,
                     visibility,
                     signature: line.to_string(),

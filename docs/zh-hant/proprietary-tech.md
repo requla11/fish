@@ -1,7 +1,7 @@
 # Fish 獨家專有技術與下一代演算法
 
 > 🌐 **語言導航 / 语言导航:**
-> [English](../../PROPRIETARY_TECH.md) | [Tiếng Việt](../vi/proprietary-tech.md) | [简体中文](../zh-Hans/proprietary-tech.md) | [繁體中文](proprietary-tech.md) | [日本語](../ja/proprietary-tech.md)
+> [English](../proprietary-tech.md) | [Tiếng Việt](../vi/proprietary-tech.md) | [日本語](../ja/proprietary-tech.md) | [简体中文](../zh-hans/proprietary-tech.md) | [繁體中文](proprietary-tech.md)
 
 ---
 

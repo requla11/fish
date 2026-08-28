@@ -1,7 +1,7 @@
 # Fish 独自の技術と次世代アルゴリズム
 
 > 🌐 **言語ナビゲーション:**
-> [English](../../PROPRIETARY_TECH.md) | [Tiếng Việt](../vi/proprietary-tech.md) | [简体中文](../zh-Hans/proprietary-tech.md) | [繁體中文](../zh-Hant/proprietary-tech.md) | [日本語](proprietary-tech.md)
+> [English](../proprietary-tech.md) | [Tiếng Việt](../vi/proprietary-tech.md) | [日本語](proprietary-tech.md) | [简体中文](../zh-hans/proprietary-tech.md) | [繁體中文](../zh-hant/proprietary-tech.md)
 
 ---
 

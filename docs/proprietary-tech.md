@@ -1,7 +1,7 @@
 # Fish Proprietary Technologies & Next-Gen Algorithms
 
 > 🌐 **Language Navigation / 多语言文档 / 多語言文檔 / ドキュメント言語:**
-> [English](PROPRIETARY_TECH.md) | [Tiếng Việt](docs/vi/proprietary-tech.md) | [日本語](docs/ja/proprietary-tech.md) | [简体中文](docs/zh-hans/proprietary-tech.md) | [繁體中文](docs/zh-hant/proprietary-tech.md)
+> [English](proprietary-tech.md) | [Tiếng Việt](vi/proprietary-tech.md) | [日本語](ja/proprietary-tech.md) | [简体中文](zh-hans/proprietary-tech.md) | [繁體中文](zh-hant/proprietary-tech.md)
 
 ---
 

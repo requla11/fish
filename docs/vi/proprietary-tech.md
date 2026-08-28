@@ -1,7 +1,7 @@
 # Công nghệ độc quyền & Thuật toán thế hệ mới của Fish
 
 > 🌐 **Chuyển đổi ngôn ngữ:**
-> [English](../../PROPRIETARY_TECH.md) | [Tiếng Việt](proprietary-tech.md) | [简体中文](../zh-Hans/proprietary-tech.md) | [繁體中文](../zh-Hant/proprietary-tech.md) | [日本語](../ja/proprietary-tech.md)
+> [English](../proprietary-tech.md) | [Tiếng Việt](proprietary-tech.md) | [日本語](../ja/proprietary-tech.md) | [简体中文](../zh-hans/proprietary-tech.md) | [繁體中文](../zh-hant/proprietary-tech.md)
 
 ---
 

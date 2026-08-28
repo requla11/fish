@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 
+pub mod apple_sandbox;
 pub mod async_executor;
 pub mod command;
 pub mod cow;
@@ -11,6 +12,7 @@ pub mod task;
 pub mod trace_replay;
 pub mod vlink;
 
+pub use apple_sandbox::{AppleSandboxAdapter, AppleSandboxConfig};
 pub use async_executor::AsyncProcessExecutor;
 pub use command::CommandSpec;
 pub use cow::{CloneStrategy, KernelCowCloner};

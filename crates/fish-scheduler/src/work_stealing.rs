@@ -130,11 +130,11 @@ impl WorkStealingScheduler {
         let mut in_flight: usize = 0;
         let mut failures: Vec<FailureRecord> = Vec::new();
         let mut timings: Vec<TaskTiming> = Vec::new();
+        let tail_lengths = self.compute_all_tail_lengths();
 
         loop {
-            let tail_lengths = self.compute_all_tail_lengths();
             let mut ready = self.graph.ready_nodes();
-            ready.sort_by_key(|id| {
+            ready.sort_unstable_by_key(|id| {
                 (
                     std::cmp::Reverse(self.priority_score(*id, &tail_lengths)),
                     id.index(),

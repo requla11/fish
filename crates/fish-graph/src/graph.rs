@@ -158,40 +158,58 @@ impl<T> BuildGraph<T> {
     }
 
     pub fn is_ready(&self, id: NodeId) -> Result<bool, GraphError> {
-        Ok(self
-            .deps(id)?
-            .iter()
-            .all(|dep| self.state(*dep).is_ok_and(TaskState::is_successful)))
+        let deps = self.deps.get(id.0).ok_or(GraphError::MissingNode(id))?;
+        for dep in deps {
+            let node = self.nodes.get(dep.0).ok_or(GraphError::MissingNode(*dep))?;
+            if !node.state.is_successful() {
+                return Ok(false);
+            }
+        }
+        Ok(true)
     }
 
     pub fn ready_nodes(&self) -> Vec<NodeId> {
-        self.nodes
-            .iter()
-            .filter(|node| {
-                node.state == TaskState::Pending && self.is_ready(node.id).unwrap_or(false)
-            })
-            .map(|node| node.id)
-            .collect()
+        let mut ready = Vec::with_capacity(self.nodes.len().min(32));
+        for node in &self.nodes {
+            if node.state == TaskState::Pending && self.is_ready(node.id).unwrap_or(false) {
+                ready.push(node.id);
+            }
+        }
+        ready
     }
 
     pub fn is_blocked(&self, id: NodeId) -> Result<bool, GraphError> {
-        Ok(self
-            .deps(id)?
-            .iter()
-            .any(|dep| self.state(*dep).is_ok_and(TaskState::is_unsuccessful)))
+        let deps = self.deps.get(id.0).ok_or(GraphError::MissingNode(id))?;
+        for dep in deps {
+            let node = self.nodes.get(dep.0).ok_or(GraphError::MissingNode(*dep))?;
+            if node.state.is_unsuccessful() {
+                return Ok(true);
+            }
+        }
+        Ok(false)
     }
 
     pub fn mark_failed(&mut self, id: NodeId) -> Result<(), GraphError> {
         self.set_state(id, TaskState::Failed)?;
-        let mut queue = VecDeque::from([id]);
+        let mut queue = VecDeque::with_capacity(16);
+        queue.push_back(id);
         while let Some(current) = queue.pop_front() {
-            let dependents = self.dependents(current)?.to_vec();
-            for dependent in dependents {
-                if !self.state(dependent)?.is_terminal() {
-                    self.set_state(dependent, TaskState::Cancelled)?;
-                    queue.push_back(dependent);
+            let deps_slice = match self.dependents.get(current.0) {
+                Some(deps) => deps.as_slice(),
+                None => return Err(GraphError::MissingNode(current)),
+            };
+            let mut to_enqueue = Vec::with_capacity(deps_slice.len());
+            for &dependent in deps_slice {
+                if let Some(node) = self.nodes.get_mut(dependent.0) {
+                    if !node.state.is_terminal() {
+                        node.state = TaskState::Cancelled;
+                        to_enqueue.push(dependent);
+                    }
+                } else {
+                    return Err(GraphError::MissingNode(dependent));
                 }
             }
+            queue.extend(to_enqueue);
         }
         Ok(())
     }

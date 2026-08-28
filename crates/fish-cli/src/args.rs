@@ -202,8 +202,14 @@ pub struct AffectedArgs {
     /// revision against the working tree.
     #[arg(long, default_value = "HEAD")]
     pub since: String,
+    /// Git base reference to compare against (e.g. `--base origin/main`).
+    #[arg(long)]
+    pub base: Option<String>,
     #[arg(long, default_value = "build", value_enum)]
     pub mode: AffectedMode,
+    /// Output affected packages and PASH status as JSON.
+    #[arg(long)]
+    pub json: bool,
 }
 
 /// Affected build mode
@@ -241,6 +247,7 @@ pub enum CacheCommand {
     /// much disk space they occupy.
     Stats,
     /// Delete stale fingerprints and oversized cache content.
+    #[command(alias = "gc")]
     Prune(CachePruneArgs),
     /// CAS operations for artifact storage
     Cas(CasArgs),

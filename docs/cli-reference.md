@@ -338,7 +338,9 @@ Usage: fish affected [OPTIONS] [PATH]
 | `--otel-endpoint` `<OTEL_ENDPOINT>` |  |  |
 | `--no-infer-deps` | Disable automatic cross-language dependency inference between detected projects (see `cross_deps`); references are then ignored and each ecosystem builds independently | `false` |
 | `--since` `<SINCE>` | The git revision (commit/tag/branch) to diff against. `HEAD` compares the working tree, an explicit revision compares the tree of that revision against the working tree | `HEAD` |
+| `--base` `<BASE>` | Git base reference to compare against (e.g. `--base origin/main`) |  |
 | `--mode` `<MODE>` |  | `build` |
+| `--json` | Output affected packages and PASH status as JSON | `false` |
 
 ### fish-doctor
 

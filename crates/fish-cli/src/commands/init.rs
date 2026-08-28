@@ -11,7 +11,34 @@ pub struct DetectedLanguage {
 
 pub fn detect_workspace_languages(dir: &Path) -> Vec<DetectedLanguage> {
     let mut detected = Vec::new();
+    scan_directory_languages(dir, &mut detected);
 
+    if let Ok(entries) = std::fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                let dir_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+                if ["packages", "apps", "crates", "services", "modules", "src"].contains(&dir_name)
+                {
+                    if let Ok(sub_entries) = std::fs::read_dir(&path) {
+                        for sub in sub_entries.flatten() {
+                            let sub_path = sub.path();
+                            if sub_path.is_dir() {
+                                scan_directory_languages(&sub_path, &mut detected);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    detected.sort_unstable_by(|a, b| a.backend.cmp(b.backend));
+    detected.dedup_by(|a, b| a.backend == b.backend);
+    detected
+}
+
+fn scan_directory_languages(dir: &Path, detected: &mut Vec<DetectedLanguage>) {
     if dir.join("Cargo.toml").exists() {
         detected.push(DetectedLanguage {
             name: "Rust",
@@ -125,12 +152,12 @@ pub fn detect_workspace_languages(dir: &Path) -> Vec<DetectedLanguage> {
             test_cmd: "docker run --rm test",
         });
     }
-
-    detected
 }
 
 pub fn generate_fish_yaml(languages: &[DetectedLanguage]) -> String {
-    let mut out = String::from("version: \"1\"\n\ntasks:\n");
+    let mut out = String::from(
+        "version: \"1\"\n\n# Quantum Polyglot Core (QPC) Engine Enabled\npash:\n  enabled: true\n\ntasks:\n",
+    );
 
     if languages.is_empty() {
         out.push_str("  build:\n    command: echo \"Building project...\"\n\n");
@@ -144,7 +171,7 @@ pub fn generate_fish_yaml(languages: &[DetectedLanguage]) -> String {
         let prefix = lang.backend;
         out.push_str(&format!("  {prefix}-build:\n"));
         out.push_str(&format!("    command: {}\n", lang.build_cmd));
-        out.push_str("    cache:\n      enabled: true\n\n");
+        out.push_str("    cache:\n      enabled: true\n      morphic: true\n\n");
 
         out.push_str(&format!("  {prefix}-test:\n"));
         out.push_str(&format!("    command: {}\n", lang.test_cmd));
@@ -257,5 +284,25 @@ mod tests {
         assert!(yaml_content.contains("rust-build:"));
         assert!(yaml_content.contains("ts-build:"));
         assert!(yaml_content.contains("dotnet-build:"));
+    }
+
+    #[test]
+    fn test_nested_monorepo_discovery() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path();
+
+        let apps_dir = path.join("apps").join("web");
+        let packages_dir = path.join("packages").join("core");
+        std::fs::create_dir_all(&apps_dir).unwrap();
+        std::fs::create_dir_all(&packages_dir).unwrap();
+
+        std::fs::write(apps_dir.join("package.json"), "").unwrap();
+        std::fs::write(packages_dir.join("go.mod"), "").unwrap();
+
+        let detected = detect_workspace_languages(path);
+        let names: Vec<&str> = detected.iter().map(|d| d.name).collect();
+
+        assert!(names.contains(&"TypeScript / Node"));
+        assert!(names.contains(&"Go"));
     }
 }

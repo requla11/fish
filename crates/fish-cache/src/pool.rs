@@ -149,6 +149,144 @@ impl Drop for ScopedBuffer {
     }
 }
 
+/// String pool for reducing allocations of commonly-sized strings
+///
+/// This module provides efficient memory pooling for String allocations,
+/// particularly useful for cache keys, identifiers, and labels that are
+/// frequently created and destroyed during build operations.
+///
+/// Performance optimizations:
+/// - Object pooling for `String` buffers
+/// - Size tiers matching common string lengths
+/// - Reuse of underlying capacity without deallocation
+///
+/// Size tiers for string pools (powers of 2 for efficient reuse)
+const STRING_SIZE_TIERS: &[usize] = &[32, 64, 128, 256, 512, 1024, 2048, 4096];
+
+/// Memory pool for `String` buffers
+#[derive(Debug)]
+pub struct StringPool {
+    /// Multiple pools for different size tiers
+    pools: Vec<Mutex<VecDeque<String>>>,
+    /// Statistics
+    allocations: Arc<Mutex<PoolStats>>,
+}
+
+impl StringPool {
+    pub fn new() -> Self {
+        Self {
+            pools: STRING_SIZE_TIERS
+                .iter()
+                .map(|_| Mutex::new(VecDeque::new()))
+                .collect(),
+            allocations: Arc::new(Mutex::new(PoolStats::default())),
+        }
+    }
+
+    /// Get a string with at least the requested capacity
+    pub fn get_string(&self, min_capacity: usize) -> String {
+        let tier_index = self.find_tier(min_capacity);
+
+        let mut stats = self.allocations.lock();
+        stats.allocations += 1;
+
+        if let Some(pool) = self.pools.get(tier_index) {
+            let mut pool = pool.lock();
+            if let Some(mut s) = pool.pop_front() {
+                stats.hits += 1;
+                s.clear();
+                s.reserve(min_capacity);
+                return s;
+            }
+        }
+
+        stats.misses += 1;
+        String::with_capacity(min_capacity)
+    }
+
+    /// Return a string to the pool
+    pub fn return_string(&self, s: String) {
+        let capacity = s.capacity();
+        let tier_index = self.find_tier(capacity);
+
+        let mut stats = self.allocations.lock();
+        stats.deallocations += 1;
+
+        if let Some(&tier_size) = STRING_SIZE_TIERS.get(tier_index)
+            && capacity >= tier_size * 2 / 3
+            && capacity <= tier_size * 3 / 2
+            && let Some(pool) = self.pools.get(tier_index)
+        {
+            let mut pool = pool.lock();
+            if pool.len() < 10 {
+                pool.push_back(s);
+            }
+        }
+    }
+
+    /// Find the appropriate size tier for a given capacity
+    fn find_tier(&self, size: usize) -> usize {
+        STRING_SIZE_TIERS
+            .iter()
+            .position(|&tier| tier >= size)
+            .unwrap_or(STRING_SIZE_TIERS.len() - 1)
+    }
+
+    /// Get pool statistics
+    pub fn stats(&self) -> PoolStats {
+        let stats = self.allocations.lock();
+        stats.clone()
+    }
+
+    /// Clear all pools (useful for memory pressure scenarios)
+    pub fn clear(&self) {
+        for pool in &self.pools {
+            pool.lock().clear();
+        }
+    }
+}
+
+impl Default for StringPool {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Scoped string that automatically returns to pool when dropped
+pub struct ScopedString {
+    string: String,
+    pool: Arc<StringPool>,
+}
+
+impl ScopedString {
+    pub fn new(min_capacity: usize, pool: Arc<StringPool>) -> Self {
+        let string = pool.get_string(min_capacity);
+        Self { string, pool }
+    }
+
+    #[allow(clippy::should_implement_trait)]
+    pub fn as_mut(&mut self) -> &mut String {
+        &mut self.string
+    }
+
+    #[allow(clippy::should_implement_trait)]
+    pub fn as_ref(&self) -> &String {
+        &self.string
+    }
+
+    pub fn into_inner(mut self) -> String {
+        std::mem::take(&mut self.string)
+    }
+}
+
+impl Drop for ScopedString {
+    fn drop(&mut self) {
+        if !self.string.is_empty() {
+            self.pool.return_string(std::mem::take(&mut self.string));
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -205,6 +343,66 @@ mod tests {
         }
 
         let first_pool = pool.pools.get(2).unwrap().lock();
+        assert!(first_pool.len() <= 10);
+    }
+}
+
+#[cfg(test)]
+mod string_pool_tests {
+    use super::*;
+
+    #[test]
+    fn test_string_pool_basic() {
+        let pool = StringPool::new();
+
+        let s1 = pool.get_string(50);
+        assert!(s1.capacity() >= 50);
+
+        pool.return_string(s1);
+
+        let s2 = pool.get_string(50);
+        assert!(s2.capacity() >= 50);
+
+        let stats = pool.stats();
+        assert!(stats.hits >= 1 || stats.misses >= 1);
+    }
+
+    #[test]
+    fn test_scoped_string() {
+        let pool = Arc::new(StringPool::new());
+
+        {
+            let mut scoped = ScopedString::new(100, pool.clone());
+            scoped.as_mut().push_str("test data");
+            assert_eq!(scoped.as_ref().len(), 9);
+        }
+
+        let stats = pool.stats();
+        assert!(stats.deallocations > 0);
+    }
+
+    #[test]
+    fn test_string_size_tiers() {
+        let pool = StringPool::new();
+
+        let sizes = [10, 50, 100, 500, 1000, 2000, 5000];
+        for size in sizes {
+            let s = pool.get_string(size);
+            assert!(s.capacity() >= size);
+            pool.return_string(s);
+        }
+    }
+
+    #[test]
+    fn test_string_pool_limits() {
+        let pool = StringPool::new();
+
+        for _ in 0..20 {
+            let s = pool.get_string(100);
+            pool.return_string(s);
+        }
+
+        let first_pool = pool.pools.get(3).unwrap().lock();
         assert!(first_pool.len() <= 10);
     }
 }

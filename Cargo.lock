@@ -1325,6 +1325,8 @@ dependencies = [
 name = "fish-graph"
 version = "0.6.0"
 dependencies = [
+ "blake3",
+ "serde",
  "thiserror",
 ]
 

@@ -9,6 +9,7 @@ pub mod middleware;
 pub mod response_file;
 pub mod task;
 pub mod trace_replay;
+pub mod vlink;
 
 pub use async_executor::AsyncProcessExecutor;
 pub use command::CommandSpec;
@@ -18,3 +19,4 @@ pub use linker::{LinkerDispatcher, LinkerKind};
 pub use middleware::{MiddlewareChainExecutor, TaskMiddleware};
 pub use response_file::ResponseFileWriter;
 pub use task::{CacheEntry, Task, TaskOutcome, TaskStatus};
+pub use vlink::{VLinkJumpEntry, VLinkSpliceEngine, VirtualBinaryDispatchTable};

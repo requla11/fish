@@ -257,7 +257,11 @@ pub fn run_ci(args: CiArgs) -> ExitCode {
                     let generator = AzurePipelinesGenerator::new(ci_config);
                     generator.generate_pipeline(&matrix)
                 }
-                _ => unreachable!(),
+                _ => {
+                    // This branch is unreachable due to validation above (lines 214-219)
+                    // Returning an error here for defense in depth
+                    return ExitCode::FAILURE;
+                }
             };
 
             match result {

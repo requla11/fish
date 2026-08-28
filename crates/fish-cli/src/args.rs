@@ -73,6 +73,8 @@ pub enum Command {
     Ai(AiArgs),
     Lsp(LspArgs),
     Why(WhyArgs),
+    Pash(PashArgs),
+    Qpc(QpcArgs),
 }
 
 #[derive(Debug, Args)]
@@ -695,4 +697,31 @@ pub struct WhyArgs {
     pub target: String,
     #[arg(long, short)]
     pub path: Option<PathBuf>,
+}
+
+#[derive(Debug, Args)]
+pub struct PashArgs {
+    pub file: PathBuf,
+    #[arg(long, short)]
+    pub compare_with: Option<PathBuf>,
+    #[arg(long, short)]
+    pub lang: Option<String>,
+    #[arg(long)]
+    pub json: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct QpcArgs {
+    #[command(subcommand)]
+    pub command: QpcCommand,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum QpcCommand {
+    Status,
+    Bench,
+    Morphic {
+        #[arg(long, short)]
+        path: Option<PathBuf>,
+    },
 }

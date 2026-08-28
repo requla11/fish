@@ -15,7 +15,7 @@ Usage: fish [OPTIONS] <COMMAND>
 | `--experimental` | Enable experimental features (use at your own risk) | `false` |
 | `--offline` | Disallow network access and fail-fast on remote operations | `false` |
 
-**Subcommands:** [`version`](#fish-version), [`init`](#fish-init), [`new`](#fish-new), [`build`](#fish-build), [`check`](#fish-check), [`test`](#fish-test), [`clean`](#fish-clean), [`run`](#fish-run), [`graph`](#fish-graph), [`watch`](#fish-watch), [`cache-server`](#fish-cache-server), [`worker`](#fish-worker), [`affected`](#fish-affected), [`doctor`](#fish-doctor), [`cache`](#fish-cache), [`ci`](#fish-ci), [`history`](#fish-history), [`rewind`](#fish-rewind), [`attest`](#fish-attest), [`verify`](#fish-verify), [`live-patch`](#fish-live-patch), [`jit`](#fish-jit), [`super-opt`](#fish-super-opt), [`plugin`](#fish-plugin), [`fix`](#fish-fix), [`signing-key`](#fish-signing-key), [`heal`](#fish-heal), [`cost-estimate`](#fish-cost-estimate), [`ui`](#fish-ui), [`query`](#fish-query), [`daemon`](#fish-daemon), [`ai`](#fish-ai), [`lsp`](#fish-lsp), [`why`](#fish-why)
+**Subcommands:** [`version`](#fish-version), [`init`](#fish-init), [`new`](#fish-new), [`build`](#fish-build), [`check`](#fish-check), [`test`](#fish-test), [`clean`](#fish-clean), [`run`](#fish-run), [`graph`](#fish-graph), [`watch`](#fish-watch), [`cache-server`](#fish-cache-server), [`worker`](#fish-worker), [`affected`](#fish-affected), [`doctor`](#fish-doctor), [`cache`](#fish-cache), [`ci`](#fish-ci), [`history`](#fish-history), [`rewind`](#fish-rewind), [`attest`](#fish-attest), [`verify`](#fish-verify), [`live-patch`](#fish-live-patch), [`jit`](#fish-jit), [`super-opt`](#fish-super-opt), [`plugin`](#fish-plugin), [`fix`](#fish-fix), [`signing-key`](#fish-signing-key), [`heal`](#fish-heal), [`cost-estimate`](#fish-cost-estimate), [`ui`](#fish-ui), [`query`](#fish-query), [`daemon`](#fish-daemon), [`ai`](#fish-ai), [`lsp`](#fish-lsp), [`why`](#fish-why), [`pash`](#fish-pash), [`qpc`](#fish-qpc)
 
 ### fish-version
 
@@ -1179,6 +1179,85 @@ Usage: fish why [OPTIONS] <TARGET>
 | target `<TARGET>` |  |  |
 | `--path`, `-p` `<PATH>` |  |  |
 
+### fish-pash
+
+```
+Usage: fish pash [OPTIONS] <FILE>
+```
+
+| Flag | Description | Default |
+|---|---|---|
+| file `<FILE>` |  |  |
+| `--compare-with`, `-c` `<COMPARE_WITH>` |  |  |
+| `--lang`, `-l` `<LANG>` |  |  |
+| `--json` |  | `false` |
+
+### fish-qpc
+
+```
+Usage: fish qpc [OPTIONS] <COMMAND>
+```
+
+**Subcommands:** [`status`](#fish-qpc-status), [`bench`](#fish-qpc-bench), [`morphic`](#fish-qpc-morphic)
+
+#### fish-qpc-status
+
+```
+Usage: fish qpc status [OPTIONS]
+```
+
+#### fish-qpc-bench
+
+```
+Usage: fish qpc bench [OPTIONS]
+```
+
+#### fish-qpc-morphic
+
+```
+Usage: fish qpc morphic [OPTIONS]
+```
+
+| Flag | Description | Default |
+|---|---|---|
+| `--path`, `-p` `<PATH>` |  |  |
+
+#### fish-qpc-help
+
+Print this message or the help of the given subcommand(s)
+
+```
+Usage: fish qpc help [COMMAND]
+```
+
+**Subcommands:** [`status`](#fish-qpc-help-status), [`bench`](#fish-qpc-help-bench), [`morphic`](#fish-qpc-help-morphic)
+
+##### fish-qpc-help-status
+
+```
+Usage: fish qpc help status
+```
+
+##### fish-qpc-help-bench
+
+```
+Usage: fish qpc help bench
+```
+
+##### fish-qpc-help-morphic
+
+```
+Usage: fish qpc help morphic
+```
+
+##### fish-qpc-help-help
+
+Print this message or the help of the given subcommand(s)
+
+```
+Usage: fish qpc help help
+```
+
 ### fish-help
 
 Print this message or the help of the given subcommand(s)
@@ -1187,7 +1266,7 @@ Print this message or the help of the given subcommand(s)
 Usage: fish help [COMMAND]
 ```
 
-**Subcommands:** [`version`](#fish-help-version), [`init`](#fish-help-init), [`new`](#fish-help-new), [`build`](#fish-help-build), [`check`](#fish-help-check), [`test`](#fish-help-test), [`clean`](#fish-help-clean), [`run`](#fish-help-run), [`graph`](#fish-help-graph), [`watch`](#fish-help-watch), [`cache-server`](#fish-help-cache-server), [`worker`](#fish-help-worker), [`affected`](#fish-help-affected), [`doctor`](#fish-help-doctor), [`cache`](#fish-help-cache), [`ci`](#fish-help-ci), [`history`](#fish-help-history), [`rewind`](#fish-help-rewind), [`attest`](#fish-help-attest), [`verify`](#fish-help-verify), [`live-patch`](#fish-help-live-patch), [`jit`](#fish-help-jit), [`super-opt`](#fish-help-super-opt), [`plugin`](#fish-help-plugin), [`fix`](#fish-help-fix), [`signing-key`](#fish-help-signing-key), [`heal`](#fish-help-heal), [`cost-estimate`](#fish-help-cost-estimate), [`ui`](#fish-help-ui), [`query`](#fish-help-query), [`daemon`](#fish-help-daemon), [`ai`](#fish-help-ai), [`lsp`](#fish-help-lsp), [`why`](#fish-help-why)
+**Subcommands:** [`version`](#fish-help-version), [`init`](#fish-help-init), [`new`](#fish-help-new), [`build`](#fish-help-build), [`check`](#fish-help-check), [`test`](#fish-help-test), [`clean`](#fish-help-clean), [`run`](#fish-help-run), [`graph`](#fish-help-graph), [`watch`](#fish-help-watch), [`cache-server`](#fish-help-cache-server), [`worker`](#fish-help-worker), [`affected`](#fish-help-affected), [`doctor`](#fish-help-doctor), [`cache`](#fish-help-cache), [`ci`](#fish-help-ci), [`history`](#fish-help-history), [`rewind`](#fish-help-rewind), [`attest`](#fish-help-attest), [`verify`](#fish-help-verify), [`live-patch`](#fish-help-live-patch), [`jit`](#fish-help-jit), [`super-opt`](#fish-help-super-opt), [`plugin`](#fish-help-plugin), [`fix`](#fish-help-fix), [`signing-key`](#fish-help-signing-key), [`heal`](#fish-help-heal), [`cost-estimate`](#fish-help-cost-estimate), [`ui`](#fish-help-ui), [`query`](#fish-help-query), [`daemon`](#fish-help-daemon), [`ai`](#fish-help-ai), [`lsp`](#fish-help-lsp), [`why`](#fish-help-why), [`pash`](#fish-help-pash), [`qpc`](#fish-help-qpc)
 
 #### fish-help-version
 
@@ -1611,6 +1690,38 @@ Usage: fish help lsp
 
 ```
 Usage: fish help why
+```
+
+#### fish-help-pash
+
+```
+Usage: fish help pash
+```
+
+#### fish-help-qpc
+
+```
+Usage: fish help qpc [COMMAND]
+```
+
+**Subcommands:** [`status`](#fish-help-qpc-status), [`bench`](#fish-help-qpc-bench), [`morphic`](#fish-help-qpc-morphic)
+
+##### fish-help-qpc-status
+
+```
+Usage: fish help qpc status
+```
+
+##### fish-help-qpc-bench
+
+```
+Usage: fish help qpc bench
+```
+
+##### fish-help-qpc-morphic
+
+```
+Usage: fish help qpc morphic
 ```
 
 #### fish-help-help

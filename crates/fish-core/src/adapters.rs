@@ -1,7 +1,6 @@
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-#[allow(dead_code)]
 pub enum DetectedMonorepoKind {
     CargoWorkspace,
     PnpmWorkspace,

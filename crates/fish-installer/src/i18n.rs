@@ -1,6 +1,5 @@
 use std::str::FromStr;
 
-#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Language {
     #[default]
@@ -11,7 +10,6 @@ pub enum Language {
     Ja,
 }
 
-#[allow(dead_code)]
 impl Language {
     pub fn display_name(&self) -> &'static str {
         match self {
@@ -23,6 +21,7 @@ impl Language {
         }
     }
 
+    #[allow(dead_code)]
     pub fn code(&self) -> &'static str {
         match self {
             Self::En => "en",
@@ -49,14 +48,15 @@ impl FromStr for Language {
     }
 }
 
-#[allow(dead_code)]
 pub struct Messages {
     pub welcome_banner: &'static str,
+    #[allow(dead_code)]
     pub select_language: &'static str,
     pub install_location: &'static str,
     pub enter_custom_path: &'static str,
     pub path_addition: &'static str,
     pub path_added: &'static str,
+    #[allow(dead_code)]
     pub path_already_present: &'static str,
     pub installing_binaries: &'static str,
     pub installation_complete: &'static str,

@@ -10,7 +10,6 @@
 //!   POST `{base}/querybatch` — batched package queries, returns per-query
 //!                              lists of vulnerability ids
 //!   GET  `{base}/vulns/{id}` — full vulnerability document
-
 use std::collections::HashMap;
 use std::env;
 use std::time::Duration;

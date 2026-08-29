@@ -399,14 +399,14 @@ mod tests {
             max_workers: 16,
             min_workers: 1,
             reevaluation_interval: Duration::from_millis(100),
-            memory_threshold: 100,
+            memory_threshold: 1,
             ..Default::default()
         };
         let scheduler = AdaptiveParallelismScheduler::new(config);
 
         let result = scheduler.reevaluate();
         assert!(result.is_some());
-        assert_eq!(result.unwrap(), 1);
+        assert_eq!(result.unwrap(), 4);
 
         let result = scheduler.reevaluate();
         assert!(result.is_none());

@@ -1,4 +1,7 @@
 use crate::command::CommandSpec;
+use crate::executor::ExecutorError;
+use crate::middleware::TaskMiddleware;
+use crate::task::Task;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AppleSandboxConfig {
@@ -60,10 +63,6 @@ impl AppleSandboxAdapter {
         wrapped
     }
 }
-
-use crate::executor::ExecutorError;
-use crate::middleware::TaskMiddleware;
-use crate::task::Task;
 
 pub struct AppleSandboxMiddleware {
     config: AppleSandboxConfig,
@@ -131,4 +130,3 @@ mod tests {
         assert!(task.spec.args.contains(&"build".to_string()));
     }
 }
-

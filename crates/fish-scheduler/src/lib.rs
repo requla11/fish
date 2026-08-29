@@ -473,6 +473,7 @@ impl Scheduler {
                     "Task completed"
                 );
 
+                let was_success = outcome.status != TaskStatus::Failed;
                 process_completion(
                     graph,
                     &mut in_flight,
@@ -484,6 +485,29 @@ impl Scheduler {
                     worker_id,
                     task_start_offset,
                 )?;
+                if was_success {
+                    if let Ok(dependents) = graph.dependents(id).map(|s| s.to_vec()) {
+                        for dep in dependents {
+                            if matches!(graph.state(dep), Ok(TaskState::Pending))
+                                && graph.is_ready(dep).unwrap_or(false)
+                                && !ready.contains(&dep)
+                            {
+                                if self.critical_path {
+                                    let tail_val = tail[dep.index()];
+                                    let slice = &ready[ready_index..];
+                                    let pos = slice
+                                        .binary_search_by(|probe| {
+                                            tail[probe.index()].cmp(&tail_val).reverse()
+                                        })
+                                        .unwrap_or_else(|e| e);
+                                    ready.insert(ready_index + pos, dep);
+                                } else {
+                                    ready.push(dep);
+                                }
+                            }
+                        }
+                    }
+                }
                 while let Ok((id, outcome, worker_id, task_start_offset)) = rx.try_recv() {
                     free_workers.push(worker_id);
 
@@ -495,6 +519,7 @@ impl Scheduler {
                         "Task completed (batch)"
                     );
 
+                    let was_success_batch = outcome.status != TaskStatus::Failed;
                     process_completion(
                         graph,
                         &mut in_flight,
@@ -506,6 +531,29 @@ impl Scheduler {
                         worker_id,
                         task_start_offset,
                     )?;
+                    if was_success_batch {
+                        if let Ok(dependents) = graph.dependents(id).map(|s| s.to_vec()) {
+                            for dep in dependents {
+                                if matches!(graph.state(dep), Ok(TaskState::Pending))
+                                    && graph.is_ready(dep).unwrap_or(false)
+                                    && !ready.contains(&dep)
+                                {
+                                    if self.critical_path {
+                                        let tail_val = tail[dep.index()];
+                                        let slice = &ready[ready_index..];
+                                        let pos = slice
+                                            .binary_search_by(|probe| {
+                                                tail[probe.index()].cmp(&tail_val).reverse()
+                                            })
+                                            .unwrap_or_else(|e| e);
+                                        ready.insert(ready_index + pos, dep);
+                                    } else {
+                                        ready.push(dep);
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
             Ok(())

@@ -25,7 +25,6 @@ use fish_backend_go::ecosystem::GoEcosystemBackend;
 use fish_backend_java::ecosystem::JavaEcosystemBackend;
 #[cfg(feature = "backend-py")]
 use fish_backend_py::ecosystem::PyEcosystemBackend;
-#[cfg(feature = "backend-rust")]
 use fish_backend_rust::ecosystem::RustEcosystemBackend;
 #[cfg(feature = "backend-swift")]
 use fish_backend_swift::ecosystem::SwiftEcosystemBackend;
@@ -36,7 +35,6 @@ use fish_backend_zig::ecosystem::ZigEcosystemBackend;
 
 fn instantiate() -> Vec<Box<dyn EcosystemBackend>> {
     let mut backends: Vec<Box<dyn EcosystemBackend>> = Vec::new();
-    #[cfg(feature = "backend-rust")]
     backends.push(Box::new(RustEcosystemBackend));
     #[cfg(feature = "backend-ts")]
     backends.push(Box::new(TsEcosystemBackend));

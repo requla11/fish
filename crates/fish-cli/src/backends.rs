@@ -418,64 +418,83 @@ pub(crate) fn list_script_plugins(start_dir: &Path) -> Vec<String> {
     }
 }
 
-
 #[cfg(not(feature = "backend-cc"))]
 pub(crate) fn run_cc_build(_start_dir: &Path, _args: &CommonArgs) -> ExitCode {
-    eprintln!("error: cc backend not enabled in this build. Rebuild fish with --features backend-cc or default features");
+    eprintln!(
+        "error: cc backend not enabled in this build. Rebuild fish with --features backend-cc or default features"
+    );
     ExitCode::FAILURE
 }
 
 #[cfg(not(feature = "backend-go"))]
 pub(crate) fn run_go_build(_start_dir: &Path, _args: &CommonArgs) -> ExitCode {
-    eprintln!("error: go backend not enabled in this build. Rebuild fish with --features backend-go or default features");
+    eprintln!(
+        "error: go backend not enabled in this build. Rebuild fish with --features backend-go or default features"
+    );
     ExitCode::FAILURE
 }
 
 #[cfg(not(feature = "backend-ts"))]
 pub(crate) fn run_ts_build(_start_dir: &Path, _args: &CommonArgs) -> ExitCode {
-    eprintln!("error: ts backend not enabled in this build. Rebuild fish with --features backend-ts or default features");
+    eprintln!(
+        "error: ts backend not enabled in this build. Rebuild fish with --features backend-ts or default features"
+    );
     ExitCode::FAILURE
 }
 
 #[cfg(not(feature = "backend-py"))]
 pub(crate) fn run_py_build(_start_dir: &Path, _args: &CommonArgs) -> ExitCode {
-    eprintln!("error: py backend not enabled in this build. Rebuild fish with --features backend-py or default features");
+    eprintln!(
+        "error: py backend not enabled in this build. Rebuild fish with --features backend-py or default features"
+    );
     ExitCode::FAILURE
 }
 
 #[cfg(not(feature = "backend-java"))]
 pub(crate) fn run_java_build(_start_dir: &Path, _args: &CommonArgs) -> ExitCode {
-    eprintln!("error: java backend not enabled in this build. Rebuild fish with --features backend-java or default features");
+    eprintln!(
+        "error: java backend not enabled in this build. Rebuild fish with --features backend-java or default features"
+    );
     ExitCode::FAILURE
 }
 
 #[cfg(not(feature = "backend-dotnet"))]
 pub(crate) fn run_dotnet_build(_start_dir: &Path, _args: &CommonArgs) -> ExitCode {
-    eprintln!("error: dotnet backend not enabled in this build. Rebuild fish with --features backend-dotnet or default features");
+    eprintln!(
+        "error: dotnet backend not enabled in this build. Rebuild fish with --features backend-dotnet or default features"
+    );
     ExitCode::FAILURE
 }
 
 #[cfg(not(feature = "backend-swift"))]
 pub(crate) fn run_swift_build(_start_dir: &Path, _args: &CommonArgs) -> ExitCode {
-    eprintln!("error: swift backend not enabled in this build. Rebuild fish with --features backend-swift or default features");
+    eprintln!(
+        "error: swift backend not enabled in this build. Rebuild fish with --features backend-swift or default features"
+    );
     ExitCode::FAILURE
 }
 
 #[cfg(not(feature = "backend-dart"))]
 pub(crate) fn run_dart_build(_start_dir: &Path, _args: &CommonArgs) -> ExitCode {
-    eprintln!("error: dart backend not enabled in this build. Rebuild fish with --features backend-dart or default features");
+    eprintln!(
+        "error: dart backend not enabled in this build. Rebuild fish with --features backend-dart or default features"
+    );
     ExitCode::FAILURE
 }
 
 #[cfg(not(feature = "backend-zig"))]
 pub(crate) fn run_zig_build(_start_dir: &Path, _args: &CommonArgs) -> ExitCode {
-    eprintln!("error: zig backend not enabled in this build. Rebuild fish with --features backend-zig or default features");
+    eprintln!(
+        "error: zig backend not enabled in this build. Rebuild fish with --features backend-zig or default features"
+    );
     ExitCode::FAILURE
 }
 
 #[cfg(not(feature = "backend-docker"))]
 pub(crate) fn run_docker_build(_start_dir: &Path, _args: &CommonArgs) -> ExitCode {
-    eprintln!("error: docker backend not enabled in this build. Rebuild fish with --features backend-docker or default features");
+    eprintln!(
+        "error: docker backend not enabled in this build. Rebuild fish with --features backend-docker or default features"
+    );
     ExitCode::FAILURE
 }
 

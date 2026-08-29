@@ -12,6 +12,8 @@ pub struct AppleSandboxConfig {
     pub timeout_seconds: Option<u64>,
     pub socket_path: Option<String>,
     pub declared_inputs: Vec<PathBuf>,
+    pub max_processes: Option<u32>,
+    pub numa_node: Option<u32>,
 }
 
 impl Default for AppleSandboxConfig {
@@ -23,6 +25,9 @@ impl Default for AppleSandboxConfig {
             timeout_seconds: Some(300),
             socket_path: None,
             declared_inputs: Vec::new(),
+
+            max_processes: Some(512),
+            numa_node: None,
         }
     }
 }

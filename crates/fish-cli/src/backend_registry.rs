@@ -11,32 +11,54 @@ use std::sync::OnceLock;
 use fish_backend_api::{BuildGraph, BuildMode, Ecosystem, EcosystemBackend};
 use fish_executor::Task;
 
+#[cfg(feature = "backend-cc")]
 use fish_backend_cc::ecosystem::CcEcosystemBackend;
+#[cfg(feature = "backend-dart")]
 use fish_backend_dart::ecosystem::DartEcosystemBackend;
+#[cfg(feature = "backend-docker")]
 use fish_backend_docker::ecosystem::DockerEcosystemBackend;
+#[cfg(feature = "backend-dotnet")]
 use fish_backend_dotnet::ecosystem::DotnetEcosystemBackend;
+#[cfg(feature = "backend-go")]
 use fish_backend_go::ecosystem::GoEcosystemBackend;
+#[cfg(feature = "backend-java")]
 use fish_backend_java::ecosystem::JavaEcosystemBackend;
+#[cfg(feature = "backend-py")]
 use fish_backend_py::ecosystem::PyEcosystemBackend;
+#[cfg(feature = "backend-rust")]
 use fish_backend_rust::ecosystem::RustEcosystemBackend;
+#[cfg(feature = "backend-swift")]
 use fish_backend_swift::ecosystem::SwiftEcosystemBackend;
+#[cfg(feature = "backend-ts")]
 use fish_backend_ts::ecosystem::TsEcosystemBackend;
+#[cfg(feature = "backend-zig")]
 use fish_backend_zig::ecosystem::ZigEcosystemBackend;
 
 fn instantiate() -> Vec<Box<dyn EcosystemBackend>> {
-    vec![
-        Box::new(RustEcosystemBackend),
-        Box::new(TsEcosystemBackend),
-        Box::new(PyEcosystemBackend),
-        Box::new(GoEcosystemBackend),
-        Box::new(CcEcosystemBackend),
-        Box::new(JavaEcosystemBackend),
-        Box::new(DotnetEcosystemBackend),
-        Box::new(SwiftEcosystemBackend),
-        Box::new(DartEcosystemBackend),
-        Box::new(ZigEcosystemBackend),
-        Box::new(DockerEcosystemBackend),
-    ]
+    let mut backends: Vec<Box<dyn EcosystemBackend>> = Vec::new();
+    #[cfg(feature = "backend-rust")]
+    backends.push(Box::new(RustEcosystemBackend));
+    #[cfg(feature = "backend-ts")]
+    backends.push(Box::new(TsEcosystemBackend));
+    #[cfg(feature = "backend-py")]
+    backends.push(Box::new(PyEcosystemBackend));
+    #[cfg(feature = "backend-go")]
+    backends.push(Box::new(GoEcosystemBackend));
+    #[cfg(feature = "backend-cc")]
+    backends.push(Box::new(CcEcosystemBackend));
+    #[cfg(feature = "backend-java")]
+    backends.push(Box::new(JavaEcosystemBackend));
+    #[cfg(feature = "backend-dotnet")]
+    backends.push(Box::new(DotnetEcosystemBackend));
+    #[cfg(feature = "backend-swift")]
+    backends.push(Box::new(SwiftEcosystemBackend));
+    #[cfg(feature = "backend-dart")]
+    backends.push(Box::new(DartEcosystemBackend));
+    #[cfg(feature = "backend-zig")]
+    backends.push(Box::new(ZigEcosystemBackend));
+    #[cfg(feature = "backend-docker")]
+    backends.push(Box::new(DockerEcosystemBackend));
+    backends
 }
 
 /// All registered backends, in stable priority order.

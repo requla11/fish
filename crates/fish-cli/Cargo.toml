@@ -10,6 +10,34 @@ description = "Fish command-line interface"
 name = "fish"
 path = "src/main.rs"
 
+[features]
+default = [
+    "backend-rust",
+    "backend-cc",
+    "backend-go",
+    "backend-ts",
+    "backend-py",
+    "backend-java",
+    "backend-dotnet",
+    "backend-swift",
+    "backend-dart",
+    "backend-zig",
+    "backend-docker",
+]
+backend-rust = []
+backend-cc = ["fish-backend-cc"]
+backend-go = ["fish-backend-go"]
+backend-ts = ["fish-backend-ts"]
+backend-py = ["fish-backend-py"]
+backend-java = ["fish-backend-java"]
+backend-dotnet = ["fish-backend-dotnet"]
+backend-swift = ["fish-backend-swift"]
+backend-dart = ["fish-backend-dart"]
+backend-zig = ["fish-backend-zig"]
+backend-docker = ["fish-backend-docker"]
+# Slim dev build: only Rust backend for fast iteration
+slim = ["backend-rust"]
+
 [dependencies]
 anyhow = { workspace = true }
 ed25519-dalek = { workspace = true }
@@ -20,18 +48,18 @@ fish-scheduler = { workspace = true }
 fish-cache = { workspace = true }
 fish-cas = { workspace = true }
 fish-ci-generator = { workspace = true }
-fish-backend-rust = { workspace = true }
+fish-backend-rust = { workspace = true, optional = true }
 fish-backend-api = { workspace = true }
-fish-backend-cc = { workspace = true }
-fish-backend-go = { workspace = true }
-fish-backend-ts = { workspace = true }
-fish-backend-py = { workspace = true }
-fish-backend-java = { workspace = true }
-fish-backend-dotnet = { workspace = true }
-fish-backend-swift = { workspace = true }
-fish-backend-dart = { workspace = true }
-fish-backend-zig = { workspace = true }
-fish-backend-docker = { workspace = true }
+fish-backend-cc = { workspace = true, optional = true }
+fish-backend-go = { workspace = true, optional = true }
+fish-backend-ts = { workspace = true, optional = true }
+fish-backend-py = { workspace = true, optional = true }
+fish-backend-java = { workspace = true, optional = true }
+fish-backend-dotnet = { workspace = true, optional = true }
+fish-backend-swift = { workspace = true, optional = true }
+fish-backend-dart = { workspace = true, optional = true }
+fish-backend-zig = { workspace = true, optional = true }
+fish-backend-docker = { workspace = true, optional = true }
 fish-worker = { workspace = true }
 fish-remote-cache = { workspace = true }
 fish-plugin = { workspace = true }

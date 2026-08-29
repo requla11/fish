@@ -374,6 +374,8 @@ impl Scheduler {
         let mut free_workers: Vec<usize> = (0..self.workers).rev().collect();
         let mut last_ram_check = Instant::now() - Duration::from_secs(1);
         let mut ram_limited = false;
+        let mut sys = sysinfo::System::new();
+        sys.refresh_memory();
 
         let result = thread::scope(|scope| -> Result<(), SchedulerError> {
             let (task_tx, task_rx) =
@@ -419,7 +421,6 @@ impl Scheduler {
                 let effective_workers = if let Some(threshold) = self.ram_threshold {
                     if last_ram_check.elapsed() >= Duration::from_millis(500) {
                         last_ram_check = Instant::now();
-                        let mut sys = sysinfo::System::new_all();
                         sys.refresh_memory();
                         ram_limited = sys.available_memory().saturating_mul(100)
                             < sys.total_memory().saturating_mul(threshold as u64);

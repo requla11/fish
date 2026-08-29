@@ -7,6 +7,7 @@ license.workspace = true
 description = "Hermetic build sandboxing, environment sanitization, and execution isolation for Fish"
 
 [dependencies]
+anyhow = { workspace = true }
 apple = { workspace = true }
 fish-core = { workspace = true }
 fish-executor = { workspace = true }

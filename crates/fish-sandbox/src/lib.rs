@@ -61,7 +61,7 @@ mod tests {
         let task = Task::new("test_task", spec.command_line(), spec);
 
         let outcome = executor.execute(&task).unwrap();
-        assert_eq!(outcome.exit_code, 0);
+        assert_eq!(outcome.exit_code, Some(0));
     }
 
     #[tokio::test]

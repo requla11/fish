@@ -134,9 +134,7 @@ impl CasBackend for LocalCasBackend {
             };
 
         let tmp_data = data_path.with_extension(format!("tmp.{}", std::process::id()));
-        tokio::fs::write(&tmp_data, &data_to_store)
-            .await
-            .map_err(CasError::Io)?;
+        crate::uring::write_file_uring(&tmp_data, &data_to_store).await?;
         tokio::fs::rename(&tmp_data, &data_path)
             .await
             .map_err(CasError::Io)?;
@@ -175,7 +173,7 @@ impl CasBackend for LocalCasBackend {
         let mut metadata: crate::artifact::ArtifactMetadata = serde_json::from_str(&metadata_json)
             .map_err(|e| CasError::Serialization(e.to_string()))?;
 
-        let data = tokio::fs::read(&data_path).await.map_err(CasError::Io)?;
+        let data = crate::uring::read_file_uring(&data_path).await?;
 
         let decompressed_data = if metadata.compression.is_some() {
             let algorithm = metadata

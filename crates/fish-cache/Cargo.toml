@@ -21,6 +21,12 @@ parking_lot = { workspace = true }
 crossbeam-channel = { workspace = true }
 memmap2 = { workspace = true }
 
+[features]
+io-uring = ["dep:tokio-uring"]
+
+[target.'cfg(target_os = "linux")'.dependencies]
+tokio-uring = { version = "0.4", optional = true }
+
 [dev-dependencies]
 tempfile = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }

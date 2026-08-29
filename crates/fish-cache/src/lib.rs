@@ -7,6 +7,7 @@ pub mod gc;
 pub mod morphic;
 pub mod pool;
 pub mod strategies;
+pub mod uring;
 
 pub use async_io::{AsyncCache, AsyncFileReader, AsyncFileWriter, AsyncIoError};
 pub use file_level_adapter::{FileLevelCacheAdapter, HybridCachingExecutor};

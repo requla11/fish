@@ -10,6 +10,7 @@ pub mod mmap;
 pub mod multi_tenant;
 pub mod reflink;
 pub mod storage;
+pub mod uring;
 
 pub use artifact::{Artifact, ArtifactHash, ArtifactMetadata};
 pub use backend::{CasBackend, LocalCasBackend, RemoteCasBackend};

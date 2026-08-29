@@ -7,35 +7,22 @@ use std::time::{Duration, Instant};
 use super::resource_governor::{KernelResourceGovernor, MemoryPressureLevel};
 use super::resource_predictor::{LearnedResourcePredictor, Prediction, ResourceSample};
 
-/// Workload type classification for adaptive scheduling
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WorkloadType {
-    /// CPU-intensive tasks (compilation, optimization)
     CpuBound,
-    /// I/O-intensive tasks (file operations, network)
     IoBound,
-    /// Mixed workload
     Mixed,
-    /// Unknown (not enough data)
     Unknown,
 }
 
-/// Adaptive parallelism configuration
 #[derive(Debug, Clone)]
 pub struct AdaptiveConfig {
-    /// Base number of workers (default: CPU count)
     pub base_workers: usize,
-    /// Maximum workers (default: 2x CPU count)
     pub max_workers: usize,
-    /// Minimum workers (default: 1)
     pub min_workers: usize,
-    /// How often to re-evaluate parallelism (default: 1s)
     pub reevaluation_interval: Duration,
-    /// CPU utilization target (0.0-1.0, default: 0.85)
     pub cpu_target: f64,
-    /// Memory pressure threshold for throttling (default: 85%)
     pub memory_threshold: u8,
-    /// Minimum samples before considering workload type (default: 5)
     pub min_samples_for_classification: usize,
 }
 
@@ -54,24 +41,16 @@ impl Default for AdaptiveConfig {
     }
 }
 
-/// Performance metrics for adaptive scheduling
 #[derive(Debug, Clone)]
 pub struct PerformanceMetrics {
-    /// Average task duration
     pub avg_task_duration: Duration,
-    /// Task throughput (tasks/second)
     pub throughput: f64,
-    /// CPU utilization estimate (0.0-1.0)
     pub cpu_utilization: f64,
-    /// Memory pressure level
     pub memory_pressure: MemoryPressureLevel,
-    /// Current worker count
     pub current_workers: usize,
-    /// Time since last adjustment
     pub time_since_adjustment: Duration,
 }
 
-/// Adaptive parallelism scheduler
 pub struct AdaptiveParallelismScheduler {
     config: AdaptiveConfig,
     resource_governor: KernelResourceGovernor,
@@ -118,12 +97,10 @@ impl AdaptiveParallelismScheduler {
         self
     }
 
-    /// Get current optimal worker count
     pub fn optimal_workers(&self) -> usize {
         self.current_workers.load(Ordering::Relaxed)
     }
 
-    /// Record a completed task for adaptive learning
     pub fn record_task(&self, task_key: &str, duration: Duration, peak_ram_bytes: u64) {
         let sample = ResourceSample {
             peak_ram_bytes,
@@ -150,7 +127,6 @@ impl AdaptiveParallelismScheduler {
         }
     }
 
-    /// Recalculate optimal worker count based on current conditions
     pub fn reevaluate(&self) -> Option<usize> {
         let now = Instant::now();
         let last_adjustment = *self.last_adjustment.lock();
@@ -189,22 +165,19 @@ impl AdaptiveParallelismScheduler {
 
         let new_workers = new_workers.clamp(self.config.min_workers, self.config.max_workers);
 
+        *self.last_adjustment.lock() = now;
         if new_workers != current {
             self.current_workers.store(new_workers, Ordering::Relaxed);
-            *self.last_adjustment.lock() = now;
             tracing::info!(
                 old = current,
                 new = new_workers,
                 memory_pressure = ?memory_pressure,
                 "Adjusted worker count"
             );
-            Some(new_workers)
-        } else {
-            None
         }
+        Some(new_workers)
     }
 
-    /// Calculate optimal workers based on workload type
     fn calculate_optimal_for_workload(&self, workload: WorkloadType, current: usize) -> usize {
         let cpu_count = num_cpus::get();
 
@@ -230,7 +203,6 @@ impl AdaptiveParallelismScheduler {
         }
     }
 
-    /// Classify workload type based on task patterns
     fn classify_workload(&self) {
         let total_tasks = self.completed_tasks.load(Ordering::Relaxed) as usize;
         if total_tasks < self.config.min_samples_for_classification {
@@ -269,7 +241,6 @@ impl AdaptiveParallelismScheduler {
         }
     }
 
-    /// Get current performance metrics
     #[allow(clippy::manual_checked_ops)]
     pub fn metrics(&self) -> PerformanceMetrics {
         let completed = self.completed_tasks.load(Ordering::Relaxed);
@@ -304,7 +275,6 @@ impl AdaptiveParallelismScheduler {
         }
     }
 
-    /// Estimate CPU utilization based on task completion rate
     #[allow(clippy::manual_checked_ops)]
     fn estimate_cpu_utilization(&self) -> f64 {
         let current = self.current_workers.load(Ordering::Relaxed);
@@ -321,13 +291,11 @@ impl AdaptiveParallelismScheduler {
         (completion_rate / max_completion_rate).min(1.0)
     }
 
-    /// Get resource prediction for a task
     pub fn predict_resources(&self, task_key: &str) -> Option<Prediction> {
         let predictor = self.resource_predictor.lock();
         predictor.predict(task_key)
     }
 
-    /// Check if task is warm (has enough historical data)
     pub fn is_task_warm(&self, task_key: &str) -> bool {
         let predictor = self.resource_predictor.lock();
         predictor.is_warm(task_key, self.config.min_samples_for_classification)

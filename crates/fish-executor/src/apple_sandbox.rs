@@ -2,6 +2,7 @@ use crate::command::CommandSpec;
 use crate::executor::ExecutorError;
 use crate::middleware::TaskMiddleware;
 use crate::task::Task;
+use std::path::PathBuf;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AppleSandboxConfig {
@@ -9,6 +10,8 @@ pub struct AppleSandboxConfig {
     pub offline: bool,
     pub memory_limit_mb: Option<u64>,
     pub timeout_seconds: Option<u64>,
+    pub socket_path: Option<String>,
+    pub declared_inputs: Vec<PathBuf>,
 }
 
 impl Default for AppleSandboxConfig {
@@ -18,6 +21,8 @@ impl Default for AppleSandboxConfig {
             offline: true,
             memory_limit_mb: Some(4096),
             timeout_seconds: Some(300),
+            socket_path: None,
+            declared_inputs: Vec::new(),
         }
     }
 }
@@ -84,7 +89,6 @@ impl TaskMiddleware for AppleSandboxMiddleware {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::PathBuf;
 
     #[test]
     fn test_apple_sandbox_adapter_wraps_command() {

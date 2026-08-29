@@ -14,12 +14,15 @@ pub mod error;
 pub mod input_filter;
 pub mod profiling;
 pub mod project;
+pub mod remediation;
 pub mod sandbox_profiles;
 pub mod security;
 pub mod testing;
 pub mod toolchain;
 pub mod toolchain_downloader;
 pub mod toolchain_lock;
+
+pub use remediation::{AutoRemediator, CompilerDiagnostic, ErrorKind, RemediationPatch};
 
 #[cfg(windows)]
 pub mod windows_compat;

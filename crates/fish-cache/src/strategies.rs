@@ -233,11 +233,10 @@ impl<K: Clone + Eq + std::hash::Hash, V: Clone> TieredCache<K, V> {
             l2.get_with_size(key)
         };
         if let Some((value, size)) = l2_hit {
-            let evicted =
-                self.l1
-                    .write()
-                    .unwrap()
-                    .put_with_evictions(key.clone(), value.clone(), size);
+            let evicted = self
+                .l1
+                .write()
+                .put_with_evictions(key.clone(), value.clone(), size);
             drop(evicted.0);
             if !evicted.1.is_empty() {
                 let mut l2 = self.l2.write();
@@ -253,11 +252,10 @@ impl<K: Clone + Eq + std::hash::Hash, V: Clone> TieredCache<K, V> {
             l3.get_with_size(key)
         };
         if let Some((value, size)) = l3_hit {
-            let evicted =
-                self.l2
-                    .write()
-                    .unwrap()
-                    .put_with_evictions(key.clone(), value.clone(), size);
+            let evicted = self
+                .l2
+                .write()
+                .put_with_evictions(key.clone(), value.clone(), size);
             drop(evicted.0);
             if !evicted.1.is_empty() {
                 let mut l3 = self.l3.write();
@@ -272,11 +270,7 @@ impl<K: Clone + Eq + std::hash::Hash, V: Clone> TieredCache<K, V> {
     }
 
     pub fn put(&mut self, key: K, value: V, size: u64) {
-        let evicted = self
-            .l1
-            .write()
-            .unwrap()
-            .put_with_evictions(key, value, size);
+        let evicted = self.l1.write().put_with_evictions(key, value, size);
         drop(evicted.0);
 
         if evicted.1.is_empty() {

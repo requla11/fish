@@ -2,3 +2,7 @@
 	path = submodules/apple
 	url = https://github.com/requla11/apple.git
 	branch = dev
+[submodule "submodules/banana"]
+	path = submodules/banana
+	url = https://github.com/requla11/banana.git
+	branch = dev

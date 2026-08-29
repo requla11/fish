@@ -6,6 +6,7 @@ pub mod file_level_adapter;
 pub mod gc;
 pub mod morphic;
 pub mod pool;
+pub mod prediction;
 pub mod strategies;
 pub mod uring;
 
@@ -17,6 +18,7 @@ pub use morphic::{
     MorphicLookupResult, MorphicPathNormalizer, MorphicSourceNormalizer,
 };
 pub use pool::{BufferPool, PoolStats, ScopedBuffer, ScopedString, StringPool};
+pub use prediction::{AccessPattern, CachePrediction, CachePredictor, CachePredictorStats};
 pub use strategies::{LruCache, PredictiveCache, SpinLockLruCache, TieredCache};
 
 use std::collections::{HashMap, HashSet};

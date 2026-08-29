@@ -383,6 +383,10 @@ pub struct CommonArgs {
     pub no_cache: bool,
     #[arg(long = "sandbox")]
     pub sandbox: bool,
+    /// Run every build task through the `apple` hermetic sandbox (requires
+    /// the `apple` binary on PATH).
+    #[arg(long = "apple")]
+    pub apple: bool,
     #[arg(long = "timeout")]
     pub timeout_secs: Option<u64>,
     #[arg(long = "profile", num_args = 0..=1, default_missing_value = "fish_trace.json")]

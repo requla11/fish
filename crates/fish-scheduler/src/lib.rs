@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 
+pub mod adaptive;
 pub mod bin_packing;
 pub mod carbon;
 pub mod jobserver_pool;
@@ -11,6 +12,9 @@ pub mod resource_predictor;
 pub mod watcher;
 pub mod work_stealing;
 
+pub use adaptive::{
+    AdaptiveConfig, AdaptiveParallelismScheduler, PerformanceMetrics, WorkloadType,
+};
 pub use bin_packing::{AgentBucket, DteBinPacker, TaskTimingEstimate};
 pub use jobserver_pool::JobserverPool;
 pub use pipelining::{PipelineStage, PipelinedCompilationCoordinator};

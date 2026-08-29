@@ -107,6 +107,7 @@ pub fn run_run(args: RunArgs) -> ExitCode {
         kernel_bypass: false,
         wasm_sandbox: false,
         super_opt: false,
+        apple: false,
         explain: false,
         otel_endpoint: None,
         replay_trace: None,

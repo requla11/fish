@@ -395,13 +395,18 @@ mod tests {
     #[test]
     fn test_reevaluation_interval() {
         let config = AdaptiveConfig {
+            base_workers: 8,
+            max_workers: 16,
+            min_workers: 1,
             reevaluation_interval: Duration::from_millis(100),
+            memory_threshold: 100,
             ..Default::default()
         };
         let scheduler = AdaptiveParallelismScheduler::new(config);
 
         let result = scheduler.reevaluate();
         assert!(result.is_some());
+        assert_eq!(result.unwrap(), 1);
 
         let result = scheduler.reevaluate();
         assert!(result.is_none());

@@ -194,6 +194,8 @@ Security reports are handled under [SECURITY.md](SECURITY.md).
 
 For AI coding agents working with this project, please refer to [AGENTS.md](AGENTS.md) for guidance on context reading order, coding patterns, and workflow instructions. The comprehensive step-by-step workflow is available in [docs/AI_AGENT_WORKFLOW.md](docs/AI_AGENT_WORKFLOW.md).
 
-## License
+## License & Disclaimer
 
 Fish is licensed under the [MIT License](LICENSE).
+
+> **Disclaimer:** This project is an independent build orchestration system. Other unrelated tools, packages, or projects using "fish" in their names (such as `fish-shell`, `fish-image`, `fish-video`, etc.) are independent and not affiliated with, sponsored, or endorsed by the Fish build orchestration project.

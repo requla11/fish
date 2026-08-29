@@ -12,7 +12,7 @@ pub mod task;
 pub mod trace_replay;
 pub mod vlink;
 
-pub use apple_sandbox::{AppleSandboxAdapter, AppleSandboxConfig};
+pub use apple_sandbox::{AppleSandboxAdapter, AppleSandboxConfig, AppleSandboxMiddleware};
 pub use async_executor::AsyncProcessExecutor;
 pub use command::CommandSpec;
 pub use cow::{CloneStrategy, KernelCowCloner};

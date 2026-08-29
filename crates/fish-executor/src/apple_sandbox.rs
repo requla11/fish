@@ -61,6 +61,27 @@ impl AppleSandboxAdapter {
     }
 }
 
+use crate::executor::ExecutorError;
+use crate::middleware::TaskMiddleware;
+use crate::task::Task;
+
+pub struct AppleSandboxMiddleware {
+    config: AppleSandboxConfig,
+}
+
+impl AppleSandboxMiddleware {
+    pub fn new(config: AppleSandboxConfig) -> Self {
+        Self { config }
+    }
+}
+
+impl TaskMiddleware for AppleSandboxMiddleware {
+    fn pre_execute(&self, task: &mut Task) -> Result<(), ExecutorError> {
+        task.spec = AppleSandboxAdapter::wrap_command(&task.spec, &self.config);
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -96,4 +117,18 @@ mod tests {
         assert_eq!(wrapped.program, "gcc");
         assert_eq!(wrapped.args, vec!["-O3".to_string()]);
     }
+
+    #[test]
+    fn test_apple_sandbox_middleware_transforms_task_spec() {
+        let spec = CommandSpec::new("cargo").arg("build");
+        let mut task = Task::new("cargo_build", "build project", spec);
+        let middleware = AppleSandboxMiddleware::new(AppleSandboxConfig::default());
+
+        middleware.pre_execute(&mut task).unwrap();
+
+        assert_eq!(task.spec.program, "apple");
+        assert!(task.spec.args.contains(&"cargo".to_string()));
+        assert!(task.spec.args.contains(&"build".to_string()));
+    }
 }
+

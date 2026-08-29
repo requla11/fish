@@ -87,8 +87,10 @@ mod tests {
     #[test]
     fn test_apple_sandbox_disabled_returns_verbatim() {
         let spec = CommandSpec::new("gcc").arg("-O3");
-        let mut config = AppleSandboxConfig::default();
-        config.enabled = false;
+        let config = AppleSandboxConfig {
+            enabled: false,
+            ..Default::default()
+        };
 
         let wrapped = AppleSandboxAdapter::wrap_command(&spec, &config);
         assert_eq!(wrapped.program, "gcc");

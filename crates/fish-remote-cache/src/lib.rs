@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 
 pub mod artifact;
+pub mod banana_mesh;
 pub mod client;
 pub mod p2p_lan;
 pub mod protocol;
@@ -9,6 +10,7 @@ pub mod replication;
 pub mod server;
 pub mod signature_gate;
 
+pub use banana_mesh::BananaMeshCache;
 pub use p2p_lan::{
     ArtifactChunk, ChunkBitfield, ChunkManifest, LanPeerNode, LanPeerRegistry,
     P2PArtifactReassembler,

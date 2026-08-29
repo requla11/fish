@@ -1,7 +1,9 @@
 #![forbid(unsafe_code)]
 
 pub mod adapters;
+pub mod banana_ast;
 pub use adapters::{DetectedMonorepoKind, MonorepoDiscoveryResult, ZeroConfigAdapter};
+pub use banana_ast::FishAstService;
 
 pub mod backend;
 pub mod backend_utils;

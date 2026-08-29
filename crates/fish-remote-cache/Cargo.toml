@@ -18,6 +18,7 @@ fish-executor = { workspace = true }
 thiserror = { workspace = true }
 zstd = { workspace = true }
 ed25519-dalek = { workspace = true }
+banana = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }

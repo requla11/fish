@@ -6,9 +6,9 @@ import (
 )
 
 type SpotPreemptionNotice struct {
-	WorkerID    string    `json:"worker_id"`
+	WorkerID    string        `json:"worker_id"`
 	GracePeriod time.Duration `json:"grace_period"`
-	ReceivedAt  time.Time `json:"received_at"`
+	ReceivedAt  time.Time     `json:"received_at"`
 }
 
 type SpotLifecycleManager struct {

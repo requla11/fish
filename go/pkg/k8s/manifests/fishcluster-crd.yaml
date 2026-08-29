@@ -1,4 +1,7 @@
-# FishCluster CRD — auto-scaling elastic worker fleets
+# FishCluster CRD — auto-scaling elastic worker fleets.
+# This manifest is hand-written to match the Go types in
+# pkg/k8s/api/v1alpha1/fishcluster_types.go. When the API evolves, regenerate
+# the openAPIV3Schema block with controller-gen.
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
@@ -35,7 +38,9 @@ spec:
             spec:
               type: object
               required:
+                - clusterId
                 - coordinatorAddr
+                - defaultPool
               properties:
                 clusterId:
                   type: string
@@ -49,6 +54,10 @@ spec:
                   description: Address of the fish-coordinator service.
                 defaultPool:
                   type: object
+                  required:
+                    - name
+                    - minReplicas
+                    - maxReplicas
                   properties:
                     name:
                       type: string
@@ -76,10 +85,17 @@ spec:
                     resourceLimitMB:
                       type: integer
                       description: Memory limit in MB per worker pod.
+                    workerImage:
+                      type: string
+                      description: Container image override for this pool's fish-worker.
                 customPools:
                   type: array
                   items:
                     type: object
+                    required:
+                      - name
+                      - minReplicas
+                      - maxReplicas
                     properties:
                       name:
                         type: string
@@ -87,10 +103,20 @@ spec:
                         type: integer
                       maxReplicas:
                         type: integer
+                      targetCPULoad:
+                        type: integer
                       toolchains:
                         type: array
                         items:
                           type: string
+                      nodeSelector:
+                        type: object
+                        additionalProperties:
+                          type: string
+                      resourceLimitMB:
+                        type: integer
+                      workerImage:
+                        type: string
             status:
               type: object
               properties:
@@ -110,8 +136,13 @@ spec:
                         type: integer
                       availableReplicas:
                         type: integer
+                      desiredReplicas:
+                        type: integer
                       healthStatus:
                         type: string
+                      lastScaleTime:
+                        type: string
+                        format: date-time
                 message:
                   type: string
 ---
@@ -122,7 +153,7 @@ metadata:
   name: fish-operator
   namespace: fish-build
 ---
-# ClusterRole with minimal permissions
+# ClusterRole with permissions required to reconcile FishCluster -> Deployment + HPA.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -137,8 +168,17 @@ rules:
   - apiGroups: ["apps"]
     resources: ["deployments"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["apps"]
+    resources: ["deployments/status"]
+    verbs: ["get"]
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers/status"]
+    verbs: ["get"]
   - apiGroups: [""]
-    resources: ["pods", "pods/status", "services", "configmaps"]
+    resources: ["pods", "pods/status", "services", "configmaps", "events"]
     verbs: ["get", "list", "watch"]
   - apiGroups: ["coordination.k8s.io"]
     resources: ["leases"]

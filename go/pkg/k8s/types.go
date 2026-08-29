@@ -20,9 +20,9 @@ type WorkerPoolStatus struct {
 }
 
 type FishClusterConfig struct {
-	ClusterID        string           `json:"cluster_id"`
-	Namespace        string           `json:"namespace"`
-	CoordinatorAddr  string           `json:"coordinator_addr"`
-	DefaultPool      WorkerPoolSpec   `json:"default_pool"`
-	CustomPools      []WorkerPoolSpec `json:"custom_pools"`
+	ClusterID       string           `json:"cluster_id"`
+	Namespace       string           `json:"namespace"`
+	CoordinatorAddr string           `json:"coordinator_addr"`
+	DefaultPool     WorkerPoolSpec   `json:"default_pool"`
+	CustomPools     []WorkerPoolSpec `json:"custom_pools"`
 }

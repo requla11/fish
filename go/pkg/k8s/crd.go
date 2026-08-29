@@ -18,10 +18,10 @@ type FishClusterCRD struct {
 }
 
 type ClusterStatus struct {
-	Phase           string             `json:"phase"`
-	ActiveWorkers   int                `json:"active_workers"`
-	PoolStatuses    []WorkerPoolStatus `json:"pool_statuses"`
-	Message         string             `json:"message"`
+	Phase         string             `json:"phase"`
+	ActiveWorkers int                `json:"active_workers"`
+	PoolStatuses  []WorkerPoolStatus `json:"pool_statuses"`
+	Message       string             `json:"message"`
 }
 
 func GenerateCRDManifestYAML() string {

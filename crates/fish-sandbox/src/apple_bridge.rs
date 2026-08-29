@@ -31,6 +31,7 @@ impl AppleBridge {
             argv,
             env,
             profile: profile.unwrap_or_default(),
+            keep_jail: false,
         };
         self.server.execute_task(request).await
     }
@@ -50,6 +51,7 @@ impl AppleBridge {
             argv,
             env,
             profile: SandboxProfile::default(),
+            keep_jail: false,
         };
         verifier
             .verify_reproducible(request, artifact_rel_path)

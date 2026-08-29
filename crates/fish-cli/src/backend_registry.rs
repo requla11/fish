@@ -33,9 +33,9 @@ use fish_backend_ts::ecosystem::TsEcosystemBackend;
 #[cfg(feature = "backend-zig")]
 use fish_backend_zig::ecosystem::ZigEcosystemBackend;
 
+#[allow(clippy::vec_init_then_push)]
 fn instantiate() -> Vec<Box<dyn EcosystemBackend>> {
-    let mut backends: Vec<Box<dyn EcosystemBackend>> = Vec::new();
-    backends.push(Box::new(RustEcosystemBackend));
+    let mut backends: Vec<Box<dyn EcosystemBackend>> = vec![Box::new(RustEcosystemBackend)];
     #[cfg(feature = "backend-ts")]
     backends.push(Box::new(TsEcosystemBackend));
     #[cfg(feature = "backend-py")]

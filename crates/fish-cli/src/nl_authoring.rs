@@ -1,16 +1,17 @@
 use crate::commands::init::DetectedLanguage;
 
-/// Project archetype recognized from the description.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Archetype {
     Cli,
     Api,
     Library,
     Worker,
+    Fullstack,
+    Microservice,
+    Embedded,
     Generic,
 }
 
-/// A description parsed from plain language.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ParsedDescription {
     pub languages: Vec<DetectedLanguage>,
@@ -31,17 +32,62 @@ fn lang_for(word: &str) -> Option<DetectedLanguage> {
             build_cmd: "go build ./...",
             test_cmd: "go test ./...",
         }),
-        "typescript" | "ts" | "javascript" | "js" | "node" | "npm" => Some(DetectedLanguage {
+        "typescript" | "ts" | "javascript" | "js" | "node" | "npm" | "react" | "vue" | "svelte"
+        | "next" | "frontend" => Some(DetectedLanguage {
             name: "TypeScript / Node",
             backend: "ts",
             build_cmd: "npm run build",
             test_cmd: "npm test",
         }),
-        "python" | "py" | "pip" | "poetry" => Some(DetectedLanguage {
-            name: "Python",
-            backend: "python",
-            build_cmd: "python -m compileall .",
-            test_cmd: "pytest",
+        "python" | "py" | "pip" | "poetry" | "uv" | "django" | "fastapi" | "flask" => {
+            Some(DetectedLanguage {
+                name: "Python",
+                backend: "python",
+                build_cmd: "python -m compileall .",
+                test_cmd: "pytest",
+            })
+        }
+        "c++" | "cpp" | "c" | "cmake" | "clang" | "gcc" | "make" => Some(DetectedLanguage {
+            name: "C/C++",
+            backend: "cc",
+            build_cmd: "cmake --build build",
+            test_cmd: "ctest --test-dir build",
+        }),
+        "java" | "jvm" | "maven" | "mvn" | "gradle" | "spring" => Some(DetectedLanguage {
+            name: "Java",
+            backend: "java",
+            build_cmd: "mvn compile",
+            test_cmd: "mvn test",
+        }),
+        "dotnet" | ".net" | "c#" | "csharp" | "f#" | "fsharp" | "nuget" => Some(DetectedLanguage {
+            name: ".NET",
+            backend: "dotnet",
+            build_cmd: "dotnet build",
+            test_cmd: "dotnet test",
+        }),
+        "swift" | "swiftpm" | "ios" | "macos" => Some(DetectedLanguage {
+            name: "Swift",
+            backend: "swift",
+            build_cmd: "swift build",
+            test_cmd: "swift test",
+        }),
+        "dart" | "flutter" => Some(DetectedLanguage {
+            name: "Dart / Flutter",
+            backend: "dart",
+            build_cmd: "dart compile exe bin/main.dart",
+            test_cmd: "dart test",
+        }),
+        "zig" | "zon" => Some(DetectedLanguage {
+            name: "Zig",
+            backend: "zig",
+            build_cmd: "zig build",
+            test_cmd: "zig test",
+        }),
+        "docker" | "dockerfile" | "container" => Some(DetectedLanguage {
+            name: "Docker",
+            backend: "docker",
+            build_cmd: "docker build -t app .",
+            test_cmd: "docker run --rm app test",
         }),
         _ => None,
     }
@@ -50,26 +96,55 @@ fn lang_for(word: &str) -> Option<DetectedLanguage> {
 fn archetype_for(words: &[&str]) -> Archetype {
     for w in words {
         match *w {
-            "cli" | "binary" | "tool" | "command" => return Archetype::Cli,
-            "api" | "server" | "service" | "rest" | "grpc" => return Archetype::Api,
-            "lib" | "library" | "crate" | "sdk" => return Archetype::Library,
-            "worker" | "queue" | "cron" | "job" => return Archetype::Worker,
+            "cli" | "binary" | "tool" | "command" | "lệnh" | "công cụ" | "命令行" => {
+                return Archetype::Cli;
+            }
+            "api" | "server" | "service" | "rest" | "grpc" | "backend" | "dịch vụ" | "máy chủ"
+            | "后端" => return Archetype::Api,
+            "lib" | "library" | "crate" | "sdk" | "package" | "thư viện" | "库" => {
+                return Archetype::Library;
+            }
+            "worker" | "queue" | "cron" | "job" | "task" | "hàng đợi" | "xử lý" => {
+                return Archetype::Worker;
+            }
+            "fullstack" | "monorepo" | "toàn diện" | "全栈" => return Archetype::Fullstack,
+            "microservice" | "microservices" | "distributed" | "phân tán" | "微服务" => {
+                return Archetype::Microservice;
+            }
+            "embedded" | "iot" | "firmware" | "nhúng" | "嵌入式" => return Archetype::Embedded,
             _ => {}
         }
     }
     Archetype::Generic
 }
 
-/// Rule-based NL parsing — no LLM dependency.
-///
-/// Recognizes language keywords (rust, go, ts, python, …) and project
-/// archetypes (cli, api, lib, worker). Connectors ("with", "and", "+")
-/// are ignored. Duplicate languages collapse to their first mention.
 pub fn parse_description(input: &str) -> ParsedDescription {
     let lowered = input.to_lowercase();
     let words: Vec<&str> = lowered
-        .split(|c: char| c.is_whitespace() || c == ',' || c == '+')
-        .filter(|w| !w.is_empty() && !matches!(*w, "a" | "an" | "and" | "with" | "the" | "for"))
+        .split(|c: char| c.is_whitespace() || c == ',' || c == '+' || c == '/' || c == '&')
+        .filter(|w| {
+            !w.is_empty()
+                && !matches!(
+                    *w,
+                    "a" | "an"
+                        | "and"
+                        | "with"
+                        | "the"
+                        | "for"
+                        | "và"
+                        | "với"
+                        | "cho"
+                        | "dự"
+                        | "án"
+                        | "ngôn"
+                        | "ngữ"
+                        | "和"
+                        | "与"
+                        | "的"
+                        | "と"
+                        | "の"
+                )
+        })
         .collect();
 
     let mut languages: Vec<DetectedLanguage> = Vec::new();
@@ -87,10 +162,6 @@ pub fn parse_description(input: &str) -> ParsedDescription {
     }
 }
 
-/// Render a `fish.yaml` body from the parsed description.
-///
-/// The archetype adds a commented hint so users know what was inferred;
-/// task wiring is identical to auto-detection.
 pub fn generate_from_description(parsed: &ParsedDescription) -> String {
     let mut out = String::from("# Generated by `fish init --describe`\n");
     out.push_str(&format!("# archetype: {:?}\n", parsed.archetype));
@@ -143,6 +214,16 @@ mod tests {
         let p = parse_description("a rust api server with postgres");
         assert_eq!(p.archetype, Archetype::Api);
         assert_eq!(p.languages.len(), 1);
+    }
+
+    #[test]
+    fn recognizes_vietnamese_and_all_backends() {
+        let p = parse_description("dự án microservice với go và zig và docker");
+        assert_eq!(p.archetype, Archetype::Microservice);
+        assert_eq!(p.languages.len(), 3);
+        assert_eq!(p.languages[0].backend, "go");
+        assert_eq!(p.languages[1].backend, "zig");
+        assert_eq!(p.languages[2].backend, "docker");
     }
 
     #[test]

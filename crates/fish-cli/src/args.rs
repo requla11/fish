@@ -519,17 +519,27 @@ pub struct RewindArgs {
     pub path: Option<PathBuf>,
 }
 
-/// Arguments for attestation command
 #[derive(Debug, Args)]
 pub struct AttestArgs {
     pub path: Option<PathBuf>,
+    #[arg(long)]
+    pub key: Option<PathBuf>,
+    #[arg(long)]
+    pub seed: Option<String>,
+    #[arg(long)]
+    pub slsa_l3: bool,
 }
 
-/// Arguments for verify command
 #[derive(Debug, Args)]
 pub struct VerifyArgs {
     pub attestation_file: PathBuf,
     pub path: Option<PathBuf>,
+    #[arg(long)]
+    pub public_key: Option<String>,
+    #[arg(long)]
+    pub trusted_keys: Option<PathBuf>,
+    #[arg(long)]
+    pub slsa_l3: bool,
 }
 
 /// Arguments for watch command

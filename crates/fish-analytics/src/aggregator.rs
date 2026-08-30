@@ -26,23 +26,22 @@ impl MetricsAggregator {
         let mut total_misses = 0u64;
         let mut total_requests = 0u64;
 
-        if metrics_file.exists() {
-            if let Ok(content) = tokio::fs::read_to_string(&metrics_file).await {
-                if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&content) {
-                    total_hits = parsed
-                        .get("total_hits")
-                        .and_then(|v| v.as_u64())
-                        .unwrap_or(0);
-                    total_misses = parsed
-                        .get("total_misses")
-                        .and_then(|v| v.as_u64())
-                        .unwrap_or(0);
-                    total_requests = parsed
-                        .get("total_requests")
-                        .and_then(|v| v.as_u64())
-                        .unwrap_or(total_hits + total_misses);
-                }
-            }
+        if metrics_file.exists()
+            && let Ok(content) = tokio::fs::read_to_string(&metrics_file).await
+            && let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&content)
+        {
+            total_hits = parsed
+                .get("total_hits")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(0);
+            total_misses = parsed
+                .get("total_misses")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(0);
+            total_requests = parsed
+                .get("total_requests")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(total_hits + total_misses);
         }
 
         let hit_rate = if total_requests > 0 {

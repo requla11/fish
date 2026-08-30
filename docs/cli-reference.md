@@ -62,6 +62,7 @@ Usage: fish build [OPTIONS] [PATH]
 | `--verbose`, `-v` |  | `false` |
 | `--no-cache` |  | `false` |
 | `--sandbox` |  | `false` |
+| `--apple` | Run every build task through the `apple` hermetic sandbox (requires the `apple` binary on PATH) | `false` |
 | `--timeout` `<TIMEOUT_SECS>` |  |  |
 | `--profile` `<PROFILE>` |  |  |
 | `--tui` |  | `false` |
@@ -105,6 +106,7 @@ Usage: fish check [OPTIONS] [PATH]
 | `--verbose`, `-v` |  | `false` |
 | `--no-cache` |  | `false` |
 | `--sandbox` |  | `false` |
+| `--apple` | Run every build task through the `apple` hermetic sandbox (requires the `apple` binary on PATH) | `false` |
 | `--timeout` `<TIMEOUT_SECS>` |  |  |
 | `--profile` `<PROFILE>` |  |  |
 | `--tui` |  | `false` |
@@ -148,6 +150,7 @@ Usage: fish test [OPTIONS] [PATH]
 | `--verbose`, `-v` |  | `false` |
 | `--no-cache` |  | `false` |
 | `--sandbox` |  | `false` |
+| `--apple` | Run every build task through the `apple` hermetic sandbox (requires the `apple` binary on PATH) | `false` |
 | `--timeout` `<TIMEOUT_SECS>` |  |  |
 | `--profile` `<PROFILE>` |  |  |
 | `--tui` |  | `false` |
@@ -234,6 +237,7 @@ Usage: fish watch [OPTIONS] [PATH]
 | `--verbose`, `-v` |  | `false` |
 | `--no-cache` |  | `false` |
 | `--sandbox` |  | `false` |
+| `--apple` | Run every build task through the `apple` hermetic sandbox (requires the `apple` binary on PATH) | `false` |
 | `--timeout` `<TIMEOUT_SECS>` |  |  |
 | `--profile` `<PROFILE>` |  |  |
 | `--tui` |  | `false` |
@@ -310,6 +314,7 @@ Usage: fish affected [OPTIONS] [PATH]
 | `--verbose`, `-v` |  | `false` |
 | `--no-cache` |  | `false` |
 | `--sandbox` |  | `false` |
+| `--apple` | Run every build task through the `apple` hermetic sandbox (requires the `apple` binary on PATH) | `false` |
 | `--timeout` `<TIMEOUT_SECS>` |  |  |
 | `--profile` `<PROFILE>` |  |  |
 | `--tui` |  | `false` |

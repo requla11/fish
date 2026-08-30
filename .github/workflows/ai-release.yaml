@@ -93,7 +93,8 @@ jobs:
       - name: Generate Checksums & AI Release Notes
         id: release_notes
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY || secrets.AI_API_KEY }}
+          AI_MODEL: ${{ secrets.AI_MODEL || vars.AI_MODEL || secrets.GEMINI_MODEL || 'gemini-2.5-flash' }}
           TAG_NAME: ${{ github.ref_name }}
         run: |
           cd release-artifacts
@@ -117,13 +118,17 @@ jobs:
 
           if [ -n "$GEMINI_API_KEY" ]; then
             PAYLOAD=$(jq -n --arg text "$PROMPT" '{"contents": [{"parts": [{"text": $text}]}]}')
-            for MODEL in "gemini-3.7-flash" "gemini-2.5-flash" "gemini-2.0-flash" "gemini-1.5-flash"; do
-              RESPONSE=$(curl -s -X POST "https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}" \
-                -H "Content-Type: application/json" \
-                -d "$PAYLOAD")
-              NOTES=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text // empty')
-              if [ -n "$NOTES" ]; then
-                break
+            IFS=',' read -ra MODELS <<< "$AI_MODEL"
+            for MODEL in "${MODELS[@]}"; do
+              M=$(echo "$MODEL" | xargs)
+              if [ -n "$M" ]; then
+                RESPONSE=$(curl -s -X POST "https://generativelanguage.googleapis.com/v1beta/models/${M}:generateContent?key=${GEMINI_API_KEY}" \
+                  -H "Content-Type: application/json" \
+                  -d "$PAYLOAD")
+                NOTES=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text // empty')
+                if [ -n "$NOTES" ]; then
+                  break
+                fi
               fi
             done
           fi

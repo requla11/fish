@@ -8,3 +8,5 @@ description = "Fish build graph: nodes, edges, task states, dependency tracking"
 
 [dependencies]
 thiserror = { workspace = true }
+blake3 = { workspace = true }
+serde = { workspace = true }

@@ -1,12 +1,14 @@
 use std::collections::{BTreeSet, HashMap, HashSet};
 
+use crate::error::format_cycle_path;
 use thiserror::Error;
 
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub enum LocklessError {
-    /// A dependency cycle was detected while computing the critical path.
-    #[error("dependency cycle detected at node `{0}`")]
-    Cycle(String),
+    /// A dependency cycle was detected while computing the critical path,
+    /// reported as the closed walk `a -> b -> a`.
+    #[error("dependency cycle detected: {}", format_cycle_path(.0))]
+    Cycle(Vec<String>),
 }
 
 #[derive(Debug, Clone, Default)]
@@ -82,26 +84,32 @@ impl LocklessDependencyGraph {
     pub fn compute_critical_path(&self) -> Result<Vec<String>, LocklessError> {
         let mut memo: HashMap<String, (u64, Vec<String>)> = HashMap::new();
         let mut visiting: HashSet<String> = HashSet::new();
+        // Mirrors `visiting` in insertion order so the cycle segment can be
+        // extracted when a node is seen twice.
+        let mut path_stack: Vec<String> = Vec::new();
 
         fn longest_path(
             id: &str,
             nodes: &HashMap<String, LocklessGraphNode>,
             memo: &mut HashMap<String, (u64, Vec<String>)>,
             visiting: &mut HashSet<String>,
+            path_stack: &mut Vec<String>,
         ) -> Result<(u64, Vec<String>), LocklessError> {
             if let Some(cached) = memo.get(id) {
                 return Ok(cached.clone());
             }
             if !visiting.insert(id.to_string()) {
-                return Err(LocklessError::Cycle(id.to_string()));
+                let start = path_stack.iter().position(|node| node == id).unwrap_or(0);
+                return Err(LocklessError::Cycle(path_stack[start..].to_vec()));
             }
+            path_stack.push(id.to_string());
 
             let mut max_dep_weight = 0;
             let mut best_prefix = Vec::new();
 
             if let Some(node) = nodes.get(id) {
                 for dep in &node.dependencies {
-                    let (w, path) = longest_path(dep, nodes, memo, visiting)?;
+                    let (w, path) = longest_path(dep, nodes, memo, visiting, path_stack)?;
                     if w > max_dep_weight {
                         max_dep_weight = w;
                         best_prefix = path;
@@ -112,9 +120,11 @@ impl LocklessDependencyGraph {
                 let result = (total_weight, best_prefix);
                 memo.insert(id.to_string(), result.clone());
                 visiting.remove(id);
+                path_stack.pop();
                 Ok(result)
             } else {
                 visiting.remove(id);
+                path_stack.pop();
                 Ok((0, vec![id.to_string()]))
             }
         }
@@ -126,7 +136,8 @@ impl LocklessDependencyGraph {
         ids.sort();
 
         for id in ids {
-            let (w, path) = longest_path(id, &self.nodes, &mut memo, &mut visiting)?;
+            let (w, path) =
+                longest_path(id, &self.nodes, &mut memo, &mut visiting, &mut path_stack)?;
             if w > max_weight {
                 max_weight = w;
                 best_path = path;
@@ -196,17 +207,21 @@ mod tests {
         graph.insert_node("a", &deps(&["b"]), 1);
         graph.insert_node("b", &deps(&["a"]), 1);
 
-        assert!(matches!(
+        assert_eq!(
             graph.compute_critical_path(),
-            Err(LocklessError::Cycle(_))
-        ));
+            Err(LocklessError::Cycle(deps(&["a", "b"])))
+        );
 
         let mut self_loop = LocklessDependencyGraph::new();
         self_loop.insert_node("x", &deps(&["x"]), 1);
-        assert!(matches!(
+        assert_eq!(
             self_loop.compute_critical_path(),
-            Err(LocklessError::Cycle(_))
-        ));
+            Err(LocklessError::Cycle(deps(&["x"])))
+        );
+        assert_eq!(
+            self_loop.compute_critical_path().unwrap_err().to_string(),
+            "dependency cycle detected: x -> x"
+        );
     }
 
     #[test]

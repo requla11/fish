@@ -1,4 +1,5 @@
 use std::process::Command;
+use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
 use crate::task::{Task, TaskOutcome, TaskStatus};
@@ -49,6 +50,17 @@ impl Default for ProcessExecutor {
     fn default() -> Self {
         Self::new(false)
     }
+}
+
+static GLOBAL_RT: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
+
+fn global_runtime() -> &'static tokio::runtime::Runtime {
+    GLOBAL_RT.get_or_init(|| {
+        tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .expect("tokio runtime for ProcessExecutor")
+    })
 }
 
 #[cfg(windows)]
@@ -138,8 +150,8 @@ fn run_with_timeout(
     })
 }
 
-impl TaskExecutor for ProcessExecutor {
-    fn execute(&self, task: &Task) -> Result<TaskOutcome, ExecutorError> {
+impl ProcessExecutor {
+    fn execute_sync(&self, task: &Task) -> Result<TaskOutcome, ExecutorError> {
         let start = Instant::now();
         let mut command: Command = task.spec.to_std_command();
         let output = match self.timeout {
@@ -183,6 +195,30 @@ impl TaskExecutor for ProcessExecutor {
             stderr,
             duration: start.elapsed(),
         })
+    }
+}
+
+impl TaskExecutor for ProcessExecutor {
+    fn execute(&self, task: &Task) -> Result<TaskOutcome, ExecutorError> {
+        // Prefer async I/O path via shared tokio runtime to avoid 2 OS threads per task.
+        // If already inside a tokio runtime, fall back to sync to avoid nested block_on deadlock.
+        if tokio::runtime::Handle::try_current().is_err() {
+            let async_exec = crate::async_executor::AsyncProcessExecutor::with_timeout(
+                self.verbose,
+                self.timeout,
+            );
+            let rt = global_runtime();
+            // Catch panics from block_on to ensure fallback
+            let res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                rt.block_on(async_exec.execute_async(task))
+            }));
+            match res {
+                Ok(Ok(outcome)) => return Ok(outcome),
+                Ok(Err(e)) => return Err(e),
+                Err(_) => {} // fallback to sync
+            }
+        }
+        self.execute_sync(task)
     }
 }
 

@@ -109,23 +109,21 @@ impl DartProjectConfig {
     }
 
     fn extract_project_name(content: &str) -> Option<String> {
-        let start_marker = "name:";
-        if let Some(start) = content.find(start_marker) {
-            let after_start = &content[start + start_marker.len()..];
-            let trimmed = after_start.trim_start();
-            if trimmed.starts_with('"') {
-                if let Some(end) = trimmed.find('"') {
-                    return Some(trimmed[1..end].to_string());
-                }
-            } else if trimmed.starts_with('\'') {
-                if let Some(end) = trimmed.find('\'') {
-                    return Some(trimmed[1..end].to_string());
-                }
-            } else {
-                if let Some(end) = trimmed.find(char::is_whitespace) {
-                    return Some(trimmed[..end].to_string());
-                }
+        // Only a top-level `name:` YAML key identifies the package; the old
+        // substring search matched `hostname:` and friends anywhere.
+        for line in content.lines() {
+            let trimmed = line.trim_start();
+            if !trimmed.starts_with("name:") {
+                continue;
             }
+            let value = trimmed["name:".len()..].trim();
+            if value.len() >= 2
+                && (value.starts_with('"') || value.starts_with('\''))
+                && value.ends_with(&value[..1])
+            {
+                return Some(value[1..value.len() - 1].to_string());
+            }
+            return Some(value.split_whitespace().next()?.to_string());
         }
         None
     }
@@ -224,6 +222,31 @@ dependencies:
         assert_eq!(
             DartTargetPlatform::from_str("web").unwrap(),
             DartTargetPlatform::Web
+        );
+    }
+}
+
+#[cfg(test)]
+mod name_extraction_tests {
+    use super::*;
+
+    #[test]
+    fn top_level_name_wins_over_lookalikes() {
+        let content = concat!(
+            "description: x\nhostname: name: decoy\ndisplay_name: decoy2\n",
+            "name: real_app\n"
+        );
+        assert_eq!(
+            DartProjectConfig::extract_project_name(content).as_deref(),
+            Some("real_app")
+        );
+    }
+
+    #[test]
+    fn quoted_names_are_unquoted() {
+        assert_eq!(
+            DartProjectConfig::extract_project_name("name: \"quoted_app\"\n").as_deref(),
+            Some("quoted_app")
         );
     }
 }

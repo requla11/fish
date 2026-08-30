@@ -42,7 +42,7 @@ jobs:
 
           if [ -n "$GEMINI_API_KEY" ]; then
             PAYLOAD=$(jq -n --arg text "$PROMPT" '{"contents": [{"parts": [{"text": $text}]}]}')
-            for MODEL in "gemini-2.5-flash" "gemini-2.0-flash" "gemini-1.5-flash"; do
+            for MODEL in "gemini-3.7-flash" "gemini-2.5-flash" "gemini-2.0-flash" "gemini-1.5-flash"; do
               RESPONSE=$(curl -s -X POST "https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}" \
                 -H "Content-Type: application/json" \
                 -d "$PAYLOAD")

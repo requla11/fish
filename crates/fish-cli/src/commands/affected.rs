@@ -59,14 +59,28 @@ pub fn run_affected(args: AffectedArgs) -> ExitCode {
         }
     };
 
+    let git_ref = args.base.as_deref().unwrap_or(&args.since);
+
     let mut changed = Vec::new();
-    if let Err(message) = collect_git_changes(&repo_root, &args.since, &mut changed) {
+    if let Err(message) = collect_git_changes(&repo_root, git_ref, &mut changed) {
         eprintln!("error: {message}");
         return ExitCode::FAILURE;
     }
 
     if changed.is_empty() {
-        println!("No changes since `{}`; nothing to do.", args.since);
+        if args.json {
+            println!(
+                "{}",
+                serde_json::json!({
+                    "since": git_ref,
+                    "affected_packages": [],
+                    "total_packages": 0,
+                    "changed_files": 0
+                })
+            );
+        } else {
+            println!("No changes since `{git_ref}`; nothing to do.");
+        }
         return ExitCode::SUCCESS;
     }
 
@@ -99,7 +113,7 @@ pub fn run_affected(args: AffectedArgs) -> ExitCode {
             .map(|node| node.id)
             .collect(),
         None => {
-            if !args.common.tui {
+            if !args.common.tui && !args.json {
                 println!("Workspace-level file changed; all packages are affected.");
             }
             package_graph.nodes().iter().map(|node| node.id).collect()
@@ -108,7 +122,41 @@ pub fn run_affected(args: AffectedArgs) -> ExitCode {
 
     let affected = package_graph.affected_nodes(&owner_ids);
     if affected.is_empty() {
-        println!("No packages affected by changes since `{}`.", args.since);
+        if args.json {
+            println!(
+                "{}",
+                serde_json::json!({
+                    "since": git_ref,
+                    "affected_packages": [],
+                    "total_packages": package_graph.len(),
+                    "changed_files": changed.len()
+                })
+            );
+        } else {
+            println!("No packages affected by changes since `{git_ref}`.");
+        }
+        return ExitCode::SUCCESS;
+    }
+
+    let mut affected_names = Vec::new();
+    for id in &affected {
+        if let Some(package) = package_graph.node(*id)
+            && let Some(pkg) = project.package(&package.payload)
+        {
+            affected_names.push(pkg.name.clone());
+        }
+    }
+
+    if args.json {
+        println!(
+            "{}",
+            serde_json::json!({
+                "since": git_ref,
+                "affected_packages": affected_names,
+                "total_packages": package_graph.len(),
+                "changed_files": changed.len()
+            })
+        );
         return ExitCode::SUCCESS;
     }
 
@@ -118,12 +166,8 @@ pub fn run_affected(args: AffectedArgs) -> ExitCode {
             affected.len(),
             package_graph.len()
         );
-        for id in &affected {
-            if let Some(package) = package_graph.node(*id)
-                && let Some(pkg) = project.package(&package.payload)
-            {
-                println!("  - {}", pkg.name);
-            }
+        for name in &affected_names {
+            println!("  - {name}");
         }
         println!();
     }
@@ -132,7 +176,6 @@ pub fn run_affected(args: AffectedArgs) -> ExitCode {
     build::run_build_mode_with(args.common, mode, Some(filtered))
 }
 
-/// Runs `git` with the given arguments inside `dir` and returns stdout.
 fn git_output(dir: &Path, args: &[&str]) -> Result<String, String> {
     let output = std::process::Command::new("git")
         .arg("-C")
@@ -151,8 +194,6 @@ fn git_output(dir: &Path, args: &[&str]) -> Result<String, String> {
     Ok(String::from_utf8_lossy(&output.stdout).into_owned())
 }
 
-/// Collects the files changed since `since` (tracked diffs plus untracked
-/// files), as paths relative to the repository root.
 fn collect_git_changes(root: &Path, since: &str, out: &mut Vec<PathBuf>) -> Result<(), String> {
     let diff = git_output(root, &["diff", "--name-only", since])?;
     for line in diff.lines() {

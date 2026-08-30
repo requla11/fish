@@ -1,7 +1,15 @@
 name: dogfood
 
 on:
-  workflow_dispatch
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main, dev ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   CARGO_TERM_COLOR: always
@@ -14,6 +22,8 @@ jobs:
       rust: ${{ steps.filter.outputs.rust }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -32,10 +42,17 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.os }}-dogfood
 
       - name: Bootstrap Fish CLI
         run: cargo build -p fish-cli --release

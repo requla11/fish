@@ -1,7 +1,9 @@
 #![forbid(unsafe_code)]
 
 pub mod adapters;
+pub mod banana_ast;
 pub use adapters::{DetectedMonorepoKind, MonorepoDiscoveryResult, ZeroConfigAdapter};
+pub use banana_ast::FishAstService;
 
 pub mod backend;
 pub mod backend_utils;
@@ -14,12 +16,15 @@ pub mod error;
 pub mod input_filter;
 pub mod profiling;
 pub mod project;
+pub mod remediation;
 pub mod sandbox_profiles;
 pub mod security;
 pub mod testing;
 pub mod toolchain;
 pub mod toolchain_downloader;
 pub mod toolchain_lock;
+
+pub use remediation::{AutoRemediator, CompilerDiagnostic, ErrorKind, RemediationPatch};
 
 #[cfg(windows)]
 pub mod windows_compat;
@@ -37,7 +42,7 @@ pub use diagnostics::{
     ComponentHealthMonitor, DiagnosticLog, DiagnosticLogger, DiagnosticReport, HealthCheckRegistry,
     LogLevel, OpPerformanceMetrics, SystemDiagnostics,
 };
-pub use environment::EnvironmentFingerprint;
+pub use environment::{EnvironmentFingerprint, is_offline, set_offline};
 pub use error::{
     DiagnosticInfo, ErrorContext, ErrorSeverity, FishError, HealthCheck, HealthCheckResult,
     HealthStatus, RecoveryStrategy, Result,
@@ -52,6 +57,7 @@ pub use security::{
 pub use testing::{
     Benchmark, BenchmarkResult, IntegrationTestEnvironment, ParallelTestRunner, PropertyTestResult,
 };
+pub use toolchain::find_executable_in_path;
 pub use toolchain::{ToolchainKind, ToolchainRegistry, ToolchainSpec};
 pub use toolchain_downloader::{RemoteToolchainSource, ToolchainDownloader};
 

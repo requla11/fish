@@ -89,7 +89,7 @@ pub fn decompress(data: &[u8], algorithm: CompressionAlgorithm) -> Result<Vec<u8
 
 fn compress_zstd(data: &[u8], level: CompressionLevel) -> Result<Vec<u8>> {
     let level = level.as_i32();
-    zstd::encode_all(data, level)
+    zstd::bulk::compress(data, level)
         .map_err(|e| CasError::Compression(format!("Zstd compression failed: {}", e)))
 }
 

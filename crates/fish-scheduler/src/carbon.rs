@@ -33,6 +33,7 @@ pub enum CarbonBand {
 pub struct CarbonClient {
     base_url: String,
     token: Option<String>,
+    offline: bool,
 }
 
 #[derive(Deserialize)]
@@ -43,10 +44,24 @@ struct LatestResponse {
 
 impl CarbonClient {
     pub fn new(base_url: impl Into<String>, token: Option<String>) -> Self {
+        let offline = std::env::var("FISH_OFFLINE")
+            .map(|v| {
+                v == "1"
+                    || v.eq_ignore_ascii_case("true")
+                    || v.eq_ignore_ascii_case("yes")
+                    || v.eq_ignore_ascii_case("on")
+            })
+            .unwrap_or(false);
         Self {
             base_url: base_url.into(),
             token,
+            offline,
         }
+    }
+
+    pub fn with_offline(mut self, offline: bool) -> Self {
+        self.offline = offline;
+        self
     }
 
     /// Client honoring `FISH_CARBON_ENDPOINT` (and optional
@@ -66,6 +81,20 @@ impl CarbonClient {
 
     /// Fetch current grid intensity for `zone` (e.g. "DE", "US-CAL-CISO").
     pub fn latest_intensity(&self, zone: &str) -> Result<CarbonIntensity, String> {
+        let env_offline = std::env::var("FISH_OFFLINE")
+            .map(|v| {
+                v == "1"
+                    || v.eq_ignore_ascii_case("true")
+                    || v.eq_ignore_ascii_case("yes")
+                    || v.eq_ignore_ascii_case("on")
+            })
+            .unwrap_or(false);
+        if self.offline || env_offline {
+            return Err(
+                "offline mode enabled (FISH_OFFLINE); grid carbon lookup rejected".to_string(),
+            );
+        }
+
         let url = format!(
             "{}/carbon-intensity/latest?zone={}",
             self.base_url.trim_end_matches('/'),
@@ -187,5 +216,12 @@ mod tests {
             .band(),
             CarbonBand::High
         );
+    }
+
+    #[test]
+    fn test_offline_carbon_lookup_fail_fast() {
+        let client = CarbonClient::new("http://example.com", None).with_offline(true);
+        let err = client.latest_intensity("DE").unwrap_err();
+        assert!(err.contains("offline mode"));
     }
 }

@@ -49,22 +49,11 @@ impl ZigToolchain {
     }
 
     fn find_executable(name: &str) -> Option<String> {
-        if let Ok(output) = std::process::Command::new("where").arg(name).output()
-            && output.status.success()
-        {
-            let paths = String::from_utf8_lossy(&output.stdout);
-            return paths.lines().next().map(|s| s.to_string());
-        }
-
-        if std::process::Command::new(name)
-            .arg("version")
-            .output()
-            .is_ok()
-        {
-            return Some(name.to_string());
-        }
-
-        None
+        // Cross-platform PATH walk via the shared core helper. The previous
+        // implementation shelled out to Windows-only `where` and then blessed
+        // any tool whose `--version` merely *spawned* — broken installs
+        // counted as installed on Unix.
+        fish_core::find_executable_in_path(&[name]).map(|p| p.to_string_lossy().to_string())
     }
 
     fn get_version(executable: &str, args: &[&str]) -> Result<String, ZigBackendError> {

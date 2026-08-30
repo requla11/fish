@@ -14,6 +14,7 @@ pub mod explain;
 pub mod inference;
 pub mod patterns;
 pub mod suggestions;
+pub mod swpe;
 pub mod vfs;
 
 pub use abi_extractor::SemanticAbiExtractor;
@@ -24,6 +25,10 @@ pub use explain::{DirtyExplainer, DirtyReason};
 pub use inference::DependencyInferenceEngine;
 pub use patterns::{BuildPattern, PatternSeverity, PatternType};
 pub use suggestions::{OptimizationSuggestion, SuggestionPriority};
+pub use swpe::{
+    KeystrokeWavelet, PreWarmedArtifact, SpeculativeRingBuffer, WaveletEnergy,
+    WaveletSchedulerEngine,
+};
 pub use vfs::{VfsFileEntry, VfsNodeState, VfsSnapshotTree};
 
 use std::path::PathBuf;

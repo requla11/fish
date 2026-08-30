@@ -38,16 +38,26 @@ pub struct RemoteWorkerClient {
     pub timeout: Duration,
     pub pack_source: bool,
     pub use_vfs: bool,
+    pub offline: bool,
 }
 
 impl RemoteWorkerClient {
     pub fn new(server_addr: impl Into<String>, auth_token: Option<String>) -> Self {
+        let offline = std::env::var("FISH_OFFLINE")
+            .map(|v| {
+                v == "1"
+                    || v.eq_ignore_ascii_case("true")
+                    || v.eq_ignore_ascii_case("yes")
+                    || v.eq_ignore_ascii_case("on")
+            })
+            .unwrap_or(false);
         Self {
             server_addr: server_addr.into(),
             auth_token,
             timeout: Duration::from_secs(120),
             pack_source: false,
             use_vfs: false,
+            offline,
         }
     }
 
@@ -58,6 +68,11 @@ impl RemoteWorkerClient {
 
     pub fn with_timeout(mut self, timeout: Duration) -> Self {
         self.timeout = timeout;
+        self
+    }
+
+    pub fn with_offline(mut self, offline: bool) -> Self {
+        self.offline = offline;
         self
     }
 
@@ -74,6 +89,24 @@ impl RemoteWorkerClient {
     }
 
     pub fn ping(&self) -> Result<WorkerPingResponse, ExecutorError> {
+        let env_offline = std::env::var("FISH_OFFLINE")
+            .map(|v| {
+                v == "1"
+                    || v.eq_ignore_ascii_case("true")
+                    || v.eq_ignore_ascii_case("yes")
+                    || v.eq_ignore_ascii_case("on")
+            })
+            .unwrap_or(false);
+        if self.offline || env_offline {
+            return Err(ExecutorError::Spawn {
+                command: format!("ping to {}", self.server_addr),
+                source: std::io::Error::new(
+                    std::io::ErrorKind::PermissionDenied,
+                    "offline mode enabled (FISH_OFFLINE); remote worker access rejected",
+                ),
+            });
+        }
+
         let mut stream =
             TcpStream::connect(&self.server_addr).map_err(|e| ExecutorError::Spawn {
                 command: format!("ping to {}", self.server_addr),
@@ -153,6 +186,24 @@ impl RemoteWorkerClient {
     }
 
     pub fn send_task(&self, task: &Task) -> Result<TaskOutcome, ExecutorError> {
+        let env_offline = std::env::var("FISH_OFFLINE")
+            .map(|v| {
+                v == "1"
+                    || v.eq_ignore_ascii_case("true")
+                    || v.eq_ignore_ascii_case("yes")
+                    || v.eq_ignore_ascii_case("on")
+            })
+            .unwrap_or(false);
+        if self.offline || env_offline {
+            return Err(ExecutorError::Spawn {
+                command: task.label.clone(),
+                source: std::io::Error::new(
+                    std::io::ErrorKind::PermissionDenied,
+                    "offline mode enabled (FISH_OFFLINE); remote worker execution rejected",
+                ),
+            });
+        }
+
         let mut stream =
             TcpStream::connect(&self.server_addr).map_err(|e| ExecutorError::Spawn {
                 command: task.label.clone(),
@@ -255,6 +306,24 @@ impl RemoteWorkerClient {
 
     /// Request a file from the remote worker's VFS
     pub fn request_vfs_file(&self, file_path: &str) -> Result<VfsFileResponse, ExecutorError> {
+        let env_offline = std::env::var("FISH_OFFLINE")
+            .map(|v| {
+                v == "1"
+                    || v.eq_ignore_ascii_case("true")
+                    || v.eq_ignore_ascii_case("yes")
+                    || v.eq_ignore_ascii_case("on")
+            })
+            .unwrap_or(false);
+        if self.offline || env_offline {
+            return Err(ExecutorError::Spawn {
+                command: "vfs_request".to_string(),
+                source: std::io::Error::new(
+                    std::io::ErrorKind::PermissionDenied,
+                    "offline mode enabled (FISH_OFFLINE); remote vfs file request rejected",
+                ),
+            });
+        }
+
         let mut stream =
             TcpStream::connect(&self.server_addr).map_err(|e| ExecutorError::Spawn {
                 command: "vfs_request".to_string(),
@@ -291,12 +360,22 @@ impl RemoteWorkerClient {
 
         let mut reader = BufReader::new(stream);
         let mut line = String::new();
-        reader
+        if reader
             .read_line(&mut line)
             .map_err(|e| ExecutorError::Spawn {
                 command: "vfs_request".to_string(),
                 source: std::io::Error::other(e),
-            })?;
+            })?
+            == 0
+        {
+            return Err(ExecutorError::Spawn {
+                command: "vfs_request".to_string(),
+                source: std::io::Error::new(
+                    std::io::ErrorKind::UnexpectedEof,
+                    "empty vfs response",
+                ),
+            });
+        }
 
         let response: VfsFileResponse =
             serde_json::from_str(line.trim()).map_err(|e| ExecutorError::Spawn {
@@ -339,4 +418,21 @@ fn pack_source_context(
             None
         },
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_offline_worker_client_fail_fast() {
+        let client = RemoteWorkerClient::new("127.0.0.1:9999", None).with_offline(true);
+        let err = client.ping().unwrap_err();
+        match err {
+            ExecutorError::Spawn { source, .. } => {
+                assert_eq!(source.kind(), std::io::ErrorKind::PermissionDenied);
+            }
+            other => panic!("expected ExecutorError::Spawn, got {:?}", other),
+        }
+    }
 }

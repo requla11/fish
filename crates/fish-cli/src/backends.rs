@@ -1,16 +1,26 @@
 use std::path::Path;
 use std::process::ExitCode;
 
+#[cfg(feature = "backend-cc")]
 use fish_backend_cc::{CcBackend, CcProjectConfig};
+#[cfg(feature = "backend-dart")]
 use fish_backend_dart::{DartBackend, DartProjectConfig};
+#[cfg(feature = "backend-docker")]
 use fish_backend_docker::DockerBackend;
+#[cfg(feature = "backend-dotnet")]
 use fish_backend_dotnet::{DotnetBackend, DotnetProjectConfig};
+#[cfg(feature = "backend-go")]
 use fish_backend_go::{GoBackend, GoProjectConfig};
+#[cfg(feature = "backend-java")]
 use fish_backend_java::{JavaBackend, JavaProjectConfig};
+#[cfg(feature = "backend-py")]
 use fish_backend_py::{PyBackend, PyProjectConfig};
 use fish_backend_rust::BuildMode;
+#[cfg(feature = "backend-swift")]
 use fish_backend_swift::{SwiftBackend, SwiftProjectConfig};
+#[cfg(feature = "backend-ts")]
 use fish_backend_ts::{TsBackend, TsProjectConfig};
+#[cfg(feature = "backend-zig")]
 use fish_backend_zig::{ZigBackend, ZigProjectConfig};
 
 use fish_executor::Task;
@@ -24,6 +34,7 @@ use crate::render;
 use crate::tui::TuiDashboard;
 use crate::utils;
 
+#[cfg(feature = "backend-cc")]
 pub(crate) fn run_cc_build(start_dir: &Path, args: &CommonArgs) -> ExitCode {
     let start_dir = utils::plain_path(start_dir);
     let config_path = start_dir.join("fish.cc.json");
@@ -55,6 +66,7 @@ pub(crate) fn run_cc_build(start_dir: &Path, args: &CommonArgs) -> ExitCode {
     execute_task_graph(&mut task_graph, args)
 }
 
+#[cfg(feature = "backend-go")]
 pub(crate) fn run_go_build(start_dir: &Path, args: &CommonArgs) -> ExitCode {
     let start_dir = utils::plain_path(start_dir);
     let config_path = start_dir.join("fish.go.json");
@@ -108,6 +120,7 @@ pub(crate) fn run_go_build(start_dir: &Path, args: &CommonArgs) -> ExitCode {
     execute_task_graph(&mut task_graph, args)
 }
 
+#[cfg(feature = "backend-ts")]
 pub(crate) fn run_ts_build(start_dir: &Path, args: &CommonArgs) -> ExitCode {
     let start_dir = utils::plain_path(start_dir);
     let config = match TsProjectConfig::discover_or_default(&start_dir) {
@@ -130,6 +143,7 @@ pub(crate) fn run_ts_build(start_dir: &Path, args: &CommonArgs) -> ExitCode {
     execute_task_graph(&mut task_graph, args)
 }
 
+#[cfg(feature = "backend-py")]
 pub(crate) fn run_py_build(start_dir: &Path, args: &CommonArgs) -> ExitCode {
     let start_dir = utils::plain_path(start_dir);
     let config = match PyProjectConfig::discover_or_default(&start_dir) {
@@ -152,6 +166,7 @@ pub(crate) fn run_py_build(start_dir: &Path, args: &CommonArgs) -> ExitCode {
     execute_task_graph(&mut task_graph, args)
 }
 
+#[cfg(feature = "backend-java")]
 pub(crate) fn run_java_build(start_dir: &Path, args: &CommonArgs) -> ExitCode {
     let start_dir = utils::plain_path(start_dir);
     let config = match JavaProjectConfig::detect(&start_dir) {
@@ -182,6 +197,7 @@ pub(crate) fn run_java_build(start_dir: &Path, args: &CommonArgs) -> ExitCode {
     execute_task_graph(&mut task_graph, args)
 }
 
+#[cfg(feature = "backend-dotnet")]
 pub(crate) fn run_dotnet_build(start_dir: &Path, args: &CommonArgs) -> ExitCode {
     let start_dir = utils::plain_path(start_dir);
     let config = match DotnetProjectConfig::detect(&start_dir) {
@@ -212,6 +228,7 @@ pub(crate) fn run_dotnet_build(start_dir: &Path, args: &CommonArgs) -> ExitCode 
     execute_task_graph(&mut task_graph, args)
 }
 
+#[cfg(feature = "backend-swift")]
 pub(crate) fn run_swift_build(start_dir: &Path, args: &CommonArgs) -> ExitCode {
     let start_dir = utils::plain_path(start_dir);
     let config = match SwiftProjectConfig::detect(&start_dir) {
@@ -242,6 +259,7 @@ pub(crate) fn run_swift_build(start_dir: &Path, args: &CommonArgs) -> ExitCode {
     execute_task_graph(&mut task_graph, args)
 }
 
+#[cfg(feature = "backend-dart")]
 pub(crate) fn run_dart_build(start_dir: &Path, args: &CommonArgs) -> ExitCode {
     let start_dir = utils::plain_path(start_dir);
     let config = match DartProjectConfig::detect(&start_dir) {
@@ -272,6 +290,7 @@ pub(crate) fn run_dart_build(start_dir: &Path, args: &CommonArgs) -> ExitCode {
     execute_task_graph(&mut task_graph, args)
 }
 
+#[cfg(feature = "backend-zig")]
 pub(crate) fn run_zig_build(start_dir: &Path, args: &CommonArgs) -> ExitCode {
     let start_dir = utils::plain_path(start_dir);
     let config = match ZigProjectConfig::detect(&start_dir) {
@@ -302,6 +321,7 @@ pub(crate) fn run_zig_build(start_dir: &Path, args: &CommonArgs) -> ExitCode {
     execute_task_graph(&mut task_graph, args)
 }
 
+#[cfg(feature = "backend-docker")]
 pub(crate) fn run_docker_build(start_dir: &Path, args: &CommonArgs) -> ExitCode {
     let start_dir = utils::plain_path(start_dir);
 
@@ -396,6 +416,86 @@ pub(crate) fn list_script_plugins(start_dir: &Path) -> Vec<String> {
             .collect(),
         Err(_) => vec![],
     }
+}
+
+#[cfg(not(feature = "backend-cc"))]
+pub(crate) fn run_cc_build(_start_dir: &Path, _args: &CommonArgs) -> ExitCode {
+    eprintln!(
+        "error: cc backend not enabled in this build. Rebuild fish with --features backend-cc or default features"
+    );
+    ExitCode::FAILURE
+}
+
+#[cfg(not(feature = "backend-go"))]
+pub(crate) fn run_go_build(_start_dir: &Path, _args: &CommonArgs) -> ExitCode {
+    eprintln!(
+        "error: go backend not enabled in this build. Rebuild fish with --features backend-go or default features"
+    );
+    ExitCode::FAILURE
+}
+
+#[cfg(not(feature = "backend-ts"))]
+pub(crate) fn run_ts_build(_start_dir: &Path, _args: &CommonArgs) -> ExitCode {
+    eprintln!(
+        "error: ts backend not enabled in this build. Rebuild fish with --features backend-ts or default features"
+    );
+    ExitCode::FAILURE
+}
+
+#[cfg(not(feature = "backend-py"))]
+pub(crate) fn run_py_build(_start_dir: &Path, _args: &CommonArgs) -> ExitCode {
+    eprintln!(
+        "error: py backend not enabled in this build. Rebuild fish with --features backend-py or default features"
+    );
+    ExitCode::FAILURE
+}
+
+#[cfg(not(feature = "backend-java"))]
+pub(crate) fn run_java_build(_start_dir: &Path, _args: &CommonArgs) -> ExitCode {
+    eprintln!(
+        "error: java backend not enabled in this build. Rebuild fish with --features backend-java or default features"
+    );
+    ExitCode::FAILURE
+}
+
+#[cfg(not(feature = "backend-dotnet"))]
+pub(crate) fn run_dotnet_build(_start_dir: &Path, _args: &CommonArgs) -> ExitCode {
+    eprintln!(
+        "error: dotnet backend not enabled in this build. Rebuild fish with --features backend-dotnet or default features"
+    );
+    ExitCode::FAILURE
+}
+
+#[cfg(not(feature = "backend-swift"))]
+pub(crate) fn run_swift_build(_start_dir: &Path, _args: &CommonArgs) -> ExitCode {
+    eprintln!(
+        "error: swift backend not enabled in this build. Rebuild fish with --features backend-swift or default features"
+    );
+    ExitCode::FAILURE
+}
+
+#[cfg(not(feature = "backend-dart"))]
+pub(crate) fn run_dart_build(_start_dir: &Path, _args: &CommonArgs) -> ExitCode {
+    eprintln!(
+        "error: dart backend not enabled in this build. Rebuild fish with --features backend-dart or default features"
+    );
+    ExitCode::FAILURE
+}
+
+#[cfg(not(feature = "backend-zig"))]
+pub(crate) fn run_zig_build(_start_dir: &Path, _args: &CommonArgs) -> ExitCode {
+    eprintln!(
+        "error: zig backend not enabled in this build. Rebuild fish with --features backend-zig or default features"
+    );
+    ExitCode::FAILURE
+}
+
+#[cfg(not(feature = "backend-docker"))]
+pub(crate) fn run_docker_build(_start_dir: &Path, _args: &CommonArgs) -> ExitCode {
+    eprintln!(
+        "error: docker backend not enabled in this build. Rebuild fish with --features backend-docker or default features"
+    );
+    ExitCode::FAILURE
 }
 
 pub(crate) fn execute_task_graph(

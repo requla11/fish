@@ -179,6 +179,28 @@ impl EnvironmentFingerprint {
     }
 }
 
+use std::sync::atomic::{AtomicBool, Ordering};
+
+static OFFLINE_OVERRIDE: AtomicBool = AtomicBool::new(false);
+
+pub fn set_offline(offline: bool) {
+    OFFLINE_OVERRIDE.store(offline, Ordering::Relaxed);
+}
+
+pub fn is_offline() -> bool {
+    if OFFLINE_OVERRIDE.load(Ordering::Relaxed) {
+        return true;
+    }
+    if let Ok(val) = std::env::var("FISH_OFFLINE") {
+        val == "1"
+            || val.eq_ignore_ascii_case("true")
+            || val.eq_ignore_ascii_case("yes")
+            || val.eq_ignore_ascii_case("on")
+    } else {
+        false
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -205,5 +227,14 @@ mod tests {
         let fp2 = EnvironmentFingerprint::capture();
 
         assert!(fp1.is_compatible_with(&fp2));
+    }
+
+    #[test]
+    fn test_is_offline() {
+        assert!(!is_offline());
+        set_offline(true);
+        assert!(is_offline());
+        set_offline(false);
+        assert!(!is_offline());
     }
 }

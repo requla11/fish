@@ -3,6 +3,7 @@
 #![warn(clippy::all)]
 
 pub mod backend;
+pub mod banana_slsa;
 pub mod error;
 pub mod osv;
 pub mod rbac;
@@ -11,6 +12,7 @@ pub mod slsa;
 pub mod vulnerability;
 
 pub use backend::{BackendScanner, MavenScanner, NpmScanner, RustScanner};
+pub use banana_slsa::FishSlsaWitness;
 pub use error::{SecurityError, SecurityResult};
 pub use scanner::{ScanOptions, ScanReport, VulnerabilityScanner};
 pub use vulnerability::{Severity, Vulnerability, VulnerabilitySource};

@@ -18,6 +18,11 @@ pub mod starlark_parser;
 pub mod wasm;
 pub mod wasm_sandbox;
 
+pub use marketplace::{
+    InstalledPluginInfo, PluginRegistry, RegistryEntry, create_signed_entry, download_plugin,
+    download_plugin_with_offline, install_plugin, list_installed_plugins, uninstall_plugin,
+    verify_entry_signature, verify_entry_with_trusted_keys,
+};
 pub use rule::{PluginRulesManifest, RuleSpec};
 pub use starlark_parser::StarlarkRulesParser;
 pub use wasm::{

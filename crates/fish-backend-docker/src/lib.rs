@@ -1,10 +1,12 @@
 #![forbid(unsafe_code)]
 
+pub mod banana_oci;
 pub mod config;
 pub mod ecosystem;
 pub mod fingerprint;
 pub mod toolchain;
 
+pub use banana_oci::FishOciCompiler;
 pub use config::DockerProjectConfig;
 pub use fingerprint::DockerFingerprinter;
 pub use toolchain::DockerToolchain;

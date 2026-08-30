@@ -4,13 +4,21 @@ pub mod async_io;
 pub mod file_level;
 pub mod file_level_adapter;
 pub mod gc;
+pub mod morphic;
 pub mod pool;
+pub mod prediction;
 pub mod strategies;
+pub mod uring;
 
 pub use async_io::{AsyncCache, AsyncFileReader, AsyncFileWriter, AsyncIoError};
 pub use file_level_adapter::{FileLevelCacheAdapter, HybridCachingExecutor};
 pub use gc::{BackgroundCacheGc, EvictionPolicy, GcConfig};
-pub use pool::{BufferPool, PoolStats, ScopedBuffer};
+pub use morphic::{
+    DualKeyFingerprint, MorphicCacheCatalog, MorphicEnvironmentFilter, MorphicFingerprintEngine,
+    MorphicLookupResult, MorphicPathNormalizer, MorphicSourceNormalizer,
+};
+pub use pool::{BufferPool, PoolStats, ScopedBuffer, ScopedString, StringPool};
+pub use prediction::{AccessPattern, CachePrediction, CachePredictor, CachePredictorStats};
 pub use strategies::{LruCache, PredictiveCache, SpinLockLruCache, TieredCache};
 
 use std::collections::{HashMap, HashSet};
@@ -155,6 +163,7 @@ pub struct LocalCache {
     stats: Arc<CacheStats>,
     cas_enabled: bool,
     buffer_pool: Arc<BufferPool>,
+    string_pool: Arc<StringPool>,
     memory_cache: Arc<dashmap::DashMap<String, FingerprintRecord>>,
 }
 
@@ -176,6 +185,7 @@ impl LocalCache {
             stats: Arc::new(CacheStats::default()),
             cas_enabled: false,
             buffer_pool: Arc::new(BufferPool::new()),
+            string_pool: Arc::new(StringPool::new()),
             memory_cache: Arc::new(dashmap::DashMap::new()),
         })
     }
@@ -245,26 +255,38 @@ impl LocalCache {
                 source,
             })?;
         }
+        let key_owned = key.to_string();
+        let fingerprint_owned = fingerprint.to_string();
         let record = FingerprintRecord {
-            fingerprint: fingerprint.to_string(),
+            fingerprint: fingerprint_owned,
             stored_at: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .map(|d| d.as_secs())
                 .unwrap_or(0),
             artifact_hash,
-            key: Some(key.to_string()),
+            key: Some(key_owned.clone()),
         };
-        self.memory_cache.insert(key.to_string(), record.clone());
+        self.memory_cache.insert(key_owned.clone(), record.clone());
         let payload = serde_json::to_vec(&record).expect("a fingerprint record always serializes");
         let tmp = unique_tmp_path(&path);
         fs::write(&tmp, payload).map_err(|source| CacheError::Write {
-            key: key.to_string(),
+            key: key_owned,
             source,
         })?;
         atomic_rename(&tmp, &path).map_err(|source| CacheError::Write {
             key: key.to_string(),
             source,
         })
+    }
+
+    /// Get a string from the pool (for external use in cache operations)
+    pub fn get_pooled_string(&self, capacity: usize) -> String {
+        self.string_pool.get_string(capacity)
+    }
+
+    /// Return a string to the pool (for external use in cache operations)
+    pub fn return_pooled_string(&self, s: String) {
+        self.string_pool.return_string(s);
     }
 
     pub fn artifact_hash(&self, key: &str) -> Option<String> {
@@ -765,17 +787,23 @@ pub(crate) fn unique_tmp_path(path: &Path) -> PathBuf {
 
 fn atomic_rename(src: &Path, dst: &Path) -> io::Result<()> {
     let mut last_err: Option<io::Error> = None;
-    for i in 0..20 {
+    for i in 0..50 {
         match fs::rename(src, dst) {
             Ok(()) => return Ok(()),
             Err(e)
-                if i < 19
-                    && (e.kind() == io::ErrorKind::PermissionDenied
-                        || e.raw_os_error() == Some(5)
-                        || e.raw_os_error() == Some(32)) =>
+                if (e.kind() == io::ErrorKind::PermissionDenied
+                    || e.raw_os_error() == Some(5)
+                    || e.raw_os_error() == Some(32)) =>
             {
                 last_err = Some(e);
-                std::thread::sleep(std::time::Duration::from_millis(1 + i * 2));
+                #[cfg(windows)]
+                {
+                    if fs::copy(src, dst).is_ok() {
+                        let _ = fs::remove_file(src);
+                        return Ok(());
+                    }
+                }
+                std::thread::sleep(std::time::Duration::from_millis(1 + i * 3));
             }
             Err(e) => {
                 let _ = fs::remove_file(src);
@@ -783,6 +811,7 @@ fn atomic_rename(src: &Path, dst: &Path) -> io::Result<()> {
             }
         }
     }
+    let _ = fs::remove_file(src);
     Err(last_err.unwrap_or_else(|| io::Error::other("atomic rename exhausted retries")))
 }
 

@@ -1,4 +1,4 @@
-﻿[workspace]
+[workspace]
 resolver = "2"
 members = [
     "crates/fish-backend-api",
@@ -29,6 +29,8 @@ members = [
     "crates/fish-incremental",
     "crates/fish-cli",
     "crates/fish-installer",
+    "submodules/apple",
+    "submodules/banana",
 ]
 
 [workspace.package]
@@ -47,6 +49,8 @@ categories = ["development-tools", "development-tools::build-utils"]
 
 [workspace.dependencies]
 anyhow = "1.0"
+apple = { path = "submodules/apple", version = "0.1.0" }
+banana = { path = "submodules/banana", version = "0.1.0" }
 fish-backend-api = { path = "crates/fish-backend-api", version = "0.6.0" }
 fish-core = { path = "crates/fish-core", version = "0.6.0" }
 fish-graph = { path = "crates/fish-graph", version = "0.6.0" }

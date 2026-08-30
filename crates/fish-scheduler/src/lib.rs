@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 
+pub mod adaptive;
 pub mod bin_packing;
 pub mod carbon;
 pub mod jobserver_pool;
@@ -11,12 +12,16 @@ pub mod resource_predictor;
 pub mod watcher;
 pub mod work_stealing;
 
+pub use adaptive::{
+    AdaptiveConfig, AdaptiveParallelismScheduler, PerformanceMetrics, WorkloadType,
+};
 pub use bin_packing::{AgentBucket, DteBinPacker, TaskTimingEstimate};
 pub use jobserver_pool::JobserverPool;
 pub use pipelining::{PipelineStage, PipelinedCompilationCoordinator};
 pub use racing::DynamicRacingExecutor;
 pub use resource_governor::{KernelResourceGovernor, MemoryPressureLevel};
 pub use watcher::FsWatcherDaemon;
+pub use work_stealing::{ExecutionHeuristics, WorkStealingScheduler};
 
 use std::cmp::Reverse;
 use std::sync::mpsc;
@@ -373,6 +378,8 @@ impl Scheduler {
         let mut free_workers: Vec<usize> = (0..self.workers).rev().collect();
         let mut last_ram_check = Instant::now() - Duration::from_secs(1);
         let mut ram_limited = false;
+        let mut sys = sysinfo::System::new();
+        sys.refresh_memory();
 
         let result = thread::scope(|scope| -> Result<(), SchedulerError> {
             let (task_tx, task_rx) =
@@ -418,7 +425,6 @@ impl Scheduler {
                 let effective_workers = if let Some(threshold) = self.ram_threshold {
                     if last_ram_check.elapsed() >= Duration::from_millis(500) {
                         last_ram_check = Instant::now();
-                        let mut sys = sysinfo::System::new_all();
                         sys.refresh_memory();
                         ram_limited = sys.available_memory().saturating_mul(100)
                             < sys.total_memory().saturating_mul(threshold as u64);
@@ -471,6 +477,7 @@ impl Scheduler {
                     "Task completed"
                 );
 
+                let was_success = outcome.status != TaskStatus::Failed;
                 process_completion(
                     graph,
                     &mut in_flight,
@@ -482,6 +489,27 @@ impl Scheduler {
                     worker_id,
                     task_start_offset,
                 )?;
+                if was_success && let Ok(dependents) = graph.dependents(id).map(|s| s.to_vec()) {
+                    for dep in dependents {
+                        if matches!(graph.state(dep), Ok(TaskState::Pending))
+                            && graph.is_ready(dep).unwrap_or(false)
+                            && !ready.contains(&dep)
+                        {
+                            if self.critical_path {
+                                let tail_val = tail[dep.index()];
+                                let slice = &ready[ready_index..];
+                                let pos = slice
+                                    .binary_search_by(|probe| {
+                                        tail[probe.index()].cmp(&tail_val).reverse()
+                                    })
+                                    .unwrap_or_else(|e| e);
+                                ready.insert(ready_index + pos, dep);
+                            } else {
+                                ready.push(dep);
+                            }
+                        }
+                    }
+                }
                 while let Ok((id, outcome, worker_id, task_start_offset)) = rx.try_recv() {
                     free_workers.push(worker_id);
 
@@ -493,6 +521,7 @@ impl Scheduler {
                         "Task completed (batch)"
                     );
 
+                    let was_success_batch = outcome.status != TaskStatus::Failed;
                     process_completion(
                         graph,
                         &mut in_flight,
@@ -504,6 +533,29 @@ impl Scheduler {
                         worker_id,
                         task_start_offset,
                     )?;
+                    if was_success_batch
+                        && let Ok(dependents) = graph.dependents(id).map(|s| s.to_vec())
+                    {
+                        for dep in dependents {
+                            if matches!(graph.state(dep), Ok(TaskState::Pending))
+                                && graph.is_ready(dep).unwrap_or(false)
+                                && !ready.contains(&dep)
+                            {
+                                if self.critical_path {
+                                    let tail_val = tail[dep.index()];
+                                    let slice = &ready[ready_index..];
+                                    let pos = slice
+                                        .binary_search_by(|probe| {
+                                            tail[probe.index()].cmp(&tail_val).reverse()
+                                        })
+                                        .unwrap_or_else(|e| e);
+                                    ready.insert(ready_index + pos, dep);
+                                } else {
+                                    ready.push(dep);
+                                }
+                            }
+                        }
+                    }
                 }
             }
             Ok(())

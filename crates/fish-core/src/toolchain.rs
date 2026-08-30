@@ -34,7 +34,7 @@ pub struct ToolchainRegistry {
     toolchains: HashMap<ToolchainKind, ToolchainSpec>,
 }
 
-fn find_executable_in_path(names: &[&str]) -> Option<PathBuf> {
+pub fn find_executable_in_path(names: &[&str]) -> Option<PathBuf> {
     if let Some(paths) = std::env::var_os("PATH") {
         for dir in std::env::split_paths(&paths) {
             for name in names {

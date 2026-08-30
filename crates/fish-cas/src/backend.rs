@@ -1,8 +1,9 @@
-#![forbid(unsafe_code)]
+#![deny(unsafe_code)]
 
 use crate::artifact::{Artifact, ArtifactHash, ArtifactMetadata};
 use crate::compression::CompressionAlgorithm;
 use crate::error::{CasError, Result};
+use crate::mmap::MmapArtifact;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
@@ -16,26 +17,28 @@ pub trait CasBackend: Send + Sync {
     async fn delete(&self, hash: &ArtifactHash) -> Result<()>;
     async fn list(&self) -> Result<Vec<ArtifactHash>>;
     async fn stats(&self) -> Result<CasStats>;
+
+    fn open_mmap(&self, _hash: &ArtifactHash) -> Result<MmapArtifact> {
+        Err(CasError::Config(
+            "Zero-copy mmap reads are only supported on local file backends".to_string(),
+        ))
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CasStats {
     pub artifact_count: usize,
     pub total_bytes: u64,
-    /// Total storage used after compression in bytes
     pub compressed_bytes: u64,
-    /// Storage backend type
     pub backend_type: String,
 }
 
-/// Local file-system based CAS backend
 pub struct LocalCasBackend {
     base_path: std::path::PathBuf,
     compression: crate::compression::CompressionAlgorithm,
 }
 
 impl LocalCasBackend {
-    /// Create a new local CAS backend
     pub fn new(
         base_path: std::path::PathBuf,
         compression: crate::compression::CompressionAlgorithm,
@@ -48,7 +51,6 @@ impl LocalCasBackend {
         })
     }
 
-    /// Get the file path for a given hash
     fn hash_path(&self, hash: &ArtifactHash) -> Result<std::path::PathBuf> {
         let hash_str = hash.as_str();
         validate_hash(hash_str)?;
@@ -57,59 +59,36 @@ impl LocalCasBackend {
         Ok(self.base_path.join(dir).join(filename))
     }
 
-    /// Get the metadata path for a given hash
     fn metadata_path(&self, hash: &ArtifactHash) -> Result<std::path::PathBuf> {
         let mut path = self.hash_path(hash)?;
         path.set_extension("meta");
         Ok(path)
     }
 
-    /// Read the stored compression algorithm for `hash` without touching the
-    /// object payload.
-    fn stored_compression(&self, hash: &ArtifactHash) -> Result<Option<CompressionAlgorithm>> {
+    pub fn open_mmap(&self, hash: &ArtifactHash) -> Result<MmapArtifact> {
+        validate_hash(hash.as_str())?;
+        let data_path = self.hash_path(hash)?;
         let metadata_path = self.metadata_path(hash)?;
-        if !metadata_path.exists() {
+        if !data_path.exists() || !metadata_path.exists() {
             return Err(CasError::ArtifactNotFound(hash.to_string()));
         }
         let json = std::fs::read_to_string(metadata_path).map_err(CasError::Io)?;
         let metadata: ArtifactMetadata =
             serde_json::from_str(&json).map_err(|e| CasError::Serialization(e.to_string()))?;
-        metadata
-            .compression
-            .map(|algo| CompressionAlgorithm::from_str(&algo).map_err(CasError::Compression))
-            .transpose()
+        MmapArtifact::open(&data_path, metadata)
     }
 
-    /// Hand the artifact's original (decompressed) bytes to `consume`.
-    ///
-    /// This is the synchronous, single-allocation read path for consumers
-    /// that only need a borrowed view (hashing, streaming, diffing). Compressed
-    /// objects are decompressed into one buffer before the call; uncompressed
-    /// objects are read straight into it.
-    ///
-    /// True zero-copy memory-mapped serving is deliberately deferred: every
-    /// file-backed constructor in `memmap2` is `unsafe`, and this crate keeps
-    /// the workspace-wide `#![forbid(unsafe_code)]` invariant.
+    pub fn read_zero_copy<R>(&self, hash: &ArtifactHash, f: impl FnOnce(&[u8]) -> R) -> Result<R> {
+        let artifact = self.open_mmap(hash)?;
+        Ok(f(artifact.as_slice()))
+    }
+
     pub fn with_artifact_bytes<R>(
         &self,
         hash: &ArtifactHash,
         consume: impl FnOnce(&[u8]) -> R,
     ) -> Result<R> {
-        validate_hash(hash.as_str())?;
-        let data_path = self.hash_path(hash)?;
-        if !data_path.exists() {
-            return Err(CasError::ArtifactNotFound(hash.to_string()));
-        }
-        let compression = self.stored_compression(hash)?;
-
-        if let Some(algo) = compression {
-            let stored = std::fs::read(&data_path).map_err(CasError::Io)?;
-            let decompressed = crate::compression::decompress(&stored, algo)?;
-            return Ok(consume(&decompressed));
-        }
-
-        let bytes = std::fs::read(&data_path).map_err(CasError::Io)?;
-        Ok(consume(&bytes))
+        self.read_zero_copy(hash, consume)
     }
 }
 
@@ -155,9 +134,7 @@ impl CasBackend for LocalCasBackend {
             };
 
         let tmp_data = data_path.with_extension(format!("tmp.{}", std::process::id()));
-        tokio::fs::write(&tmp_data, &data_to_store)
-            .await
-            .map_err(CasError::Io)?;
+        crate::uring::write_file_uring(&tmp_data, &data_to_store).await?;
         tokio::fs::rename(&tmp_data, &data_path)
             .await
             .map_err(CasError::Io)?;
@@ -196,7 +173,7 @@ impl CasBackend for LocalCasBackend {
         let mut metadata: crate::artifact::ArtifactMetadata = serde_json::from_str(&metadata_json)
             .map_err(|e| CasError::Serialization(e.to_string()))?;
 
-        let data = tokio::fs::read(&data_path).await.map_err(CasError::Io)?;
+        let data = crate::uring::read_file_uring(&data_path).await?;
 
         let decompressed_data = if metadata.compression.is_some() {
             let algorithm = metadata
@@ -342,6 +319,10 @@ impl CasBackend for LocalCasBackend {
             compressed_bytes,
             backend_type: "local".to_string(),
         })
+    }
+
+    fn open_mmap(&self, hash: &ArtifactHash) -> Result<MmapArtifact> {
+        LocalCasBackend::open_mmap(self, hash)
     }
 }
 

@@ -135,10 +135,8 @@ impl<T> BuildGraph<T> {
             return Err(GraphError::SelfDependency(dependency));
         }
         if self.reaches(dependent, dependency) {
-            return Err(GraphError::Cycle {
-                dependency,
-                dependent,
-            });
+            let path = self.shortest_dependent_chain(dependent, dependency);
+            return Err(GraphError::Cycle { path });
         }
         self.deps[dependent.0].push(dependency);
         self.dependents[dependency.0].push(dependent);
@@ -160,40 +158,58 @@ impl<T> BuildGraph<T> {
     }
 
     pub fn is_ready(&self, id: NodeId) -> Result<bool, GraphError> {
-        Ok(self
-            .deps(id)?
-            .iter()
-            .all(|dep| self.state(*dep).is_ok_and(TaskState::is_successful)))
+        let deps = self.deps.get(id.0).ok_or(GraphError::MissingNode(id))?;
+        for dep in deps {
+            let node = self.nodes.get(dep.0).ok_or(GraphError::MissingNode(*dep))?;
+            if !node.state.is_successful() {
+                return Ok(false);
+            }
+        }
+        Ok(true)
     }
 
     pub fn ready_nodes(&self) -> Vec<NodeId> {
-        self.nodes
-            .iter()
-            .filter(|node| {
-                node.state == TaskState::Pending && self.is_ready(node.id).unwrap_or(false)
-            })
-            .map(|node| node.id)
-            .collect()
+        let mut ready = Vec::with_capacity(self.nodes.len().min(32));
+        for node in &self.nodes {
+            if node.state == TaskState::Pending && self.is_ready(node.id).unwrap_or(false) {
+                ready.push(node.id);
+            }
+        }
+        ready
     }
 
     pub fn is_blocked(&self, id: NodeId) -> Result<bool, GraphError> {
-        Ok(self
-            .deps(id)?
-            .iter()
-            .any(|dep| self.state(*dep).is_ok_and(TaskState::is_unsuccessful)))
+        let deps = self.deps.get(id.0).ok_or(GraphError::MissingNode(id))?;
+        for dep in deps {
+            let node = self.nodes.get(dep.0).ok_or(GraphError::MissingNode(*dep))?;
+            if node.state.is_unsuccessful() {
+                return Ok(true);
+            }
+        }
+        Ok(false)
     }
 
     pub fn mark_failed(&mut self, id: NodeId) -> Result<(), GraphError> {
         self.set_state(id, TaskState::Failed)?;
-        let mut queue = VecDeque::from([id]);
+        let mut queue = VecDeque::with_capacity(16);
+        queue.push_back(id);
         while let Some(current) = queue.pop_front() {
-            let dependents = self.dependents(current)?.to_vec();
-            for dependent in dependents {
-                if !self.state(dependent)?.is_terminal() {
-                    self.set_state(dependent, TaskState::Cancelled)?;
-                    queue.push_back(dependent);
+            let deps_slice = match self.dependents.get(current.0) {
+                Some(deps) => deps.as_slice(),
+                None => return Err(GraphError::MissingNode(current)),
+            };
+            let mut to_enqueue = Vec::with_capacity(deps_slice.len());
+            for &dependent in deps_slice {
+                if let Some(node) = self.nodes.get_mut(dependent.0) {
+                    if !node.state.is_terminal() {
+                        node.state = TaskState::Cancelled;
+                        to_enqueue.push(dependent);
+                    }
+                } else {
+                    return Err(GraphError::MissingNode(dependent));
                 }
             }
+            queue.extend(to_enqueue);
         }
         Ok(())
     }
@@ -335,11 +351,8 @@ impl<T> BuildGraph<T> {
                 }
             }
         }
-        if self.topological_order().len() != self.nodes.len() {
-            return Err(GraphError::Cycle {
-                dependency: NodeId(0),
-                dependent: NodeId(0),
-            });
+        if let Some(path) = self.find_cycle() {
+            return Err(GraphError::Cycle { path });
         }
         Ok(())
     }
@@ -360,6 +373,108 @@ impl<T> BuildGraph<T> {
             }
         }
         false
+    }
+
+    /// Returns one dependency cycle as an open path `[a, b, c]`, meaning
+    /// `a -> b -> c -> a`, or `None` when the graph is a DAG.
+    ///
+    /// Deterministic: nodes are visited in index order and neighbors in
+    /// insertion order, so repeated calls report the same cycle.
+    pub fn find_cycle(&self) -> Option<Vec<NodeId>> {
+        const WHITE: u8 = 0;
+        const GRAY: u8 = 1;
+        const BLACK: u8 = 2;
+
+        let n = self.nodes.len();
+        let mut color = vec![WHITE; n];
+        // Explicit DFS stack of `(node, next-neighbor-index)` so the cycle can
+        // be reconstructed from the gray path when a back edge is found.
+        let mut stack: Vec<(NodeId, usize)> = Vec::new();
+
+        for start in 0..n {
+            if color[start] != WHITE {
+                continue;
+            }
+            color[start] = GRAY;
+            stack.clear();
+            stack.push((NodeId(start), 0));
+            while let Some(&(id, next)) = stack.last() {
+                let dependents = self
+                    .dependents
+                    .get(id.0)
+                    .map(Vec::as_slice)
+                    .unwrap_or_default();
+                if next >= dependents.len() {
+                    color[id.0] = BLACK;
+                    stack.pop();
+                    continue;
+                }
+                let child = dependents[next];
+                stack.last_mut().expect("stack is non-empty").1 = next + 1;
+                let child_color = color.get(child.0).copied().unwrap_or(BLACK);
+                if child_color == GRAY {
+                    // Back edge: the cycle is the gray path from `child` down
+                    // to `id`, closed by the `id -> child` edge.
+                    let entry = stack
+                        .iter()
+                        .position(|&(node, _)| node == child)
+                        .expect("a gray node must be on the DFS stack");
+                    return Some(stack[entry..].iter().map(|&(node, _)| node).collect());
+                } else if child_color == WHITE {
+                    color[child.0] = GRAY;
+                    stack.push((child, 0));
+                }
+            }
+        }
+        None
+    }
+
+    /// Shortest chain of existing edges `from -> ... -> to`, following the
+    /// build-flow direction (`dependents`). Only meaningful when
+    /// [`Self::reaches`] already confirmed such a chain exists.
+    fn shortest_dependent_chain(&self, from: NodeId, to: NodeId) -> Vec<NodeId> {
+        let n = self.nodes.len();
+        let mut parent: HashMap<NodeId, NodeId> = HashMap::new();
+        let mut seen = vec![false; n];
+        seen[from.0] = true;
+        let mut queue = VecDeque::from([from]);
+        while let Some(id) = queue.pop_front() {
+            if id == to {
+                break;
+            }
+            if let Some(dependents) = self.dependents.get(id.0) {
+                for &next in dependents {
+                    if next.0 < n && !seen[next.0] {
+                        seen[next.0] = true;
+                        parent.insert(next, id);
+                        queue.push_back(next);
+                    }
+                }
+            }
+        }
+
+        let mut path = Vec::new();
+        let mut current = to;
+        loop {
+            path.push(current);
+            if current == from {
+                break;
+            }
+            match parent.get(&current) {
+                Some(&prev) => current = prev,
+                None => return vec![from, to],
+            }
+        }
+        path.reverse();
+        path
+    }
+
+    /// Adds an edge without validation, for tests that need a graph violating
+    /// the DAG invariant (e.g. to exercise `find_cycle` / `validate`).
+    #[cfg(test)]
+    fn inject_edge(&mut self, dependency: NodeId, dependent: NodeId) {
+        self.deps[dependent.0].push(dependency);
+        self.dependents[dependency.0].push(dependent);
     }
 }
 
@@ -421,8 +536,7 @@ mod tests {
         assert_eq!(
             graph.add_dependency(NodeId(2), NodeId(0)),
             Err(GraphError::Cycle {
-                dependency: NodeId(2),
-                dependent: NodeId(0)
+                path: vec![NodeId(0), NodeId(1), NodeId(2)]
             })
         );
 
@@ -430,11 +544,11 @@ mod tests {
             .add_dependency(NodeId(0), NodeId(2))
             .expect("parallel edges are allowed");
 
+        // With the direct edge in place the reported cycle takes it.
         assert_eq!(
             graph.add_dependency(NodeId(2), NodeId(0)),
             Err(GraphError::Cycle {
-                dependency: NodeId(2),
-                dependent: NodeId(0)
+                path: vec![NodeId(0), NodeId(2)]
             })
         );
     }
@@ -593,6 +707,92 @@ mod tests {
     fn validate_accepts_valid_graphs() {
         let graph = string_graph(&[(NodeId(0), NodeId(1)), (NodeId(1), NodeId(2))]);
         assert_eq!(graph.validate(), Ok(()));
+    }
+
+    #[test]
+    fn find_cycle_returns_none_for_dag() {
+        let graph = string_graph(&[(NodeId(0), NodeId(1)), (NodeId(1), NodeId(2))]);
+        assert_eq!(graph.find_cycle(), None);
+        assert_eq!(BuildGraph::<()>::new().find_cycle(), None);
+    }
+
+    #[test]
+    fn find_cycle_reports_the_full_path() {
+        let mut graph = string_graph(&[(NodeId(0), NodeId(1)), (NodeId(1), NodeId(2))]);
+        graph.inject_edge(NodeId(2), NodeId(0));
+
+        assert_eq!(
+            graph.find_cycle(),
+            Some(vec![NodeId(0), NodeId(1), NodeId(2)])
+        );
+    }
+
+    #[test]
+    fn find_cycle_starts_at_the_cycle_entry_not_node_zero() {
+        let mut graph = BuildGraph::new();
+        for _ in 0..4 {
+            graph.add_node(String::new());
+        }
+        graph
+            .add_dependency(NodeId(0), NodeId(1))
+            .expect("edge must be added");
+        graph
+            .add_dependency(NodeId(2), NodeId(3))
+            .expect("edge must be added");
+        graph.inject_edge(NodeId(3), NodeId(2));
+
+        assert_eq!(graph.find_cycle(), Some(vec![NodeId(2), NodeId(3)]));
+    }
+
+    #[test]
+    fn find_cycle_is_deterministic_across_calls() {
+        let mut graph = string_graph(&[(NodeId(0), NodeId(1)), (NodeId(1), NodeId(2))]);
+        graph.inject_edge(NodeId(2), NodeId(0));
+
+        let expected = graph.find_cycle();
+        for _ in 0..20 {
+            assert_eq!(graph.find_cycle(), expected);
+        }
+    }
+
+    #[test]
+    fn validate_reports_the_real_cycle_path_instead_of_placeholder_ids() {
+        let mut graph = string_graph(&[(NodeId(0), NodeId(1)), (NodeId(1), NodeId(2))]);
+        graph.inject_edge(NodeId(2), NodeId(0));
+
+        assert_eq!(
+            graph.validate(),
+            Err(GraphError::Cycle {
+                path: vec![NodeId(0), NodeId(1), NodeId(2)]
+            })
+        );
+    }
+
+    #[test]
+    fn cycle_error_prefers_the_shortest_chain_through_existing_edges() {
+        let mut graph = string_graph(&[(NodeId(0), NodeId(1)), (NodeId(1), NodeId(2))]);
+        graph
+            .add_dependency(NodeId(0), NodeId(2))
+            .expect("parallel edges are allowed");
+
+        // The direct edge 0 -> 2 closes a shorter cycle than going through 1.
+        assert_eq!(
+            graph.add_dependency(NodeId(2), NodeId(0)),
+            Err(GraphError::Cycle {
+                path: vec![NodeId(0), NodeId(2)]
+            })
+        );
+    }
+
+    #[test]
+    fn cycle_error_display_renders_the_closed_walk() {
+        let mut graph = string_graph(&[(NodeId(0), NodeId(1)), (NodeId(1), NodeId(2))]);
+
+        let err = graph.add_dependency(NodeId(2), NodeId(0)).unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "dependency cycle detected: 0 -> 1 -> 2 -> 0"
+        );
     }
 
     #[test]

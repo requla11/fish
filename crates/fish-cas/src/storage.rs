@@ -1,4 +1,4 @@
-#![forbid(unsafe_code)]
+#![deny(unsafe_code)]
 
 use crate::artifact::{Artifact, ArtifactHash, ArtifactMetadata};
 use crate::backend::{CasBackend, CasStats, LocalCasBackend};
@@ -214,6 +214,15 @@ impl CasStorage {
     /// Retrieve an artifact by hash
     pub async fn retrieve(&self, hash: &ArtifactHash) -> Result<Artifact> {
         self.backend.retrieve(hash).await
+    }
+
+    pub fn open_mmap(&self, hash: &ArtifactHash) -> Result<crate::mmap::MmapArtifact> {
+        self.backend.open_mmap(hash)
+    }
+
+    pub fn read_zero_copy<R>(&self, hash: &ArtifactHash, f: impl FnOnce(&[u8]) -> R) -> Result<R> {
+        let artifact = self.open_mmap(hash)?;
+        Ok(f(artifact.as_slice()))
     }
 
     /// Retrieve artifact metadata without reading or decompressing its payload.

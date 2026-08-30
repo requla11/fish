@@ -17,6 +17,18 @@ use crate::render;
 use crate::tui::TuiDashboard;
 use crate::utils;
 
+fn apple_binary_available() -> bool {
+    let exe_name = if cfg!(windows) { "apple.exe" } else { "apple" };
+    if let Some(path_var) = std::env::var_os("PATH") {
+        for dir in std::env::split_paths(&path_var) {
+            if dir.join(exe_name).is_file() {
+                return true;
+            }
+        }
+    }
+    false
+}
+
 /// Builds the executor with caching, remote workers, and sandboxing support.
 pub(crate) fn build_executor(
     args: &CommonArgs,
@@ -59,6 +71,20 @@ pub(crate) fn build_executor(
     }
     if args.super_opt {
         middleware_executor = middleware_executor.with_middleware(Box::new(SuperOptMiddleware));
+    }
+    if args.apple {
+        if apple_binary_available() {
+            middleware_executor = middleware_executor.with_middleware(Box::new(
+                fish_executor::AppleSandboxMiddleware::new(
+                    fish_executor::AppleSandboxConfig::default(),
+                ),
+            ));
+        } else {
+            eprintln!(
+                "warning: --apple requested but the `apple` binary was not found on PATH; \
+                 continuing without the Apple sandbox"
+            );
+        }
     }
     if let Some(endpoint) = &args.otel_endpoint {
         let tracer = fish_analytics::otel::OtelTracer::new("fish-cli");
@@ -244,6 +270,7 @@ pub(crate) fn run_build_mode_with(
         kernel_bypass: args.kernel_bypass || config.kernel_bypass,
         wasm_sandbox: args.wasm_sandbox || config.wasm_sandbox,
         super_opt: args.super_opt || config.super_opt,
+        apple: args.apple,
         explain: args.explain,
         otel_endpoint: args
             .otel_endpoint

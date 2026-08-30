@@ -3,6 +3,7 @@
 #![warn(clippy::all)]
 
 pub mod aggregator;
+pub mod banana_energy;
 pub mod cost;
 pub mod dashboard;
 pub mod metrics;
@@ -13,6 +14,7 @@ pub mod time_series;
 pub mod trace_merge;
 
 pub use aggregator::MetricsAggregator;
+pub use banana_energy::FishEnergyTracker;
 pub use cost::{
     CloudCostCalculator, CostEstimate, EstimateInput, InstancePrice, PricingCatalog,
     ProviderEstimates, ProviderPricing, SavingsReport, TaskDuration, Workload,

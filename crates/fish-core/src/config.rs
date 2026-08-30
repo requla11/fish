@@ -25,6 +25,8 @@ pub struct GeneralConfig {
     pub max_parallel_jobs: usize,
     pub timeout_seconds: Option<u64>,
     pub environment: String,
+    #[serde(default)]
+    pub offline: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -78,6 +80,7 @@ impl Default for FishConfig {
                 max_parallel_jobs: 4,
                 timeout_seconds: None,
                 environment: "development".to_string(),
+                offline: false,
             },
             cache: CacheConfig {
                 enabled: true,
@@ -140,6 +143,13 @@ impl FishConfig {
 
         if let Ok(cache_enabled) = std::env::var("FISH_CACHE_ENABLED") {
             config.cache.enabled = cache_enabled.parse().unwrap_or(true);
+        }
+
+        if let Ok(offline) = std::env::var("FISH_OFFLINE") {
+            config.general.offline = offline == "1"
+                || offline.eq_ignore_ascii_case("true")
+                || offline.eq_ignore_ascii_case("yes")
+                || offline.eq_ignore_ascii_case("on");
         }
 
         config.validate()?;
@@ -355,5 +365,13 @@ mod tests {
         let log_str = "debug";
         let parsed_log = log_str.to_string();
         assert_eq!(parsed_log, "debug");
+    }
+
+    #[test]
+    fn test_offline_config() {
+        let mut cfg = FishConfig::default();
+        assert!(!cfg.general.offline);
+        cfg.general.offline = true;
+        assert!(cfg.general.offline);
     }
 }

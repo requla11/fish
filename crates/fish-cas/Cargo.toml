@@ -25,6 +25,10 @@ local = []
 gcs = ["tame-gcs"]
 remote = ["reqwest"]
 full = ["local", "gcs", "remote"]
+io-uring = ["dep:tokio-uring"]
+
+[target.'cfg(target_os = "linux")'.dependencies]
+tokio-uring = { version = "0.4", optional = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }

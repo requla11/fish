@@ -13,8 +13,9 @@ Usage: fish [OPTIONS] <COMMAND>
 | Flag | Description | Default |
 |---|---|---|
 | `--experimental` | Enable experimental features (use at your own risk) | `false` |
+| `--offline` | Disallow network access and fail-fast on remote operations | `false` |
 
-**Subcommands:** [`version`](#fish-version), [`init`](#fish-init), [`new`](#fish-new), [`build`](#fish-build), [`check`](#fish-check), [`test`](#fish-test), [`clean`](#fish-clean), [`run`](#fish-run), [`graph`](#fish-graph), [`watch`](#fish-watch), [`cache-server`](#fish-cache-server), [`worker`](#fish-worker), [`affected`](#fish-affected), [`doctor`](#fish-doctor), [`cache`](#fish-cache), [`ci`](#fish-ci), [`history`](#fish-history), [`rewind`](#fish-rewind), [`attest`](#fish-attest), [`verify`](#fish-verify), [`live-patch`](#fish-live-patch), [`jit`](#fish-jit), [`super-opt`](#fish-super-opt), [`plugin`](#fish-plugin), [`fix`](#fish-fix), [`signing-key`](#fish-signing-key), [`heal`](#fish-heal), [`cost-estimate`](#fish-cost-estimate), [`ui`](#fish-ui), [`query`](#fish-query), [`daemon`](#fish-daemon), [`ai`](#fish-ai), [`lsp`](#fish-lsp), [`why`](#fish-why)
+**Subcommands:** [`version`](#fish-version), [`init`](#fish-init), [`new`](#fish-new), [`build`](#fish-build), [`check`](#fish-check), [`test`](#fish-test), [`clean`](#fish-clean), [`run`](#fish-run), [`graph`](#fish-graph), [`watch`](#fish-watch), [`cache-server`](#fish-cache-server), [`worker`](#fish-worker), [`affected`](#fish-affected), [`doctor`](#fish-doctor), [`cache`](#fish-cache), [`ci`](#fish-ci), [`history`](#fish-history), [`rewind`](#fish-rewind), [`attest`](#fish-attest), [`verify`](#fish-verify), [`live-patch`](#fish-live-patch), [`jit`](#fish-jit), [`super-opt`](#fish-super-opt), [`plugin`](#fish-plugin), [`fix`](#fish-fix), [`signing-key`](#fish-signing-key), [`heal`](#fish-heal), [`cost-estimate`](#fish-cost-estimate), [`ui`](#fish-ui), [`query`](#fish-query), [`daemon`](#fish-daemon), [`ai`](#fish-ai), [`lsp`](#fish-lsp), [`why`](#fish-why), [`pash`](#fish-pash), [`qpc`](#fish-qpc)
 
 ### fish-version
 
@@ -61,6 +62,7 @@ Usage: fish build [OPTIONS] [PATH]
 | `--verbose`, `-v` |  | `false` |
 | `--no-cache` |  | `false` |
 | `--sandbox` |  | `false` |
+| `--apple` | Run every build task through the `apple` hermetic sandbox (requires the `apple` binary on PATH) | `false` |
 | `--timeout` `<TIMEOUT_SECS>` |  |  |
 | `--profile` `<PROFILE>` |  |  |
 | `--tui` |  | `false` |
@@ -104,6 +106,7 @@ Usage: fish check [OPTIONS] [PATH]
 | `--verbose`, `-v` |  | `false` |
 | `--no-cache` |  | `false` |
 | `--sandbox` |  | `false` |
+| `--apple` | Run every build task through the `apple` hermetic sandbox (requires the `apple` binary on PATH) | `false` |
 | `--timeout` `<TIMEOUT_SECS>` |  |  |
 | `--profile` `<PROFILE>` |  |  |
 | `--tui` |  | `false` |
@@ -147,6 +150,7 @@ Usage: fish test [OPTIONS] [PATH]
 | `--verbose`, `-v` |  | `false` |
 | `--no-cache` |  | `false` |
 | `--sandbox` |  | `false` |
+| `--apple` | Run every build task through the `apple` hermetic sandbox (requires the `apple` binary on PATH) | `false` |
 | `--timeout` `<TIMEOUT_SECS>` |  |  |
 | `--profile` `<PROFILE>` |  |  |
 | `--tui` |  | `false` |
@@ -233,6 +237,7 @@ Usage: fish watch [OPTIONS] [PATH]
 | `--verbose`, `-v` |  | `false` |
 | `--no-cache` |  | `false` |
 | `--sandbox` |  | `false` |
+| `--apple` | Run every build task through the `apple` hermetic sandbox (requires the `apple` binary on PATH) | `false` |
 | `--timeout` `<TIMEOUT_SECS>` |  |  |
 | `--profile` `<PROFILE>` |  |  |
 | `--tui` |  | `false` |
@@ -309,6 +314,7 @@ Usage: fish affected [OPTIONS] [PATH]
 | `--verbose`, `-v` |  | `false` |
 | `--no-cache` |  | `false` |
 | `--sandbox` |  | `false` |
+| `--apple` | Run every build task through the `apple` hermetic sandbox (requires the `apple` binary on PATH) | `false` |
 | `--timeout` `<TIMEOUT_SECS>` |  |  |
 | `--profile` `<PROFILE>` |  |  |
 | `--tui` |  | `false` |
@@ -337,7 +343,9 @@ Usage: fish affected [OPTIONS] [PATH]
 | `--otel-endpoint` `<OTEL_ENDPOINT>` |  |  |
 | `--no-infer-deps` | Disable automatic cross-language dependency inference between detected projects (see `cross_deps`); references are then ignored and each ecosystem builds independently | `false` |
 | `--since` `<SINCE>` | The git revision (commit/tag/branch) to diff against. `HEAD` compares the working tree, an explicit revision compares the tree of that revision against the working tree | `HEAD` |
+| `--base` `<BASE>` | Git base reference to compare against (e.g. `--base origin/main`) |  |
 | `--mode` `<MODE>` |  | `build` |
+| `--json` | Output affected packages and PASH status as JSON | `false` |
 
 ### fish-doctor
 
@@ -794,19 +802,63 @@ Usage: fish plugin [OPTIONS] <COMMAND>
 |---|---|---|
 | `--path`, `-p` `<PATH>` | Project directory |  |
 
-**Subcommands:** [`list`](#fish-plugin-list), [`execute`](#fish-plugin-execute)
+**Subcommands:** [`list`](#fish-plugin-list), [`search`](#fish-plugin-search), [`install`](#fish-plugin-install), [`uninstall`](#fish-plugin-uninstall), [`publish`](#fish-plugin-publish), [`execute`](#fish-plugin-execute)
 
 #### fish-plugin-list
-
-List all available script plugins
 
 ```
 Usage: fish plugin list [OPTIONS]
 ```
 
-#### fish-plugin-execute
+#### fish-plugin-search
 
-Execute a specific plugin command
+```
+Usage: fish plugin search [OPTIONS] [QUERY]
+```
+
+| Flag | Description | Default |
+|---|---|---|
+| query `<QUERY>` |  |  |
+| `--registry` `<REGISTRY>` |  |  |
+
+#### fish-plugin-install
+
+```
+Usage: fish plugin install [OPTIONS] <NAME>
+```
+
+| Flag | Description | Default |
+|---|---|---|
+| name `<NAME>` |  |  |
+| `--registry` `<REGISTRY>` |  |  |
+| `--trusted-key` `<TRUSTED_KEY>` |  |  |
+| `--insecure` |  | `false` |
+
+#### fish-plugin-uninstall
+
+```
+Usage: fish plugin uninstall [OPTIONS] <NAME>
+```
+
+| Flag | Description | Default |
+|---|---|---|
+| name `<NAME>` |  |  |
+
+#### fish-plugin-publish
+
+```
+Usage: fish plugin publish [OPTIONS] --name <NAME> --version <VERSION> --url <URL> <WASM_PATH>
+```
+
+| Flag | Description | Default |
+|---|---|---|
+| wasm_path `<WASM_PATH>` |  |  |
+| `--name` `<NAME>` |  |  |
+| `--url` `<URL>` |  |  |
+| `--description` `<DESCRIPTION>` |  |  |
+| `--seed` `<SEED>` |  |  |
+
+#### fish-plugin-execute
 
 ```
 Usage: fish plugin execute [OPTIONS] <NAME> <COMMAND> [ARGS]...
@@ -814,9 +866,9 @@ Usage: fish plugin execute [OPTIONS] <NAME> <COMMAND> [ARGS]...
 
 | Flag | Description | Default |
 |---|---|---|
-| name `<NAME>` | Plugin name |  |
-| command `<COMMAND>` | Command to execute |  |
-| args `<ARGS>` | Additional arguments for the command |  |
+| name `<NAME>` |  |  |
+| command `<COMMAND>` |  |  |
+| args `<ARGS>` |  |  |
 
 #### fish-plugin-help
 
@@ -826,19 +878,39 @@ Print this message or the help of the given subcommand(s)
 Usage: fish plugin help [COMMAND]
 ```
 
-**Subcommands:** [`list`](#fish-plugin-help-list), [`execute`](#fish-plugin-help-execute)
+**Subcommands:** [`list`](#fish-plugin-help-list), [`search`](#fish-plugin-help-search), [`install`](#fish-plugin-help-install), [`uninstall`](#fish-plugin-help-uninstall), [`publish`](#fish-plugin-help-publish), [`execute`](#fish-plugin-help-execute)
 
 ##### fish-plugin-help-list
-
-List all available script plugins
 
 ```
 Usage: fish plugin help list
 ```
 
-##### fish-plugin-help-execute
+##### fish-plugin-help-search
 
-Execute a specific plugin command
+```
+Usage: fish plugin help search
+```
+
+##### fish-plugin-help-install
+
+```
+Usage: fish plugin help install
+```
+
+##### fish-plugin-help-uninstall
+
+```
+Usage: fish plugin help uninstall
+```
+
+##### fish-plugin-help-publish
+
+```
+Usage: fish plugin help publish
+```
+
+##### fish-plugin-help-execute
 
 ```
 Usage: fish plugin help execute
@@ -862,6 +934,7 @@ Usage: fish fix [OPTIONS]
 |---|---|---|
 | `--path`, `-p` `<PATH>` |  |  |
 | `--apply` |  | `false` |
+| `--diff` |  | `false` |
 | `--ai` |  | `false` |
 
 ### fish-signing-key
@@ -1113,6 +1186,85 @@ Usage: fish why [OPTIONS] <TARGET>
 | target `<TARGET>` |  |  |
 | `--path`, `-p` `<PATH>` |  |  |
 
+### fish-pash
+
+```
+Usage: fish pash [OPTIONS] <FILE>
+```
+
+| Flag | Description | Default |
+|---|---|---|
+| file `<FILE>` |  |  |
+| `--compare-with`, `-c` `<COMPARE_WITH>` |  |  |
+| `--lang`, `-l` `<LANG>` |  |  |
+| `--json` |  | `false` |
+
+### fish-qpc
+
+```
+Usage: fish qpc [OPTIONS] <COMMAND>
+```
+
+**Subcommands:** [`status`](#fish-qpc-status), [`bench`](#fish-qpc-bench), [`morphic`](#fish-qpc-morphic)
+
+#### fish-qpc-status
+
+```
+Usage: fish qpc status [OPTIONS]
+```
+
+#### fish-qpc-bench
+
+```
+Usage: fish qpc bench [OPTIONS]
+```
+
+#### fish-qpc-morphic
+
+```
+Usage: fish qpc morphic [OPTIONS]
+```
+
+| Flag | Description | Default |
+|---|---|---|
+| `--path`, `-p` `<PATH>` |  |  |
+
+#### fish-qpc-help
+
+Print this message or the help of the given subcommand(s)
+
+```
+Usage: fish qpc help [COMMAND]
+```
+
+**Subcommands:** [`status`](#fish-qpc-help-status), [`bench`](#fish-qpc-help-bench), [`morphic`](#fish-qpc-help-morphic)
+
+##### fish-qpc-help-status
+
+```
+Usage: fish qpc help status
+```
+
+##### fish-qpc-help-bench
+
+```
+Usage: fish qpc help bench
+```
+
+##### fish-qpc-help-morphic
+
+```
+Usage: fish qpc help morphic
+```
+
+##### fish-qpc-help-help
+
+Print this message or the help of the given subcommand(s)
+
+```
+Usage: fish qpc help help
+```
+
 ### fish-help
 
 Print this message or the help of the given subcommand(s)
@@ -1121,7 +1273,7 @@ Print this message or the help of the given subcommand(s)
 Usage: fish help [COMMAND]
 ```
 
-**Subcommands:** [`version`](#fish-help-version), [`init`](#fish-help-init), [`new`](#fish-help-new), [`build`](#fish-help-build), [`check`](#fish-help-check), [`test`](#fish-help-test), [`clean`](#fish-help-clean), [`run`](#fish-help-run), [`graph`](#fish-help-graph), [`watch`](#fish-help-watch), [`cache-server`](#fish-help-cache-server), [`worker`](#fish-help-worker), [`affected`](#fish-help-affected), [`doctor`](#fish-help-doctor), [`cache`](#fish-help-cache), [`ci`](#fish-help-ci), [`history`](#fish-help-history), [`rewind`](#fish-help-rewind), [`attest`](#fish-help-attest), [`verify`](#fish-help-verify), [`live-patch`](#fish-help-live-patch), [`jit`](#fish-help-jit), [`super-opt`](#fish-help-super-opt), [`plugin`](#fish-help-plugin), [`fix`](#fish-help-fix), [`signing-key`](#fish-help-signing-key), [`heal`](#fish-help-heal), [`cost-estimate`](#fish-help-cost-estimate), [`ui`](#fish-help-ui), [`query`](#fish-help-query), [`daemon`](#fish-help-daemon), [`ai`](#fish-help-ai), [`lsp`](#fish-help-lsp), [`why`](#fish-help-why)
+**Subcommands:** [`version`](#fish-help-version), [`init`](#fish-help-init), [`new`](#fish-help-new), [`build`](#fish-help-build), [`check`](#fish-help-check), [`test`](#fish-help-test), [`clean`](#fish-help-clean), [`run`](#fish-help-run), [`graph`](#fish-help-graph), [`watch`](#fish-help-watch), [`cache-server`](#fish-help-cache-server), [`worker`](#fish-help-worker), [`affected`](#fish-help-affected), [`doctor`](#fish-help-doctor), [`cache`](#fish-help-cache), [`ci`](#fish-help-ci), [`history`](#fish-help-history), [`rewind`](#fish-help-rewind), [`attest`](#fish-help-attest), [`verify`](#fish-help-verify), [`live-patch`](#fish-help-live-patch), [`jit`](#fish-help-jit), [`super-opt`](#fish-help-super-opt), [`plugin`](#fish-help-plugin), [`fix`](#fish-help-fix), [`signing-key`](#fish-help-signing-key), [`heal`](#fish-help-heal), [`cost-estimate`](#fish-help-cost-estimate), [`ui`](#fish-help-ui), [`query`](#fish-help-query), [`daemon`](#fish-help-daemon), [`ai`](#fish-help-ai), [`lsp`](#fish-help-lsp), [`why`](#fish-help-why), [`pash`](#fish-help-pash), [`qpc`](#fish-help-qpc)
 
 #### fish-help-version
 
@@ -1401,19 +1553,39 @@ Arguments for plugin command
 Usage: fish help plugin [COMMAND]
 ```
 
-**Subcommands:** [`list`](#fish-help-plugin-list), [`execute`](#fish-help-plugin-execute)
+**Subcommands:** [`list`](#fish-help-plugin-list), [`search`](#fish-help-plugin-search), [`install`](#fish-help-plugin-install), [`uninstall`](#fish-help-plugin-uninstall), [`publish`](#fish-help-plugin-publish), [`execute`](#fish-help-plugin-execute)
 
 ##### fish-help-plugin-list
-
-List all available script plugins
 
 ```
 Usage: fish help plugin list
 ```
 
-##### fish-help-plugin-execute
+##### fish-help-plugin-search
 
-Execute a specific plugin command
+```
+Usage: fish help plugin search
+```
+
+##### fish-help-plugin-install
+
+```
+Usage: fish help plugin install
+```
+
+##### fish-help-plugin-uninstall
+
+```
+Usage: fish help plugin uninstall
+```
+
+##### fish-help-plugin-publish
+
+```
+Usage: fish help plugin publish
+```
+
+##### fish-help-plugin-execute
 
 ```
 Usage: fish help plugin execute
@@ -1525,6 +1697,38 @@ Usage: fish help lsp
 
 ```
 Usage: fish help why
+```
+
+#### fish-help-pash
+
+```
+Usage: fish help pash
+```
+
+#### fish-help-qpc
+
+```
+Usage: fish help qpc [COMMAND]
+```
+
+**Subcommands:** [`status`](#fish-help-qpc-status), [`bench`](#fish-help-qpc-bench), [`morphic`](#fish-help-qpc-morphic)
+
+##### fish-help-qpc-status
+
+```
+Usage: fish help qpc status
+```
+
+##### fish-help-qpc-bench
+
+```
+Usage: fish help qpc bench
+```
+
+##### fish-help-qpc-morphic
+
+```
+Usage: fish help qpc morphic
 ```
 
 #### fish-help-help

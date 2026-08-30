@@ -6,7 +6,9 @@
   "scripts": {
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
-    "docs:preview": "vitepress preview docs"
+    "docs:preview": "vitepress preview docs",
+    "docs:translate": "python scripts/translate_docs.py --all",
+    "docs:translate:check": "python scripts/translate_docs.py --check"
   },
   "devDependencies": {
     "vitepress": "^1.6.3"

@@ -21,12 +21,19 @@ jobserver = "0.1"
 notify = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "time"] }
 tracing = { workspace = true }
+num_cpus = "1"
+parking_lot = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 criterion = { version = "0.8", features = ["html_reports"] }
+rayon = "1"
 
 [[bench]]
 name = "scheduler_performance"
+harness = false
+
+[[bench]]
+name = "peer_comparison"
 harness = false

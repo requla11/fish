@@ -5,6 +5,7 @@ pub enum SandboxPlatform {
     LinuxBubblewrap,
     MacOSSandboxExec,
     WindowsJobObject,
+    AppleDaemon,
     FallbackRestricted,
 }
 
@@ -40,6 +41,16 @@ impl HermeticProcessSandbox {
 
     pub fn wrap_command_args(&self, executable: &str, args: &[String]) -> (String, Vec<String>) {
         match self.platform {
+            SandboxPlatform::AppleDaemon => {
+                let mut apple_args = vec![
+                    "run".to_string(),
+                    "--offline".to_string(),
+                    "--".to_string(),
+                    executable.to_string(),
+                ];
+                apple_args.extend_from_slice(args);
+                ("apple".to_string(), apple_args)
+            }
             SandboxPlatform::LinuxBubblewrap => {
                 let mut bwrap_args = vec![
                     "--unshare-all".to_string(),
@@ -95,5 +106,23 @@ mod tests {
         assert_eq!(cmd, "bwrap");
         assert!(args.contains(&"--unshare-all".to_string()));
         assert!(args.contains(&"gcc".to_string()));
+    }
+
+    #[test]
+    fn test_apple_daemon_sandbox_wrapping() {
+        let sb = HermeticProcessSandbox {
+            platform: SandboxPlatform::AppleDaemon,
+            root_dir: PathBuf::from("/workspace"),
+            writable_dirs: vec![PathBuf::from("/workspace/target")],
+            allow_network: false,
+            max_memory_bytes: 1024 * 1024,
+        };
+
+        let (cmd, args) = sb.wrap_command_args("rustc", &["main.rs".to_string()]);
+        assert_eq!(cmd, "apple");
+        assert!(args.contains(&"run".to_string()));
+        assert!(args.contains(&"--offline".to_string()));
+        assert!(args.contains(&"rustc".to_string()));
+        assert!(args.contains(&"main.rs".to_string()));
     }
 }

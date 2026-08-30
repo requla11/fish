@@ -61,7 +61,7 @@ impl JavaProjectConfig {
         let group_id = extract_gradle_property(&content, &["group", "grouping"])
             .unwrap_or_else(|| "com.example".to_string());
         let artifact_id =
-            extract_gradle_property(&content, &["name", "artifactId", "rootProject.name"])
+            extract_gradle_property(&content, &["rootProject.name", "artifactId", "name"])
                 .or_else(|| {
                     project_dir
                         .file_name()
@@ -97,6 +97,16 @@ impl JavaProjectConfig {
 }
 
 fn extract_xml_tag(content: &str, tag: &str) -> Option<String> {
+    // A pom.xml's <parent> block carries ITS OWN coordinates that appear
+    // first in the file; project coordinates live after </parent>.
+    let scoped = match content.find("</parent>") {
+        Some(idx) => &content[idx + "</parent>".len()..],
+        None => content,
+    };
+    extract_first_xml_tag(scoped, tag)
+}
+
+fn extract_first_xml_tag(content: &str, tag: &str) -> Option<String> {
     let start_tag = format!("<{}>", tag);
     let end_tag = format!("</{}>", tag);
 
@@ -112,6 +122,15 @@ fn extract_gradle_property(content: &str, keys: &[&str]) -> Option<String> {
     for line in content.lines() {
         let trimmed = line.trim();
         for key in keys {
+            // The key must end at a delimiter: `namespace 'com.x'` must
+            // not satisfy the `name` key mid-identifier.
+            if !trimmed.starts_with(key) {
+                continue;
+            }
+            match trimmed[key.len()..].chars().next() {
+                None | Some(' ') | Some('\t') | Some('=') | Some('(') | Some(':') => {}
+                _ => continue,
+            }
             if let Some(rest) = trimmed.strip_prefix(key) {
                 let rest = rest.trim();
                 let rest = rest.strip_prefix('=').unwrap_or(rest).trim();
@@ -169,5 +188,34 @@ version = '3.0.0'
         assert_eq!(config.group_id, "org.test");
         assert_eq!(config.version, "3.0.0");
         assert_eq!(config.build_system, JavaBuildSystem::Gradle);
+    }
+
+    #[test]
+    fn gradle_namespace_does_not_satisfy_name() {
+        let content = "namespace 'com.example.bad'\nrootProject.name = 'good-app'\ngroup = 'g'\n";
+        assert_eq!(
+            extract_gradle_property(content, &["rootProject.name", "artifactId", "name"],)
+                .as_deref(),
+            Some("good-app")
+        );
+        assert_eq!(
+            extract_gradle_property(content, &["group"]).as_deref(),
+            Some("g")
+        );
+    }
+
+    #[test]
+    fn xml_coordinates_prefer_project_over_parent_block() {
+        let pom = concat!(
+            "<project><parent><groupId>org.spring</groupId>
+",
+            "<artifactId>starter</artifactId><version>1</version></parent>
+",
+            "<groupId>my.group</groupId><artifactId>mine</artifactId>",
+            "<version>2.0</version></project>"
+        );
+        assert_eq!(extract_xml_tag(pom, "groupId").as_deref(), Some("my.group"));
+        assert_eq!(extract_xml_tag(pom, "artifactId").as_deref(), Some("mine"));
+        assert_eq!(extract_xml_tag(pom, "version").as_deref(), Some("2.0"));
     }
 }

@@ -8,10 +8,10 @@
 //! - Predictive caching with access pattern analysis
 //! - Compression strategies for memory efficiency
 
+use parking_lot::RwLock;
 use spin::Mutex as SpinMutex;
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
-use std::sync::RwLock;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
@@ -53,8 +53,14 @@ impl<K: Clone + Eq + std::hash::Hash, V: Clone> LruCache<K, V> {
 
     /// Get an entry and its size on a hit
     pub fn get_with_size(&self, key: &K) -> Option<(V, u64)> {
-        let mut entries = self.entries.write().unwrap();
-        let mut access_order = self.access_order.write().unwrap();
+        // Fast path for misses: read-only check avoids taking write locks
+        // when the key is absent (common in tiered cache promotion).
+        if !self.entries.read().contains_key(key) {
+            self.misses.fetch_add(1, Ordering::Relaxed);
+            return None;
+        }
+        let mut entries = self.entries.write();
+        let mut access_order = self.access_order.write();
 
         if let Some(entry) = entries.get_mut(key) {
             entry.access_count += 1;
@@ -85,8 +91,8 @@ impl<K: Clone + Eq + std::hash::Hash, V: Clone> LruCache<K, V> {
         value: V,
         size: u64,
     ) -> (Option<V>, Vec<(K, V, u64)>) {
-        let mut entries = self.entries.write().unwrap();
-        let mut access_order = self.access_order.write().unwrap();
+        let mut entries = self.entries.write();
+        let mut access_order = self.access_order.write();
 
         if let Some(entry) = entries.get_mut(&key) {
             let old_value = entry.value.clone();
@@ -133,8 +139,8 @@ impl<K: Clone + Eq + std::hash::Hash, V: Clone> LruCache<K, V> {
     }
 
     pub fn remove(&mut self, key: &K) -> Option<V> {
-        let mut entries = self.entries.write().unwrap();
-        let mut access_order = self.access_order.write().unwrap();
+        let mut entries = self.entries.write();
+        let mut access_order = self.access_order.write();
 
         if let Some(entry) = entries.remove(key) {
             self.current_size -= entry.size;
@@ -146,8 +152,8 @@ impl<K: Clone + Eq + std::hash::Hash, V: Clone> LruCache<K, V> {
     }
 
     pub fn clear(&mut self) {
-        let mut entries = self.entries.write().unwrap();
-        let mut access_order = self.access_order.write().unwrap();
+        let mut entries = self.entries.write();
+        let mut access_order = self.access_order.write();
 
         entries.clear();
         access_order.clear();
@@ -155,8 +161,8 @@ impl<K: Clone + Eq + std::hash::Hash, V: Clone> LruCache<K, V> {
     }
 
     pub fn stats(&self) -> LruCacheStats {
-        let entries = self.entries.read().unwrap();
-        let _access_order = self.access_order.read().unwrap();
+        let entries = self.entries.read();
+        let _access_order = self.access_order.read();
 
         let total_accesses: u64 = entries.values().map(|e| e.access_count).sum();
         let avg_access_count = if !entries.is_empty() {
@@ -218,23 +224,22 @@ impl<K: Clone + Eq + std::hash::Hash, V: Clone> TieredCache<K, V> {
     }
 
     pub fn get(&self, key: &K) -> Option<V> {
-        if let Some(value) = self.l1.read().unwrap().get(key) {
+        if let Some(value) = self.l1.read().get(key) {
             return Some(value);
         }
 
         let l2_hit = {
-            let l2 = self.l2.read().unwrap();
+            let l2 = self.l2.read();
             l2.get_with_size(key)
         };
         if let Some((value, size)) = l2_hit {
-            let evicted =
-                self.l1
-                    .write()
-                    .unwrap()
-                    .put_with_evictions(key.clone(), value.clone(), size);
+            let evicted = self
+                .l1
+                .write()
+                .put_with_evictions(key.clone(), value.clone(), size);
             drop(evicted.0);
             if !evicted.1.is_empty() {
-                let mut l2 = self.l2.write().unwrap();
+                let mut l2 = self.l2.write();
                 for (k, v, s) in evicted.1 {
                     l2.put(k, v, s);
                 }
@@ -243,18 +248,17 @@ impl<K: Clone + Eq + std::hash::Hash, V: Clone> TieredCache<K, V> {
         }
 
         let l3_hit = {
-            let l3 = self.l3.read().unwrap();
+            let l3 = self.l3.read();
             l3.get_with_size(key)
         };
         if let Some((value, size)) = l3_hit {
-            let evicted =
-                self.l2
-                    .write()
-                    .unwrap()
-                    .put_with_evictions(key.clone(), value.clone(), size);
+            let evicted = self
+                .l2
+                .write()
+                .put_with_evictions(key.clone(), value.clone(), size);
             drop(evicted.0);
             if !evicted.1.is_empty() {
-                let mut l3 = self.l3.write().unwrap();
+                let mut l3 = self.l3.write();
                 for (k, v, s) in evicted.1 {
                     l3.put(k, v, s);
                 }
@@ -266,18 +270,14 @@ impl<K: Clone + Eq + std::hash::Hash, V: Clone> TieredCache<K, V> {
     }
 
     pub fn put(&mut self, key: K, value: V, size: u64) {
-        let evicted = self
-            .l1
-            .write()
-            .unwrap()
-            .put_with_evictions(key, value, size);
+        let evicted = self.l1.write().put_with_evictions(key, value, size);
         drop(evicted.0);
 
         if evicted.1.is_empty() {
             return;
         }
 
-        let mut l2 = self.l2.write().unwrap();
+        let mut l2 = self.l2.write();
         let mut l3_evictions = Vec::new();
         for (k, v, s) in evicted.1 {
             let from_l2 = l2.put_with_evictions(k, v, s);
@@ -287,7 +287,7 @@ impl<K: Clone + Eq + std::hash::Hash, V: Clone> TieredCache<K, V> {
         drop(l2);
 
         if !l3_evictions.is_empty() {
-            let mut l3 = self.l3.write().unwrap();
+            let mut l3 = self.l3.write();
             for (k, v, s) in l3_evictions {
                 let replaced = l3.put_with_evictions(k, v, s);
                 drop(replaced.0);
@@ -297,22 +297,22 @@ impl<K: Clone + Eq + std::hash::Hash, V: Clone> TieredCache<K, V> {
     }
 
     pub fn invalidate(&self, key: &K) {
-        self.l1.write().unwrap().remove(key);
-        self.l2.write().unwrap().remove(key);
-        self.l3.write().unwrap().remove(key);
+        self.l1.write().remove(key);
+        self.l2.write().remove(key);
+        self.l3.write().remove(key);
     }
 
     pub fn clear(&mut self) {
-        self.l1.write().unwrap().clear();
-        self.l2.write().unwrap().clear();
-        self.l3.write().unwrap().clear();
+        self.l1.write().clear();
+        self.l2.write().clear();
+        self.l3.write().clear();
     }
 
     pub fn stats(&self) -> TieredCacheStats {
         TieredCacheStats {
-            l1: self.l1.read().unwrap().stats(),
-            l2: self.l2.read().unwrap().stats(),
-            l3: self.l3.read().unwrap().stats(),
+            l1: self.l1.read().stats(),
+            l2: self.l2.read().stats(),
+            l3: self.l3.read().stats(),
         }
     }
 }
@@ -348,12 +348,12 @@ impl<K: Clone + Eq + std::hash::Hash, V: Clone> PredictiveCache<K, V> {
 
     pub fn get(&self, key: &K) -> Option<V> {
         let needs_update = {
-            let patterns = self.access_patterns.read().unwrap();
+            let patterns = self.access_patterns.read();
             patterns.contains_key(key)
         };
 
         if needs_update {
-            let mut patterns = self.access_patterns.write().unwrap();
+            let mut patterns = self.access_patterns.write();
             if let Some(pattern) = patterns.get_mut(key) {
                 let now = Instant::now();
                 let elapsed = now.saturating_duration_since(pattern.last_access);
@@ -372,11 +372,11 @@ impl<K: Clone + Eq + std::hash::Hash, V: Clone> PredictiveCache<K, V> {
             }
         }
 
-        self.cache.read().unwrap().get(key)
+        self.cache.read().get(key)
     }
 
     pub fn put(&self, key: K, value: V, size: u64) {
-        let mut patterns = self.access_patterns.write().unwrap();
+        let mut patterns = self.access_patterns.write();
 
         patterns
             .entry(key.clone())
@@ -387,11 +387,11 @@ impl<K: Clone + Eq + std::hash::Hash, V: Clone> PredictiveCache<K, V> {
                 predicted_next_access: None,
             });
 
-        self.cache.write().unwrap().put(key, value, size);
+        self.cache.write().put(key, value, size);
     }
 
     pub fn predict_next_access(&self, key: &K) -> Option<Instant> {
-        let patterns = self.access_patterns.read().unwrap();
+        let patterns = self.access_patterns.read();
         patterns.get(key).and_then(|p| p.predicted_next_access)
     }
 
@@ -551,7 +551,7 @@ mod tests {
         cache.put("key".to_string(), "value".to_string(), 100);
 
         assert_eq!(
-            cache.l1.read().unwrap().get(&"key".to_string()),
+            cache.l1.read().get(&"key".to_string()),
             Some("value".to_string())
         );
 
@@ -566,7 +566,7 @@ mod tests {
         cache.get(&"key".to_string());
         cache.get(&"key".to_string());
 
-        let patterns = cache.access_patterns.read().unwrap();
+        let patterns = cache.access_patterns.read();
         assert!(patterns.contains_key(&"key".to_string()));
     }
 
@@ -584,7 +584,7 @@ mod tests {
         );
         assert_eq!(cache.get(&"key0".to_string()), Some("value0".to_string()));
 
-        let l1 = cache.l1.read().unwrap();
+        let l1 = cache.l1.read();
         assert_eq!(l1.get(&"key199".to_string()), Some("value199".to_string()));
         assert_eq!(l1.get(&"key0".to_string()), Some("value0".to_string()));
         assert_eq!(l1.get(&"key100".to_string()), None);

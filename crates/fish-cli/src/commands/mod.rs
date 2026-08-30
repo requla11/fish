@@ -1,4 +1,4 @@
-﻿pub mod affected;
+pub mod affected;
 pub mod ai;
 pub mod attestation;
 pub mod cache;
@@ -40,6 +40,12 @@ pub use ui::run_ui;
 pub use worker::run_worker;
 
 pub use ai::run_ai;
+
+pub mod pash;
+pub use pash::run_pash;
+
+pub mod qpc;
+pub use qpc::run_qpc;
 
 pub mod why;
 pub use why::run_why;

@@ -23,6 +23,10 @@ pub struct Cli {
     #[arg(long, global = true)]
     pub experimental: bool,
 
+    /// Disallow network access and fail-fast on remote operations
+    #[arg(long, global = true)]
+    pub offline: bool,
+
     #[command(subcommand)]
     pub command: Command,
 }
@@ -69,6 +73,8 @@ pub enum Command {
     Ai(AiArgs),
     Lsp(LspArgs),
     Why(WhyArgs),
+    Pash(PashArgs),
+    Qpc(QpcArgs),
 }
 
 #[derive(Debug, Args)]
@@ -83,6 +89,8 @@ pub struct FixArgs {
     pub path: Option<PathBuf>,
     #[arg(long)]
     pub apply: bool,
+    #[arg(long)]
+    pub diff: bool,
     #[arg(long)]
     pub ai: bool,
 }
@@ -194,8 +202,14 @@ pub struct AffectedArgs {
     /// revision against the working tree.
     #[arg(long, default_value = "HEAD")]
     pub since: String,
+    /// Git base reference to compare against (e.g. `--base origin/main`).
+    #[arg(long)]
+    pub base: Option<String>,
     #[arg(long, default_value = "build", value_enum)]
     pub mode: AffectedMode,
+    /// Output affected packages and PASH status as JSON.
+    #[arg(long)]
+    pub json: bool,
 }
 
 /// Affected build mode
@@ -233,6 +247,7 @@ pub enum CacheCommand {
     /// much disk space they occupy.
     Stats,
     /// Delete stale fingerprints and oversized cache content.
+    #[command(alias = "gc")]
     Prune(CachePruneArgs),
     /// CAS operations for artifact storage
     Cas(CasArgs),
@@ -368,6 +383,10 @@ pub struct CommonArgs {
     pub no_cache: bool,
     #[arg(long = "sandbox")]
     pub sandbox: bool,
+    /// Run every build task through the `apple` hermetic sandbox (requires
+    /// the `apple` binary on PATH).
+    #[arg(long = "apple")]
+    pub apple: bool,
     #[arg(long = "timeout")]
     pub timeout_secs: Option<u64>,
     #[arg(long = "profile", num_args = 0..=1, default_missing_value = "fish_trace.json")]
@@ -601,15 +620,42 @@ pub struct PluginArgs {
 /// Plugin subcommands
 #[derive(Debug, Subcommand)]
 pub enum PluginAction {
-    /// List all available script plugins
     List,
-    /// Execute a specific plugin command
-    Execute {
-        /// Plugin name
+    Search {
+        query: Option<String>,
+        #[arg(long)]
+        registry: Option<String>,
+    },
+    Install {
         name: String,
-        /// Command to execute
+        #[arg(long)]
+        version: Option<String>,
+        #[arg(long)]
+        registry: Option<String>,
+        #[arg(long)]
+        trusted_key: Option<String>,
+        #[arg(long)]
+        insecure: bool,
+    },
+    Uninstall {
+        name: String,
+    },
+    Publish {
+        wasm_path: PathBuf,
+        #[arg(long)]
+        name: String,
+        #[arg(long)]
+        version: String,
+        #[arg(long)]
+        url: String,
+        #[arg(long)]
+        description: Option<String>,
+        #[arg(long)]
+        seed: Option<String>,
+    },
+    Execute {
+        name: String,
         command: String,
-        /// Additional arguments for the command
         #[arg(allow_hyphen_values = true)]
         args: Vec<String>,
     },
@@ -662,4 +708,31 @@ pub struct WhyArgs {
     pub target: String,
     #[arg(long, short)]
     pub path: Option<PathBuf>,
+}
+
+#[derive(Debug, Args)]
+pub struct PashArgs {
+    pub file: PathBuf,
+    #[arg(long, short)]
+    pub compare_with: Option<PathBuf>,
+    #[arg(long, short)]
+    pub lang: Option<String>,
+    #[arg(long)]
+    pub json: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct QpcArgs {
+    #[command(subcommand)]
+    pub command: QpcCommand,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum QpcCommand {
+    Status,
+    Bench,
+    Morphic {
+        #[arg(long, short)]
+        path: Option<PathBuf>,
+    },
 }

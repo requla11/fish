@@ -26,6 +26,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
       - name: Install cargo tools
@@ -42,6 +44,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
       - name: Test security modules
@@ -53,6 +57,8 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:
@@ -69,6 +75,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          submodules: recursive
       - name: Download and Install Gitleaks
         run: |
           curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.18.4/gitleaks_8.18.4_linux_x64.tar.gz | sudo tar -xz -C /usr/local/bin gitleaks
@@ -81,6 +88,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
       - name: Check for security documentation
         run: |
           if [ ! -f "SECURITY.md" ]; then
@@ -94,6 +103,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
       - name: Install Nightly Rust toolchain with Miri
         uses: dtolnay/rust-toolchain@nightly
         with:

@@ -32,6 +32,8 @@ jobs:
             artifact_name: fish-macos-aarch64
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -72,6 +74,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          submodules: recursive
 
       - name: Generate GitHub App Token
         id: app-token

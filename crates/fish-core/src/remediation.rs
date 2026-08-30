@@ -100,6 +100,8 @@ impl AutoRemediator {
         } else if msg.contains("cannot borrow")
             || msg.contains("as mutable")
             || msg.contains("needs to be mutable")
+            || msg.contains("immutable variable")
+            || msg.contains("cannot assign twice")
         {
             ErrorKind::MissingMutability(msg.to_string())
         } else if msg.contains("use of moved value") || msg.contains("move occurs because") {
@@ -125,39 +127,40 @@ impl AutoRemediator {
                     let target_line = lines[diag.line - 1];
 
                     match &diag.error_kind {
-                        ErrorKind::MissingMutability(_) => {
-                            if target_line.contains("let ") && !target_line.contains("let mut ") {
-                                let new_line = target_line.replacen("let ", "let mut ", 1);
-                                patches.push(RemediationPatch {
-                                    file: diag.file.clone(),
-                                    line: diag.line,
-                                    old_text: target_line.to_string(),
-                                    new_text: new_line,
-                                });
-                            }
+                        ErrorKind::MissingMutability(_)
+                            if target_line.contains("let ")
+                                && !target_line.contains("let mut ") =>
+                        {
+                            let new_line = target_line.replacen("let ", "let mut ", 1);
+                            patches.push(RemediationPatch {
+                                file: diag.file.clone(),
+                                line: diag.line,
+                                old_text: target_line.to_string(),
+                                new_text: new_line,
+                            });
                         }
-                        ErrorKind::MissingClone(_) => {
-                            if !target_line.contains(".clone()") && target_line.ends_with(';') {
-                                let new_line =
-                                    target_line.trim_end_matches(';').to_string() + ".clone();";
-                                patches.push(RemediationPatch {
-                                    file: diag.file.clone(),
-                                    line: diag.line,
-                                    old_text: target_line.to_string(),
-                                    new_text: new_line,
-                                });
-                            }
+                        ErrorKind::MissingClone(_)
+                            if !target_line.contains(".clone()") && target_line.ends_with(';') =>
+                        {
+                            let new_line =
+                                target_line.trim_end_matches(';').to_string() + ".clone();";
+                            patches.push(RemediationPatch {
+                                file: diag.file.clone(),
+                                line: diag.line,
+                                old_text: target_line.to_string(),
+                                new_text: new_line,
+                            });
                         }
-                        ErrorKind::MissingImport(symbol) => {
-                            if symbol.contains("Path") && !content.contains("use std::path::Path;")
-                            {
-                                patches.push(RemediationPatch {
-                                    file: diag.file.clone(),
-                                    line: 1,
-                                    old_text: String::new(),
-                                    new_text: "use std::path::Path;\n".to_string(),
-                                });
-                            }
+                        ErrorKind::MissingImport(symbol)
+                            if symbol.contains("Path")
+                                && !content.contains("use std::path::Path;") =>
+                        {
+                            patches.push(RemediationPatch {
+                                file: diag.file.clone(),
+                                line: 1,
+                                old_text: String::new(),
+                                new_text: "use std::path::Path;\n".to_string(),
+                            });
                         }
                         _ => {}
                     }

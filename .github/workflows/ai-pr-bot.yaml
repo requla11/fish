@@ -58,8 +58,10 @@ jobs:
       - name: Generate AI Review and Benchmark Summary
         id: ai_review
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY || secrets.AI_API_KEY }}
-          AI_MODEL: ${{ secrets.AI_MODEL || vars.AI_MODEL || secrets.GEMINI_MODEL || 'gemini-2.5-flash' }}
+          AI_API_KEY: ${{ secrets.AI_API_KEY || secrets.GEMINI_API_KEY || secrets.OPENAI_API_KEY || secrets.GROQ_API_KEY }}
+          AI_API_KEYS: ${{ secrets.AI_API_KEYS || secrets.GEMINI_API_KEYS }}
+          AI_MODEL: ${{ secrets.AI_MODEL || vars.AI_MODEL || secrets.GEMINI_MODEL }}
+          AI_ENDPOINT: ${{ secrets.AI_ENDPOINT || secrets.AI_BASE_URL }}
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_BODY: ${{ github.event.pull_request.body }}
           AFFECTED: ${{ steps.analysis.outputs.affected }}
@@ -85,22 +87,7 @@ jobs:
           3. AI Architecture & Code Review Insights (Key improvements, safety/concurrency considerations, potential edge cases).
           Keep it clean, formatting in standard GitHub Markdown."
 
-          if [ -n "$GEMINI_API_KEY" ]; then
-            PAYLOAD=$(jq -n --arg text "$PROMPT" '{"contents": [{"parts": [{"text": $text}]}]}')
-            IFS=',' read -ra MODELS <<< "$AI_MODEL"
-            for MODEL in "${MODELS[@]}"; do
-              M=$(echo "$MODEL" | xargs)
-              if [ -n "$M" ]; then
-                RESPONSE=$(curl -s -X POST "https://generativelanguage.googleapis.com/v1beta/models/${M}:generateContent?key=${GEMINI_API_KEY}" \
-                  -H "Content-Type: application/json" \
-                  -d "$PAYLOAD")
-                AI_TEXT=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text // empty')
-                if [ -n "$AI_TEXT" ]; then
-                  break
-                fi
-              fi
-            done
-          fi
+          AI_TEXT=$(python scripts/universal_ai.py --prompt "$PROMPT" || true)
 
           if [ -z "$AI_TEXT" ]; then
             AI_TEXT="### 🐟 Fish Bot Analysis

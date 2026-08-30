@@ -9,9 +9,7 @@ impl FishEnergyTracker {
         let profile = HardwareProfile {
             tdp_watts,
             idle_power_watts: 10.0,
-            core_count: std::thread::available_parallelism()
-                .map(|p| p.get())
-                .unwrap_or(4),
+            core_count: std::thread::available_parallelism().map_or(4, std::num::NonZeroUsize::get),
         };
         Self {
             meter: EnergyMeter::new(profile, grid_intensity_g_per_kwh),

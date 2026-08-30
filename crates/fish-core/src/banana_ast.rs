@@ -5,7 +5,10 @@ pub struct FishAstService;
 
 impl FishAstService {
     pub fn parse_file(file: &Path) -> Result<Vec<SemanticSymbol>, anyhow::Error> {
-        let ext = file.extension().and_then(|s| s.to_str()).unwrap_or("");
+        let ext = file
+            .extension()
+            .and_then(std::ffi::OsStr::to_str)
+            .unwrap_or("");
         let content = std::fs::read_to_string(file)?;
         Ok(PolyglotAstEngine::extract_symbols(&content, ext))
     }

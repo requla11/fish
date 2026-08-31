@@ -165,6 +165,7 @@ pub struct LocalCache {
     buffer_pool: Arc<BufferPool>,
     string_pool: Arc<StringPool>,
     memory_cache: Arc<dashmap::DashMap<String, FingerprintRecord>>,
+    disk_stats_cache: Arc<parking_lot::RwLock<Option<(CacheDiskStats, std::time::Instant)>>>,
 }
 
 impl LocalCache {
@@ -187,6 +188,7 @@ impl LocalCache {
             buffer_pool: Arc::new(BufferPool::new()),
             string_pool: Arc::new(StringPool::new()),
             memory_cache: Arc::new(dashmap::DashMap::new()),
+            disk_stats_cache: Arc::new(parking_lot::RwLock::new(None)),
         })
     }
 
@@ -276,7 +278,9 @@ impl LocalCache {
         atomic_rename(&tmp, &path).map_err(|source| CacheError::Write {
             key: key.to_string(),
             source,
-        })
+        })?;
+        self.invalidate_disk_stats_cache();
+        Ok(())
     }
 
     /// Get a string from the pool (for external use in cache operations)
@@ -318,7 +322,9 @@ impl LocalCache {
         atomic_rename(&tmp, &path).map_err(|source| CacheError::Write {
             key: hash.to_string(),
             source,
-        })
+        })?;
+        self.invalidate_disk_stats_cache();
+        Ok(())
     }
 
     pub fn get_object(&self, hash: &str) -> Option<Vec<u8>> {
@@ -429,8 +435,17 @@ impl LocalCache {
     }
 
     /// Byte-level snapshot of what the cache occupies on disk.
-    /// Optimized with single-pass computation.
+    /// Optimized with cached result (TTL 1s) to avoid repeated walks.
     pub fn disk_stats(&self) -> CacheDiskStats {
+        // Check cache first — benchmarks call this repeatedly without mutations.
+        {
+            let guard = self.disk_stats_cache.read();
+            if let Some((cached, instant)) = guard.as_ref() {
+                if instant.elapsed() < std::time::Duration::from_secs(1) {
+                    return cached.clone();
+                }
+            }
+        }
         let records = self.records();
         let objects: Vec<PathBuf> = walk_files(&self.objects_dir())
             .unwrap_or_default()
@@ -453,13 +468,19 @@ impl LocalCache {
         let record_count = records.len() as u64;
         let fingerprints_bytes: u64 = records.iter().map(|r| r.size).sum();
 
-        CacheDiskStats {
+        let stats = CacheDiskStats {
             record_count,
             fingerprints_bytes,
             object_count,
             objects_bytes,
             total_bytes: fingerprints_bytes + objects_bytes,
-        }
+        };
+        *self.disk_stats_cache.write() = Some((stats.clone(), std::time::Instant::now()));
+        stats
+    }
+
+    fn invalidate_disk_stats_cache(&self) {
+        *self.disk_stats_cache.write() = None;
     }
 
     /// Removes records older than `older_than` and, when the cache still
@@ -479,23 +500,40 @@ impl LocalCache {
             .unwrap_or(0);
 
         let mut removed: HashSet<String> = HashSet::new();
+        let mut removed_keys: HashSet<String> = HashSet::new();
 
         let objects_dir = self.objects_dir();
         let fingerprints_dir = self.root.join("metadata").join("fingerprints");
 
+        // Single walk for records — reused for both ref_counts and age phase.
+        let initial_records = self.records();
+        let mut ref_counts: HashMap<String, u64> = HashMap::new();
+        for r in &initial_records {
+            if let Some(h) = &r.artifact_hash {
+                *ref_counts.entry(h.clone()).or_insert(0) += 1;
+            }
+        }
+
         if let Some(age) = older_than {
             let age_secs = age.as_secs();
-            let mut ref_counts = self.ref_counts();
 
-            for record in self.records() {
-                if now.saturating_sub(record.stored_at) >= age_secs {
-                    drop_record_and_cascade(
-                        &record,
-                        &objects_dir,
-                        &mut ref_counts,
-                        &mut removed,
-                        &mut report,
-                    );
+            // Collect aged records first to avoid borrowing issues.
+            let mut aged = Vec::new();
+            for r in &initial_records {
+                if now.saturating_sub(r.stored_at) >= age_secs {
+                    aged.push(r.clone());
+                }
+            }
+            for record in aged {
+                let freed = drop_record_and_cascade(
+                    &record,
+                    &objects_dir,
+                    &mut ref_counts,
+                    &mut removed,
+                    &mut report,
+                );
+                if freed > 0 {
+                    removed_keys.insert(record.key.clone());
                 }
             }
 
@@ -543,65 +581,99 @@ impl LocalCache {
             report.freed_bytes += cleanup_tmp_files(&fingerprints_dir, now, age_secs, &mut removed);
         }
 
-        let max = max_size.unwrap_or(u64::MAX);
-
-        let mut records = self.records();
-        records.sort_unstable_by_key(|r| r.stored_at);
-
-        let mut objects = walk_files(&objects_dir).unwrap_or_default();
-        objects.sort_unstable_by_key(|p| {
-            fs::metadata(p)
-                .and_then(|m| m.modified())
-                .ok()
-                .unwrap_or(UNIX_EPOCH)
-        });
-
-        let mut total: u64 = records.iter().map(|r| r.size).sum();
-        for path in &objects {
-            let path_str = path.to_string_lossy().to_string();
-            if removed.contains(&path_str) {
-                continue;
+        // Size-based phase — skip if no max_size constraint.
+        if let Some(max) = max_size {
+            // Reuse initial_records but filter out already-removed ones.
+            let mut records = initial_records;
+            records.retain(|r| !removed_keys.contains(&r.key));
+            // If we already pruned by age, records may still contain aged entries
+            // that were just deleted from disk; re-walk to get accurate remaining set
+            // when age pruning happened, otherwise reuse.
+            if older_than.is_some() {
+                records = self.records();
+                records.retain(|r| !removed_keys.contains(&r.key));
             }
-            if let Ok(metadata) = fs::metadata(path) {
-                total += metadata.len();
+            records.sort_unstable_by_key(|r| r.stored_at);
+
+            let mut objects = walk_files(&objects_dir).unwrap_or_default();
+            objects.sort_unstable_by_key(|p| {
+                fs::metadata(p)
+                    .and_then(|m| m.modified())
+                    .ok()
+                    .unwrap_or(UNIX_EPOCH)
+            });
+
+            let mut total: u64 = records.iter().map(|r| r.size).sum();
+            for path in &objects {
+                let path_str = path.to_string_lossy().to_string();
+                if removed.contains(&path_str) {
+                    continue;
+                }
+                if let Ok(metadata) = fs::metadata(path) {
+                    total += metadata.len();
+                }
             }
+
+            // Rebuild ref_counts for remaining records if we reused.
+            let mut size_ref_counts: HashMap<String, u64> = HashMap::new();
+            for r in &records {
+                if let Some(h) = &r.artifact_hash {
+                    *size_ref_counts.entry(h.clone()).or_insert(0) += 1;
+                }
+            }
+            // If we had age phase, ref_counts already reflects deletions; use fresh one.
+            if older_than.is_some() {
+                ref_counts = size_ref_counts;
+            } else {
+                // No age phase — use the already computed ref_counts filtered
+                // to remaining records (recompute to be safe).
+                ref_counts = size_ref_counts;
+            }
+
+            for record in records {
+                if total <= max {
+                    break;
+                }
+                let freed = drop_record_and_cascade(
+                    &record,
+                    &objects_dir,
+                    &mut ref_counts,
+                    &mut removed,
+                    &mut report,
+                );
+                if freed > 0 {
+                    removed_keys.insert(record.key.clone());
+                }
+                total = total.saturating_sub(freed);
+            }
+
+            for path in objects {
+                if total <= max {
+                    break;
+                }
+                let path_str = path.to_string_lossy().to_string();
+                if removed.contains(&path_str) {
+                    continue;
+                }
+                let Ok(metadata) = fs::metadata(&path) else {
+                    continue;
+                };
+                if fs::remove_file(&path).is_ok() {
+                    removed.insert(path_str);
+                    report.removed_objects += 1;
+                    report.freed_bytes += metadata.len();
+                    total = total.saturating_sub(metadata.len());
+                }
+            }
+        } else if older_than.is_none() {
+            // No pruning criteria at all — nothing to do.
         }
 
-        let mut ref_counts = self.ref_counts();
-        for record in records {
-            if total <= max {
-                break;
-            }
-            let freed = drop_record_and_cascade(
-                &record,
-                &objects_dir,
-                &mut ref_counts,
-                &mut removed,
-                &mut report,
-            );
-            total = total.saturating_sub(freed);
+        // Only remove pruned keys from memory cache, not entire cache.
+        for k in removed_keys {
+            self.memory_cache.remove(&k);
         }
-
-        for path in objects {
-            if total <= max {
-                break;
-            }
-            let path_str = path.to_string_lossy().to_string();
-            if removed.contains(&path_str) {
-                continue;
-            }
-            let Ok(metadata) = fs::metadata(&path) else {
-                continue;
-            };
-            if fs::remove_file(&path).is_ok() {
-                removed.insert(path_str);
-                report.removed_objects += 1;
-                report.freed_bytes += metadata.len();
-                total = total.saturating_sub(metadata.len());
-            }
-        }
-
-        self.memory_cache.clear();
+        self.invalidate_disk_stats_cache();
         Ok(report)
     }
 

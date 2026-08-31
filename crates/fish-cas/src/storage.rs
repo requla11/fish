@@ -28,7 +28,7 @@ impl CasStorageConfig {
         Self {
             backend: CasBackendType::Local,
             local_path: Some(path.into()),
-            compression: CompressionAlgorithm::Zstd,
+            compression: CompressionAlgorithm::ZstdFast,
             max_size_bytes: 0,
             remote: None,
         }
@@ -39,7 +39,7 @@ impl CasStorageConfig {
         Self {
             backend: CasBackendType::Remote,
             local_path: None,
-            compression: CompressionAlgorithm::Zstd,
+            compression: CompressionAlgorithm::ZstdFast,
             max_size_bytes: 0,
             remote: Some(remote_config),
         }
@@ -50,7 +50,7 @@ impl CasStorageConfig {
         Self {
             backend: CasBackendType::Hybrid,
             local_path: Some(local_path.into()),
-            compression: CompressionAlgorithm::Zstd,
+            compression: CompressionAlgorithm::ZstdFast,
             max_size_bytes: 0,
             remote: Some(remote_config),
         }
@@ -220,7 +220,59 @@ impl CasStorage {
         self.backend.open_mmap(hash)
     }
 
+    const MMAP_THRESHOLD_BYTES: u64 = 4 * 1024 * 1024;
+
     pub fn read_zero_copy<R>(&self, hash: &ArtifactHash, f: impl FnOnce(&[u8]) -> R) -> Result<R> {
+        // Fast path for small local artifacts — mirrors LocalCasBackend::with_artifact_bytes.
+        if let Some(base) = self.config.local_path.as_ref() {
+            let hash_str = hash.as_str();
+            if hash_str.len() == 64 && hash_str.bytes().all(|b| b.is_ascii_hexdigit()) {
+                let data_path = base.join(&hash_str[..2]).join(&hash_str[2..]);
+                let meta_path = {
+                    let mut p = data_path.clone();
+                    p.set_extension("meta");
+                    p
+                };
+                if let Ok(meta) = std::fs::metadata(&data_path) {
+                    if meta.len() < Self::MMAP_THRESHOLD_BYTES
+                        && data_path.exists()
+                        && meta_path.exists()
+                    {
+                        if let Ok(json) = std::fs::read_to_string(&meta_path) {
+                            if let Ok(metadata) = serde_json::from_str::<
+                                crate::artifact::ArtifactMetadata,
+                            >(&json)
+                            {
+                                if let Ok(raw) = std::fs::read(&data_path) {
+                                    let data = if let Some(comp) = metadata
+                                        .compression
+                                        .as_deref()
+                                        .and_then(|s| {
+                                            std::str::FromStr::from_str(s).ok()
+                                        })
+                                        .filter(|a| {
+                                            *a != crate::compression::CompressionAlgorithm::None
+                                        }) {
+                                        match crate::compression::decompress(&raw, comp) {
+                                            Ok(d) => d,
+                                            Err(_) => raw,
+                                        }
+                                    } else {
+                                        raw
+                                    };
+                                    if crate::artifact::ArtifactHash::from_bytes(&data)
+                                        .map(|h| &h == hash && h == metadata.hash)
+                                        .unwrap_or(false)
+                                    {
+                                        return Ok(f(&data));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
         let artifact = self.open_mmap(hash)?;
         Ok(f(artifact.as_slice()))
     }

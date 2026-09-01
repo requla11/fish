@@ -10,12 +10,12 @@ This guide will help you get started with Fish, a fast, cache-first build orches
 
 **Linux & macOS:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/requla11/fish/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/requla11/fish/main/scripts/install.sh | bash
 ```
 
 **Windows (PowerShell):**
 ```powershell
-irm https://raw.githubusercontent.com/requla11/fish/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/requla11/fish/main/scripts/install.ps1 | iex
 ```
 
 ### From Source
@@ -25,15 +25,18 @@ irm https://raw.githubusercontent.com/requla11/fish/main/install.ps1 | iex
 git clone https://github.com/requla11/fish.git
 cd fish
 
-# Build and install
+# Build and install from the dev branch
+git checkout dev
 cargo install --path crates/fish-cli
 ```
 
-### Cargo Install
+### Via Cargo (Latest Release)
 
 ```bash
-cargo install fish-cli --git https://github.com/requla11/fish
+cargo install fish-cli --git https://github.com/requla11/fish --branch main
 ```
+
+**Requirements**: Rust 1.88+ (MSRV 1.88)
 
 ## Quick Start
 

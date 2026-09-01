@@ -20,10 +20,22 @@ This guide provides detailed information for developers working on Fish.
 git clone https://github.com/requla11/fish.git
 cd fish
 
+# Checkout dev branch for development
+git checkout dev
+
 # Install development dependencies
-cargo install cargo-watch
-cargo install cargo-edit
-cargo install cargo-expand
+cargo install cargo-watch      # Watch and rebuild on changes
+cargo install cargo-edit       # Manage dependencies
+cargo install cargo-expand     # Expand macros for debugging
+cargo install cargo-nextest    # Alternative test runner
+
+# Optional: Install other language toolchains for backend testing
+# Rust backend is built-in, but testing other backends requires:
+# - Go 1.21+ for fish-backend-go
+# - Node.js 18+ for fish-backend-ts
+# - Python 3.9+ for fish-backend-py
+# - Java 11+ for fish-backend-java
+# - .NET 6+ for fish-backend-dotnet
 ```
 
 ### VS Code Setup
@@ -37,11 +49,16 @@ Install the recommended extensions:
 ## Workspace Structure
 
 ```
-fish-rs/
+fish/
 ├── crates/                 # All workspace crates
 │   ├── fish-core/         # Core functionality
 │   ├── fish-cli/          # CLI interface
-│   ├── fish-backend-*/    # Language backends
+│   ├── fish-backend-*/    # Language backends (11 total)
+│   ├── fish-scheduler/    # Work-stealing scheduler
+│   ├── fish-cache/        # Fingerprint cache
+│   ├── fish-cas/          # Content-Addressable Storage
+│   ├── fish-executor/     # Process executor
+│   ├── fish-graph/        # Dependency graph
 │   └── ...                 # Other crates
 ├── examples/               # Example projects
 ├── docs/                   # Documentation
@@ -84,11 +101,28 @@ cargo test --workspace -- --nocapture
 # Format code
 cargo fmt --all
 
-# Check formatting
+# Check formatting (CI mode)
 cargo fmt --all -- --check
 
-# Run clippy
+# Run clippy (strict mode, all features)
 cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+# Check for common security issues
+cargo audit
+
+# Generate documentation
+cargo doc --workspace --no-deps --open
+```
+
+### Full Pre-Commit Checklist
+
+Before committing, run:
+
+```bash
+cargo fmt --all -- --check && \
+cargo clippy --workspace --all-targets --all-features -- -D warnings && \
+cargo test --workspace && \
+cargo build -p fish-cli --release
 ```
 
 ## Testing

@@ -185,15 +185,13 @@ impl SecurityValidator {
             return false;
         }
 
-        if arg.contains('/') || arg.contains('\\') {
-            let has_shell_operators = arg.contains(';') || arg.contains('&') || arg.contains('|');
-            if has_shell_operators {
-                return false;
-            }
-            return true;
+        if (arg.contains('/') || arg.contains('\\'))
+            && (arg.contains(';') || arg.contains('&') || arg.contains('|'))
+        {
+            return false;
         }
 
-        false
+        arg.contains('/') || arg.contains('\\')
     }
 
     pub fn update_policy(&self, new_policy: SecurityPolicy) -> Result<(), SecurityError> {

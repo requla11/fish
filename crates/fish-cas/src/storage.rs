@@ -233,42 +233,33 @@ impl CasStorage {
                     p.set_extension("meta");
                     p
                 };
-                if let Ok(meta) = std::fs::metadata(&data_path) {
-                    if meta.len() < Self::MMAP_THRESHOLD_BYTES
-                        && data_path.exists()
-                        && meta_path.exists()
+                if let Ok(meta) = std::fs::metadata(&data_path)
+                    && meta.len() < Self::MMAP_THRESHOLD_BYTES
+                    && data_path.exists()
+                    && meta_path.exists()
+                    && let Ok(json) = std::fs::read_to_string(&meta_path)
+                    && let Ok(metadata) =
+                        serde_json::from_str::<crate::artifact::ArtifactMetadata>(&json)
+                    && let Ok(raw) = std::fs::read(&data_path)
+                {
+                    let data = if let Some(comp) = metadata
+                        .compression
+                        .as_deref()
+                        .and_then(|s| std::str::FromStr::from_str(s).ok())
+                        .filter(|a| *a != crate::compression::CompressionAlgorithm::None)
                     {
-                        if let Ok(json) = std::fs::read_to_string(&meta_path) {
-                            if let Ok(metadata) = serde_json::from_str::<
-                                crate::artifact::ArtifactMetadata,
-                            >(&json)
-                            {
-                                if let Ok(raw) = std::fs::read(&data_path) {
-                                    let data = if let Some(comp) = metadata
-                                        .compression
-                                        .as_deref()
-                                        .and_then(|s| {
-                                            std::str::FromStr::from_str(s).ok()
-                                        })
-                                        .filter(|a| {
-                                            *a != crate::compression::CompressionAlgorithm::None
-                                        }) {
-                                        match crate::compression::decompress(&raw, comp) {
-                                            Ok(d) => d,
-                                            Err(_) => raw,
-                                        }
-                                    } else {
-                                        raw
-                                    };
-                                    if crate::artifact::ArtifactHash::from_bytes(&data)
-                                        .map(|h| &h == hash && h == metadata.hash)
-                                        .unwrap_or(false)
-                                    {
-                                        return Ok(f(&data));
-                                    }
-                                }
-                            }
+                        match crate::compression::decompress(&raw, comp) {
+                            Ok(d) => d,
+                            Err(_) => raw,
                         }
+                    } else {
+                        raw
+                    };
+                    if crate::artifact::ArtifactHash::from_bytes(&data)
+                        .map(|h| &h == hash && h == metadata.hash)
+                        .unwrap_or(false)
+                    {
+                        return Ok(f(&data));
                     }
                 }
             }

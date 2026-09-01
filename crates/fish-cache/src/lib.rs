@@ -440,10 +440,10 @@ impl LocalCache {
         // Check cache first — benchmarks call this repeatedly without mutations.
         {
             let guard = self.disk_stats_cache.read();
-            if let Some((cached, instant)) = guard.as_ref() {
-                if instant.elapsed() < std::time::Duration::from_secs(1) {
-                    return cached.clone();
-                }
+            if let Some((cached, instant)) = guard.as_ref()
+                && instant.elapsed() < std::time::Duration::from_secs(1)
+            {
+                return cached.clone();
             }
         }
         let records = self.records();
@@ -679,6 +679,7 @@ impl LocalCache {
 
     /// Maps object file names to the number of fingerprint records
     /// referencing them.
+    #[allow(dead_code)]
     fn ref_counts(&self) -> HashMap<String, u64> {
         let mut counts: HashMap<String, u64> = HashMap::new();
         for record in self.records() {

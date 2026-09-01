@@ -101,30 +101,30 @@ impl LocalCasBackend {
             return Err(CasError::ArtifactNotFound(hash.to_string()));
         }
         // Fast path for small objects: direct read avoids mmap setup cost.
-        if let Ok(meta) = std::fs::metadata(&data_path) {
-            if meta.len() < Self::MMAP_THRESHOLD_BYTES {
-                let json = std::fs::read_to_string(&metadata_path).map_err(CasError::Io)?;
-                let metadata: ArtifactMetadata = serde_json::from_str(&json)
-                    .map_err(|e| CasError::Serialization(e.to_string()))?;
-                let raw = std::fs::read(&data_path).map_err(CasError::Io)?;
-                let data = if let Some(comp) = metadata
-                    .compression
-                    .as_deref()
-                    .and_then(|s| CompressionAlgorithm::from_str(s).ok())
-                    .filter(|a| *a != CompressionAlgorithm::None)
-                {
-                    crate::compression::decompress(&raw, comp)?
-                } else {
-                    raw
-                };
-                let computed = crate::artifact::ArtifactHash::from_bytes(&data)?;
-                if computed != metadata.hash || &computed != hash {
-                    return Err(CasError::Hash(format!(
-                        "artifact hash mismatch for `{hash}`"
-                    )));
-                }
-                return Ok(consume(&data));
+        if let Ok(meta) = std::fs::metadata(&data_path)
+            && meta.len() < Self::MMAP_THRESHOLD_BYTES
+        {
+            let json = std::fs::read_to_string(&metadata_path).map_err(CasError::Io)?;
+            let metadata: ArtifactMetadata = serde_json::from_str(&json)
+                .map_err(|e| CasError::Serialization(e.to_string()))?;
+            let raw = std::fs::read(&data_path).map_err(CasError::Io)?;
+            let data = if let Some(comp) = metadata
+                .compression
+                .as_deref()
+                .and_then(|s| CompressionAlgorithm::from_str(s).ok())
+                .filter(|a| *a != CompressionAlgorithm::None)
+            {
+                crate::compression::decompress(&raw, comp)?
+            } else {
+                raw
+            };
+            let computed = crate::artifact::ArtifactHash::from_bytes(&data)?;
+            if computed != metadata.hash || &computed != hash {
+                return Err(CasError::Hash(format!(
+                    "artifact hash mismatch for `{hash}`"
+                )));
             }
+            return Ok(consume(&data));
         }
         self.read_zero_copy(hash, consume)
     }
@@ -310,12 +310,16 @@ impl CasBackend for LocalCasBackend {
                     if sub_path.is_file()
                         && sub_path.extension().map(|e| e != "meta").unwrap_or(true)
                         && let Some(hash_str) = sub_path.file_stem().and_then(|s| s.to_str())
+                        && validate_hash(&format!(
+                            "{}{}",
+                            path.file_name().and_then(|s| s.to_str()).unwrap_or(""),
+                            hash_str
+                        ))
+                        .is_ok()
                     {
                         let dir_name = path.file_name().and_then(|s| s.to_str()).unwrap_or("");
                         let full_hash = format!("{}{}", dir_name, hash_str);
-                        if validate_hash(&full_hash).is_ok() {
-                            hashes.push(ArtifactHash::new(full_hash));
-                        }
+                        hashes.push(ArtifactHash::new(full_hash));
                     }
                 }
             }

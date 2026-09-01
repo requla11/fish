@@ -53,9 +53,7 @@ impl TenantUsageTracker {
         let mut guard = self.usage.lock().unwrap();
         let current = guard.entry(tenant.to_string()).or_insert(0);
         let projected = *current + bytes;
-        if let Some(max) = quotas.max_bytes_for(tenant)
-            && projected > max
-        {
+        if let Some(max) = quotas.max_bytes_for(tenant) && projected > max {
             return Err(*current);
         }
         *current = projected;

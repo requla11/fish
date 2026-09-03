@@ -12,7 +12,7 @@
 [![Edition](https://img.shields.io/badge/edition-2024-blue.svg)](https://doc.rust-lang.org/edition-guide/rust-2024/index.html)
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/requla11/fish)
 
-[English](README.md) • [Tiếng Việt](docs/vi/index.md) • [简体中文](docs/zh-hans/index.md) • [繁體中文](docs/zh-hant/index.md) • [日本語](docs/ja/index.md)
+[English](README.md) • [Tiếng Việt](README.vi.md) • [简体中文](README.zh-hans.md) • [繁體中文](README.zh-hant.md) • [日本語](README.ja.md)
 
 </div>
 

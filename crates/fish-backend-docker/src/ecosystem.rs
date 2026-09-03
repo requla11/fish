@@ -23,13 +23,16 @@ impl EcosystemBackend for DockerEcosystemBackend {
     }
 
     fn detect(&self, dir: &Path) -> bool {
-        DockerBackend::detect_config(dir).is_some()
+        DockerBackend::detect_config(dir).is_some() && crate::DockerToolchain::detect().is_ok()
     }
 
     fn build_task_graph(&self, dir: &Path, _mode: BuildMode) -> Result<BuildGraph<Task>, String> {
         match DockerBackend::detect_config(dir) {
             Some(config) => {
-                let backend = DockerBackend::new(config).map_err(|e| e.to_string())?;
+                let backend = match DockerBackend::new(config) {
+                    Ok(b) => b,
+                    Err(_) => return Ok(BuildGraph::new()),
+                };
                 backend.build_task_graph().map_err(|e| e.to_string())
             }
             None => Ok(BuildGraph::new()),

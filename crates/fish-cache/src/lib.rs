@@ -312,9 +312,6 @@ impl LocalCache {
         }
         let path = self.objects_dir().join(hash);
         let tmp = unique_tmp_path(&path);
-
-        let _scoped_buffer = ScopedBuffer::new(bytes.len(), self.buffer_pool.clone());
-
         fs::write(&tmp, bytes).map_err(|source| CacheError::Write {
             key: hash.to_string(),
             source,
@@ -675,19 +672,6 @@ impl LocalCache {
         }
         self.invalidate_disk_stats_cache();
         Ok(report)
-    }
-
-    /// Maps object file names to the number of fingerprint records
-    /// referencing them.
-    #[allow(dead_code)]
-    fn ref_counts(&self) -> HashMap<String, u64> {
-        let mut counts: HashMap<String, u64> = HashMap::new();
-        for record in self.records() {
-            if let Some(hash) = &record.artifact_hash {
-                *counts.entry(hash.clone()).or_insert(0) += 1;
-            }
-        }
-        counts
     }
 }
 

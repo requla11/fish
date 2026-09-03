@@ -28,7 +28,7 @@ features:
     details: Native zero-config auto-discovery for Rust, Go, TypeScript, Python, C/C++, Docker, Java, .NET, Swift, Dart, and Zig.
   - icon: 🔒
     title: Deterministic Cache & CAS
-    details: Blake3 multi-tier fingerprinting with ZSTD compression and two-phase pruning delivers sub-millisecond cache hits.
+    details: Blake3 multi-tier fingerprinting with ZSTD compression and two-phase pruning for fast, deterministic cache hits.
   - icon: 🌐
     title: Interactive Web Dashboard
     details: Real-time DAG visualization, live build telemetry, and multi-language metrics monitor all monorepo workloads.

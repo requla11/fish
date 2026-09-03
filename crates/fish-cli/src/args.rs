@@ -43,6 +43,7 @@ pub enum Command {
     Clean(CleanArgs),
     Run(RunArgs),
     Graph(GraphArgs),
+    #[command(alias = "dev")]
     Watch(WatchArgs),
     CacheServer(CacheServerArgs),
     Worker(WorkerArgs),
@@ -54,15 +55,16 @@ pub enum Command {
     Rewind(RewindArgs),
     Attest(AttestArgs),
     Verify(VerifyArgs),
+    #[command(hide = true)]
     LivePatch(LivePatchArgs),
+    #[command(hide = true)]
     Jit(JitArgs),
+    #[command(hide = true)]
     SuperOpt(SuperOptArgs),
     Plugin(PluginArgs),
     Fix(FixArgs),
     SigningKey,
-    /// Bisect recent commits after a failed build and prepare a revert branch.
     Heal(HealArgs),
-    /// Regenerate docs/cli-reference.md from clap definitions (internal).
     #[command(hide = true)]
     GenDocs(GenDocsArgs),
     CostEstimate(CostEstimateArgs),
@@ -70,10 +72,14 @@ pub enum Command {
     Ui(UiArgs),
     Query(QueryArgs),
     Daemon(DaemonArgs),
+    #[command(hide = true)]
     Ai(AiArgs),
+    #[command(hide = true)]
     Lsp(LspArgs),
     Why(WhyArgs),
+    #[command(hide = true)]
     Pash(PashArgs),
+    #[command(hide = true)]
     Qpc(QpcArgs),
 }
 
@@ -559,10 +565,11 @@ pub struct WatchArgs {
     pub predictive: bool,
 }
 
-/// Arguments for clean command
 #[derive(Debug, Args)]
 pub struct CleanArgs {
     pub path: Option<PathBuf>,
+    #[arg(long, short = 'a')]
+    pub all: bool,
 }
 
 /// Arguments for run command

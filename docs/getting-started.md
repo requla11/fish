@@ -116,7 +116,7 @@ fish graph --format dot
 ### Build Daemon Commands
 
 ```bash
-# Start background build daemon for sub-millisecond warm builds
+# Start background build daemon for warm rebuilds (configurable --port, default 9527)
 Fish daemon start
 
 # Check daemon status

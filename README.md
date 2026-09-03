@@ -71,6 +71,35 @@ main
 
 ## Install
 
+### 1-Line Installer
+
+#### Linux / macOS
+```bash
+curl -fsSL https://raw.githubusercontent.com/requla11/fish/main/scripts/install.sh | sh
+```
+
+#### Windows (PowerShell)
+```powershell
+irm https://raw.githubusercontent.com/requla11/fish/main/scripts/install.ps1 | iex
+```
+
+### Package Managers
+
+#### Windows (Scoop / Winget)
+```powershell
+# Scoop
+scoop install https://raw.githubusercontent.com/requla11/fish/main/packaging/fish.json
+
+# Winget
+winget install requla11.fish
+```
+
+#### macOS (Homebrew)
+```bash
+brew tap requla11/fish https://github.com/requla11/homebrew-fish
+brew install fish
+```
+
 ### From source
 
 ```bash
@@ -131,7 +160,7 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for local development and
 | `fish build`, `check`, `test` | Execute work discovered from the project graph (supports `--explain`, `--pgo-generate`, `--pgo-use`). |
 | `fish ui` | Start the interactive Web Dashboard & DAG visualizer with 5-language telemetry. |
 | `fish query <EXPR>` | Query graph algebra: `deps(...)`, `rdeps(...)`, `allpaths(...)`, `somepath(...)`, `filter(...)`, `union(...)`, `intersect(...)`, `except(...)`. |
-| `fish daemon` | Manage background build daemon (`start`, `status`, `stop`) for sub-millisecond warm builds. |
+| `fish daemon` | Manage background build daemon (`start`, `status`, `stop`) for warm rebuilds; `--port` is configurable (default `9527`). |
 | `fish run` | Build and run a selected Rust package or binary. |
 | `fish graph` | Print the graph as stage trees, JSON, or DOT. |
 | `fish watch` | Re-run build, check, or test after relevant file changes. |
@@ -176,6 +205,9 @@ crates/
   fish-remote-cache/ HTTP remote cache server with Ed25519 signature gating
   fish-security/     multi-layer security, CVE scanner, SLSA provenance signing
   fish-cli/          command-line application, daemon IPC, and terminal rendering
+submodules/           vendored companion projects (git submodules, workspace members):
+  apple/             hermetic sandbox and process isolation daemon
+  banana/            distribution, P2P swarm, and supply-chain infrastructure
 examples/             sample projects
 docs/                 additional documentation
 ```

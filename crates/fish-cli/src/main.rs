@@ -103,7 +103,7 @@ fn main() -> ExitCode {
         Command::Build(args) => run_build_mode(args.common, BuildMode::Build),
         Command::Check(args) => run_build_mode(args.common, BuildMode::Check),
         Command::Test(args) => run_build_mode(args.common, BuildMode::Test),
-        Command::Clean(args) => commands::run_clean(args.path.as_deref()),
+        Command::Clean(args) => commands::run_clean(args.path.as_deref(), args.all),
         Command::Run(args) => commands::run_run(args),
         Command::Graph(args) => commands::run_graph(args),
         Command::CacheServer(args) => run_cache_server(args),

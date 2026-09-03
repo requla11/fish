@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+#[derive(Clone, Debug)]
 pub struct JobserverPool {
     client: Arc<jobserver::Client>,
 }

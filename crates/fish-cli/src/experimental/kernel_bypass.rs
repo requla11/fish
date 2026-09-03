@@ -5,7 +5,7 @@ use std::io;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, RwLock};
 
-pub struct LockFreeRingBuffer {
+pub struct SynchronizedRingBuffer {
     buffer: Arc<RwLock<Vec<u8>>>,
     capacity: usize,
     mask: usize,
@@ -13,7 +13,9 @@ pub struct LockFreeRingBuffer {
     tail: AtomicUsize,
 }
 
-impl LockFreeRingBuffer {
+pub type LockFreeRingBuffer = SynchronizedRingBuffer;
+
+impl SynchronizedRingBuffer {
     pub fn new(capacity: usize) -> Self {
         let actual_cap = capacity.next_power_of_two();
         Self {
@@ -70,7 +72,7 @@ pub struct DmaBufferBlock {
 
 pub struct KernelBypassVfs {
     virtual_memory_pool: Arc<RwLock<HashMap<String, Vec<u8>>>>,
-    ring_buffer: Arc<LockFreeRingBuffer>,
+    ring_buffer: Arc<SynchronizedRingBuffer>,
 }
 
 impl Default for KernelBypassVfs {
@@ -83,7 +85,7 @@ impl KernelBypassVfs {
     pub fn new() -> Self {
         Self {
             virtual_memory_pool: Arc::new(RwLock::new(HashMap::new())),
-            ring_buffer: Arc::new(LockFreeRingBuffer::new(65536)),
+            ring_buffer: Arc::new(SynchronizedRingBuffer::new(65536)),
         }
     }
 

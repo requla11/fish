@@ -101,7 +101,7 @@ impl WorkerServer {
                         });
                     }
                     Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                        thread::sleep(Duration::from_millis(10));
+                        thread::sleep(Duration::from_millis(50));
                     }
                     Err(_) => {
                         break;
@@ -173,8 +173,17 @@ impl WorkerServer {
         let mut reader = BufReader::new(stream.try_clone()?);
         let mut line = String::new();
 
-        if reader.read_line(&mut line)? == 0 {
+        if reader
+            .by_ref()
+            .take(64 * 1024 * 1024 + 1)
+            .read_line(&mut line)?
+            == 0
+        {
             return Ok(());
+        }
+
+        if line.len() > 64 * 1024 * 1024 {
+            return Err(anyhow::anyhow!("request exceeds maximum limit"));
         }
 
         let trimmed = line.trim();
@@ -183,9 +192,14 @@ impl WorkerServer {
         }
 
         if let Ok(req) = serde_json::from_str::<RemoteTaskRequest>(trimmed) {
-            if let Some(expected) = expected_token
-                && req.auth_token.as_ref() != Some(expected)
-            {
+            let is_unauthorized = match expected_token {
+                Some(expected) => req.auth_token.as_ref() != Some(expected),
+                None => stream
+                    .peer_addr()
+                    .map(|addr| !addr.ip().is_loopback())
+                    .unwrap_or(false),
+            };
+            if is_unauthorized {
                 let err_res = RemoteTaskResponse {
                     task_id: req.task_id,
                     exit_code: Some(1),
@@ -329,9 +343,14 @@ impl WorkerServer {
         }
 
         if let Ok(ping_req) = serde_json::from_str::<WorkerPingRequest>(trimmed) {
-            if let Some(expected) = expected_token
-                && ping_req.auth_token.as_ref() != Some(expected)
-            {
+            let is_unauthorized = match expected_token {
+                Some(expected) => ping_req.auth_token.as_ref() != Some(expected),
+                None => stream
+                    .peer_addr()
+                    .map(|addr| !addr.ip().is_loopback())
+                    .unwrap_or(false),
+            };
+            if is_unauthorized {
                 let current_jobs = active_jobs.load(Ordering::SeqCst);
                 let cpu_est = if max_concurrency > 0 {
                     Some(((current_jobs as f32) / (max_concurrency as f32) * 100.0).min(100.0))

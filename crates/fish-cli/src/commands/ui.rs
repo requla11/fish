@@ -28,11 +28,23 @@ pub fn run_ui(port: u16, open: bool, project_path: Option<PathBuf>) -> Result<()
         let _ = open_browser(&url);
     }
 
+    static ACTIVE_CONNECTIONS: std::sync::atomic::AtomicUsize =
+        std::sync::atomic::AtomicUsize::new(0);
+
     let root_for_threads = root.clone();
     for stream in listener.incoming().flatten() {
+        if ACTIVE_CONNECTIONS.load(std::sync::atomic::Ordering::Relaxed) >= 64 {
+            let mut s = stream;
+            let _ = s.write_all(
+                b"HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\n\r\nServer busy",
+            );
+            continue;
+        }
+        ACTIVE_CONNECTIONS.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         let root_clone = root_for_threads.clone();
         thread::spawn(move || {
             let _ = handle_http_client(stream, &root_clone);
+            ACTIVE_CONNECTIONS.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
         });
     }
 
@@ -108,6 +120,15 @@ fn handle_http_client(mut stream: TcpStream, root: &Path) -> Result<(), anyhow::
 }
 
 fn get_workspace_graph_json(root: &Path) -> String {
+    static CACHE: std::sync::Mutex<Option<(String, PathBuf, std::time::Instant)>> =
+        std::sync::Mutex::new(None);
+    if let Ok(guard) = CACHE.lock()
+        && let Some((json, path, instant)) = guard.as_ref()
+        && path == root
+        && instant.elapsed() < std::time::Duration::from_secs(3)
+    {
+        return json.clone();
+    }
     let mut packages = Vec::new();
 
     if let Ok(Some(project)) = Project::discover(root) {
@@ -176,15 +197,29 @@ fn get_workspace_graph_json(root: &Path) -> String {
         }));
     }
 
-    serde_json::json!({
+    let res = serde_json::json!({
         "workspace": root.display().to_string(),
         "packages": packages,
         "total": packages.len()
     })
-    .to_string()
+    .to_string();
+
+    if let Ok(mut guard) = CACHE.lock() {
+        *guard = Some((res.clone(), root.to_path_buf(), std::time::Instant::now()));
+    }
+
+    res
 }
 
 fn get_system_stats_json(_root: &Path) -> String {
+    static STATS_CACHE: std::sync::Mutex<Option<(String, std::time::Instant)>> =
+        std::sync::Mutex::new(None);
+    if let Ok(guard) = STATS_CACHE.lock()
+        && let Some((json, instant)) = guard.as_ref()
+        && instant.elapsed() < std::time::Duration::from_secs(3)
+    {
+        return json.clone();
+    }
     let logical_cores = thread::available_parallelism()
         .map(|n| n.get())
         .unwrap_or(4);
@@ -236,7 +271,7 @@ fn get_system_stats_json(_root: &Path) -> String {
         format!("{:.1} KB", total_bytes as f64 / 1024.0)
     };
 
-    serde_json::json!({
+    let res = serde_json::json!({
         "os": os,
         "arch": arch,
         "logical_cores": logical_cores,
@@ -246,7 +281,13 @@ fn get_system_stats_json(_root: &Path) -> String {
         "total_cache_size": formatted_size,
         "engine_version": env!("CARGO_PKG_VERSION")
     })
-    .to_string()
+    .to_string();
+
+    if let Ok(mut guard) = STATS_CACHE.lock() {
+        *guard = Some((res.clone(), std::time::Instant::now()));
+    }
+
+    res
 }
 
 fn dirs_or_temp_cache() -> PathBuf {

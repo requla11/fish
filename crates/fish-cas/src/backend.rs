@@ -105,8 +105,8 @@ impl LocalCasBackend {
             && meta.len() < Self::MMAP_THRESHOLD_BYTES
         {
             let json = std::fs::read_to_string(&metadata_path).map_err(CasError::Io)?;
-            let metadata: ArtifactMetadata = serde_json::from_str(&json)
-                .map_err(|e| CasError::Serialization(e.to_string()))?;
+            let metadata: ArtifactMetadata =
+                serde_json::from_str(&json).map_err(|e| CasError::Serialization(e.to_string()))?;
             let raw = std::fs::read(&data_path).map_err(CasError::Io)?;
             let data = if let Some(comp) = metadata
                 .compression

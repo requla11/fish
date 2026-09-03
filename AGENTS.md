@@ -67,16 +67,19 @@ Rust, C/C++, Go, TypeScript/JavaScript, Python, Java, .NET, Swift, Dart, Zig, Do
 
 ### Adding a New Language Backend
 1. Create crate: `crates/fish-backend-{lang}/`
-2. Implement `Backend` trait:
+2. Implement the `EcosystemBackend` trait from `fish-backend-api`:
    ```rust
-   pub trait Backend {
-       fn detect(&self, path: &Path) -> bool;
-       fn extract_dependencies(&self, path: &Path) -> Result<Vec<Dependency>>;
-       fn generate_tasks(&self, package: &Package) -> Result<Vec<Task>>;
+   pub trait EcosystemBackend: Send + Sync {
+       fn id(&self) -> &'static str;
+       fn ecosystems(&self) -> &'static [Ecosystem];
+       fn detect(&self, dir: &Path) -> bool;
+       fn build_task_graph(&self, dir: &Path, mode: BuildMode) -> Result<BuildGraph<Task>, String>;
    }
    ```
-3. Add to `Cargo.toml` workspace members
-4. Register in `fish-core/src/backend/mod.rs`
+3. Add the crate to `members` and `[workspace.dependencies]` in the root `Cargo.toml`
+4. Add a `backend-{lang}` feature in `crates/fish-cli/Cargo.toml`
+5. Register in `crates/fish-cli/src/backend_registry.rs` (one line in `instantiate()`)
+6. Extend the `Ecosystem` enum in `crates/fish-backend-api/src/lib.rs`
 
 ### Modifying Scheduler Logic
 - **Primary crate**: `crates/fish-scheduler/`

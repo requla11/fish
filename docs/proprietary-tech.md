@@ -1,68 +1,66 @@
-# Fish Proprietary Technologies & Next-Gen Algorithms
+# Fish Advanced Algorithms & Architectural Innovations
 
 > 🌐 **Language Navigation / 多语言文档 / 多語言文檔 / ドキュメント言語:**
 > [English](proprietary-tech.md) | [Tiếng Việt](vi/proprietary-tech.md) | [日本語](ja/proprietary-tech.md) | [简体中文](zh-hans/proprietary-tech.md) | [繁體中文](zh-hant/proprietary-tech.md)
 
 ---
 
-## ⚡ Overview: The Fish Quantum Polyglot Core (QPC)
+## ⚡ Overview: Core Innovations in Fish
 
-Fish is pioneering four proprietary, un-replicated algorithms specifically engineered to solve the fundamental scaling and invalidation bottlenecks of modern polyglot monorepos and distributed build systems.
+Fish integrates four specialized algorithms engineered to address scaling, cache invalidation, and incremental latency challenges in polyglot monorepos:
 
 ```
 +-------------------------------------------------------------------------------+
-|                      FISH QUANTUM POLYGLOT CORE (QPC)                         |
+|                      FISH CORE ALGORITHMIC INNOVATIONS                        |
 +-------------------------------------------------------------------------------+
 |  1. Poly-ABI Semantic HyperGraph (PASH)                                       |
-|     --> Trans-language public boundary extraction & invalidation cutoff       |
+|     --> Interface boundary symbol extraction & downstream invalidation cutoff |
 |                                                                               |
 |  2. Iso-Semantic Morphic Fingerprinting (IS-MFP)                              |
-|     --> Dual-Key CAS engine eliminating the cross-environment "Cache Cliff"   |
+|     --> Dual-Key CAS normalization eliminating cross-environment cache misses |
 |                                                                               |
 |  3. Speculative Wavelet Pre-Execution (SWPE)                                  |
-|     --> Real-time LSP token-driven proactive zero-overhead micro-compilation  |
+|     --> Edit-event energy classification & proactive dependency pre-warming   |
 |                                                                               |
-|  4. CAS-VLink (Virtual Jump-Table Splicer)                                    |
-|     --> Zero-copy memory-mapped binary splicing bypassing the system linker   |
+|  4. Virtual Binary Dispatch Table (CAS-VLink)                                 |
+|     --> In-memory symbol dispatch overlay for rapid incremental iteration loops|
 +-------------------------------------------------------------------------------+
 ```
 
 ---
 
 ## 🔬 1. Poly-ABI Semantic HyperGraph (PASH)
-* **Status**: In Active Development (`crates/fish-graph`, `crates/fish-core`)
-* **Problem**: Traditional build systems invalidate downstream polyglot targets whenever upstream source files change, even if public interfaces (APIs/ABIs) remain identical.
+* **Location**: `crates/fish-graph`, `crates/fish-core`
+* **Problem**: Traditional build systems invalidate all downstream targets whenever any upstream source file changes, even when public interfaces (APIs/signatures) remain unchanged.
 * **Mechanism**:
-  * Extracts the **Public Interface Boundary (PIB)** for all 11 supported language backends.
-  * Computes an invariant `Symbolic Boundary Hash (SBH)`.
-  * When source files mutate, if `SBH` is unchanged, PASH severs the invalidation cascade across language borders.
+  * Scans exported public interface signatures across all 11 supported backends (Rust, C/C++, Go, TS/JS, Python, Java, .NET, Swift, Dart, Zig, Docker).
+  * Computes a deterministic `Symbolic Boundary Hash (SBH)`.
+  * When private implementation details change while the `SBH` remains identical, PASH severs the invalidation cascade, saving redundant rebuilds.
 
 ---
 
 ## 🧬 2. Iso-Semantic Morphic Fingerprinting (IS-MFP)
-* **Status**: In Active Development (`crates/fish-cache`, `crates/fish-cas`)
-* **Problem**: Path variance, timestamp jitter, and environmental entropy cause a 0% cache hit rate (Cache Cliff) when switching between local workstations and CI runners.
+* **Location**: `crates/fish-cache`, `crates/fish-cas`
+* **Problem**: Workspace path variance, formatting differences, and environment entropy frequently cause 0% cache hit rates when switching between local workstations and CI runners.
 * **Mechanism**:
   * Implements a **Dual-Key Hashing Architecture** (`ExactKey` + `MorphicKey`).
-  * Normalizes AST structural entropy, stripping path and timestamp noise.
-  * Falls back to morphic equivalence matching when exact hits miss, achieving >95% cache reuse across disparate environments.
+  * Normalizes workspace-relative paths (converting Windows backslashes to forward slashes) and filters volatile environment noise.
+  * Falls back to morphic equivalence matching when exact hits miss, maximizing cache reuse across distinct execution environments.
 
 ---
 
 ## 🌊 3. Speculative Wavelet Pre-Execution (SWPE)
-* **Status**: In Active Development (`crates/fish-scheduler`, `crates/fish-incremental`)
-* **Problem**: Reactive build systems wait for `Ctrl+S` or terminal execution, forcing developer latency on every invocation.
+* **Location**: `crates/fish-incremental`
+* **Problem**: Reactive build systems wait for manual save or build command execution, accumulating latency on every invocation.
 * **Mechanism**:
-  * Bridges directly into the `Fish LSP Bridge` to stream live keystroke diff wavelets.
-  * Allocates background idle CPU tokens via the GNU Jobserver pool to pre-warm type inference and LLVM/codegen memory contexts.
-  * Delivers sub-millisecond execution response upon user save.
+  * Classifies editor event deltas into discrete energy levels (`TrivialWhitespace`, `CommentOnly`, `InternalStatement`, `GlobalInterface`).
+  * Proactively prepares task dependency state and warm artifact buffers in background memory before full build execution.
 
 ---
 
-## ⚡ 4. CAS-VLink (Zero-Copy Virtual Jump-Table Splicer)
-* **Status**: In Active Development (`crates/fish-executor`, `crates/fish-cas`)
-* **Problem**: System linkers (`ld`, `lld`, `link.exe`) consume 40-60% of compilation wall-clock time on large C++, Rust, Swift, and Go binaries.
+## ⚡ 4. Virtual Binary Dispatch Table (CAS-VLink)
+* **Location**: `crates/fish-executor`
+* **Problem**: Full binary relinking creates significant overhead during rapid incremental iteration cycles.
 * **Mechanism**:
-  * Constructs a **Virtual Binary Dispatch Table (VBDT)** in output binaries.
-  * Memory-maps and binary-splices modified object segments directly into the executable image without invoking the system linker.
-  * Reduces link latency by 10x-50x during incremental iteration loops.
+  * Maintains an in-memory `VirtualBinaryDispatchTable` mapping symbol addresses and bytecode chunks.
+  * Generates structured runtime binary overlays (`VLINK_DISPATCH_HEADER_V1`) for fast incremental symbol substitution and testing loops.

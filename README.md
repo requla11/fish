@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="docs/public/logo.png" alt="Fish Logo" width="180" />
+
 # 🐟 Fish
 
 **The Blazing Fast, Cache-First Build Orchestration System for Polyglot Monorepos**

@@ -6,7 +6,7 @@ hero:
   text: "高性能多語言構建編排與快取加速系統"
   tagline: "基於代數 DAG 調度、確定性 CAS 快取與分散式 Racing 執行，統一 11+ 工具鏈的構建體驗。"
   image:
-    src: /logo.svg
+    src: /logo.png
     alt: Fish Logo
   actions:
     - theme: brand

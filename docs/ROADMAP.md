@@ -197,4 +197,4 @@ Scope discipline keeps Fish fast and trustworthy. We deliberately do **not** bui
 
 We welcome feedback, suggestions, and contributions from developers worldwide!
 - Join discussions and feature requests via [GitHub Issues](https://github.com/requla11/fish/issues).
-- Review our [Contributing Guide](CONTRIBUTING.md) and [Translation Guidelines](TRANSLATION.md).
+- Review our [Contributing Guide](contributing.md) and [Translation Guidelines](TRANSLATION.md).

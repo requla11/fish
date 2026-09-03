@@ -6,7 +6,7 @@ hero:
   text: "高性能多语言构建编排与缓存加速系统"
   tagline: "基于代数 DAG 调度、确定性 CAS 缓存与分布式 Racing 执行，统一 11+ 工具链的构建体验。"
   image:
-    src: /logo.png
+    src: /logo.svg
     alt: Fish Logo
   actions:
     - theme: brand

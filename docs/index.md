@@ -6,7 +6,7 @@ hero:
   text: "High-Performance Polyglot Build Orchestration"
   tagline: "Unify builds across 11+ toolchains with algebraic DAG scheduling, deterministic CAS caching, and distributed racing."
   image:
-    src: /logo.png
+    src: /logo.svg
     alt: Fish Logo
   actions:
     - theme: brand

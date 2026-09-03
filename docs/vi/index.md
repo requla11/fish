@@ -6,7 +6,7 @@ hero:
   text: "Hệ thống điều phối build đa ngôn ngữ tốc độ cao"
   tagline: "Hợp nhất quy trình build trên 11+ ngôn ngữ với lập lịch đồ thị DAG đại số, bộ nhớ đệm CAS xác định và thực thi phân tán."
   image:
-    src: /logo.png
+    src: /logo.svg
     alt: Fish Logo
   actions:
     - theme: brand

@@ -6,7 +6,7 @@ hero:
   text: "超高速ポリグロット・ビルドオーケストレーションシステム"
   tagline: "代数DAGスケジューリング、決定論的CASキャッシュ、分散レーシング実行により、11以上のツールチェーンをシームレスに統合。"
   image:
-    src: /logo.png
+    src: /logo.svg
     alt: Fish Logo
   actions:
     - theme: brand

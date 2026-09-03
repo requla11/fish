@@ -16,6 +16,7 @@ pub mod error;
 pub mod input_filter;
 pub mod profiling;
 pub mod project;
+pub mod proto;
 pub mod remediation;
 pub mod sandbox_profiles;
 pub mod security;

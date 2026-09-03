@@ -638,6 +638,9 @@ pub struct PluginArgs {
 #[derive(Debug, Subcommand)]
 pub enum PluginAction {
     List,
+    Audit {
+        path: PathBuf,
+    },
     Search {
         query: Option<String>,
         #[arg(long)]

@@ -77,6 +77,46 @@ pub fn run_plugin(args: PluginArgs) -> ExitCode {
 
             ExitCode::SUCCESS
         }
+        PluginAction::Audit { path } => {
+            let manifest_data = match std::fs::read_to_string(&path) {
+                Ok(content) => content,
+                Err(err) => {
+                    eprintln!(
+                        "error: failed to read manifest file {}: {err}",
+                        path.display()
+                    );
+                    return ExitCode::FAILURE;
+                }
+            };
+
+            let manifest: fish_plugin::wasm::WasmPluginManifest =
+                match serde_json::from_str(&manifest_data) {
+                    Ok(m) => m,
+                    Err(err) => {
+                        eprintln!("error: invalid plugin manifest JSON: {err}");
+                        return ExitCode::FAILURE;
+                    }
+                };
+
+            let audit = fish_plugin::audit::audit_manifest(&manifest);
+            println!("Plugin Audit Report: {}", audit.plugin);
+            println!("Overall Risk Level: {:?}", audit.risk);
+            if audit.findings.is_empty() {
+                println!("  No capability or security violations detected.");
+            } else {
+                println!("Findings ({}):", audit.findings.len());
+                for f in &audit.findings {
+                    println!("  [{:?}] {}: {}", f.severity, f.field, f.message);
+                }
+            }
+
+            if audit.acceptable() {
+                ExitCode::SUCCESS
+            } else {
+                eprintln!("error: plugin rejected due to high/critical risk findings");
+                ExitCode::FAILURE
+            }
+        }
         PluginAction::Search { query, registry } => {
             let registry_doc = match resolve_registry(registry.as_deref(), &cache_file) {
                 Ok(doc) => doc,

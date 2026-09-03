@@ -90,6 +90,57 @@ impl AiBridge {
             .cloned()
             .unwrap_or(serde_json::Value::Null))
     }
+
+    #[allow(dead_code)]
+    pub fn analyze_failure_proto(
+        &self,
+        req: &fish_core::proto::FailureAnalysisRequest,
+    ) -> Result<fish_core::proto::FailureAnalysisResponse, String> {
+        let (program, base_args) = match self.server_command.split_first() {
+            Some((program, args)) => (program, args),
+            None => return Err("AI server command is empty".to_string()),
+        };
+
+        let mut args: Vec<String> = base_args.to_vec();
+        args.push("--proto".to_string());
+
+        let mut child = Command::new(program)
+            .args(&args)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .spawn()
+            .map_err(|e| format!("failed to spawn AI proto server `{program}`: {e}"))?;
+
+        let encoded = req.encode();
+        let len_bytes = (encoded.len() as u32).to_be_bytes();
+
+        {
+            let mut stdin = child.stdin.take().ok_or("AI server stdin unavailable")?;
+            stdin
+                .write_all(&len_bytes)
+                .map_err(|e| format!("failed to write proto length: {e}"))?;
+            stdin
+                .write_all(&encoded)
+                .map_err(|e| format!("failed to write proto body: {e}"))?;
+            stdin
+                .flush()
+                .map_err(|e| format!("failed to flush proto request: {e}"))?;
+        }
+
+        let mut stdout = child.stdout.take().ok_or("AI server stdout unavailable")?;
+        let mut resp_len_buf = [0u8; 4];
+        std::io::Read::read_exact(&mut stdout, &mut resp_len_buf)
+            .map_err(|e| format!("failed to read proto response length: {e}"))?;
+        let resp_len = u32::from_be_bytes(resp_len_buf) as usize;
+
+        let mut resp_buf = vec![0u8; resp_len];
+        std::io::Read::read_exact(&mut stdout, &mut resp_buf)
+            .map_err(|e| format!("failed to read proto response body: {e}"))?;
+        let _ = child.wait();
+
+        fish_core::proto::FailureAnalysisResponse::decode(&resp_buf)
+    }
 }
 
 /// Split a command string on whitespace, honouring double quotes, so

@@ -7,9 +7,11 @@ from fish_ai_analyzer.analyzer import FailureAnalyzer
 from fish_analytics.metrics import BuildAnalytics, BuildRunMetrics
 from fish_optimizer.scheduler_opt import ScheduleOptimizer
 
+import struct
 from .autofix import AiAutoFixer
 from .benchmarks import AiBenchmarkSuite
 from .prewarmer import PredictiveBuildPrewarmer
+from .proto_v1 import FailureAnalysisRequest, FailureAnalysisResponse
 from .risk_scorer import PredictivePrRiskScorer
 from .semantic_impact import SemanticImpactAnalyzer
 from .test_reorder import SmartTestReorderer
@@ -144,8 +146,43 @@ class FishAIServer:
                 "error": {"code": -32601, "message": f"Method {method} not found"}
             }
 
+    def handle_proto_request(self, data: bytes) -> bytes:
+        req = FailureAnalysisRequest.decode(data)
+        report = self.analyzer.analyze(
+            req.toolchain if req.toolchain else "rust",
+            req.stderr,
+            req.stdout,
+            req.exit_code
+        )
+        resp = FailureAnalysisResponse(
+            error_category=report.error_category,
+            root_cause=report.root_cause,
+            confidence=report.confidence,
+            suggested_fixes=report.suggested_fixes,
+            affected_files=report.affected_files
+        )
+        return resp.encode()
+
+def run_proto_loop(server: FishAIServer):
+    while True:
+        len_bytes = sys.stdin.buffer.read(4)
+        if not len_bytes or len(len_bytes) < 4:
+            break
+        msg_len = struct.unpack(">I", len_bytes)[0]
+        data = sys.stdin.buffer.read(msg_len)
+        if len(data) < msg_len:
+            break
+        resp_bytes = server.handle_proto_request(data)
+        sys.stdout.buffer.write(struct.pack(">I", len(resp_bytes)))
+        sys.stdout.buffer.write(resp_bytes)
+        sys.stdout.buffer.flush()
+
 def main():
     server = FishAIServer()
+    if "--proto" in sys.argv:
+        run_proto_loop(server)
+        return
+
     for line in sys.stdin:
         if not line.strip():
             continue

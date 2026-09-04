@@ -97,7 +97,7 @@ jobs:
         shell: bash
         run: |
           if [ "${{ runner.os }}" = "Windows" ]; then
-            ./target/release/fish.exe build -C examples/polyglot-demo
+            ./target/release/fish.exe build examples/polyglot-demo
           else
-            ./target/release/fish build -C examples/polyglot-demo
+            ./target/release/fish build examples/polyglot-demo
           fi

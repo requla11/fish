@@ -259,7 +259,7 @@ def run_suite(packages: int, rounds: int) -> Dict:
 
 def format_markdown(r: Dict) -> str:
     lines = []
-    lines.append("# Fish Polyglot Build Engine — Peer Benchmark Report")
+    lines.append("# Fish Polyglot Build Engine - Peer Benchmark Report")
     lines.append("")
     lines.append(f"- **Evaluated Packages**: {r['packages']}")
     lines.append(f"- **Total Action Nodes**: {r['total_tasks']}")
@@ -269,11 +269,18 @@ def format_markdown(r: Dict) -> str:
     lines.append("")
     lines.append("| Algorithm | Throughput | Suitability for Build Artifacts |")
     lines.append("| :--- | :--- | :--- |")
-    lines.append(f"| **BLAKE3 (Fish Default)** | **{r['hashing']['blake3_mb_s']} MB/s** | Cryptographic security + Tree-hashing multi-core SIMD |")
-    lines.append(f"| SHA-256 (Bazel / Git) | {r['hashing']['sha256_mb_s']} MB/s | Standard cryptographic hashing |")
+    b3 = r['hashing']['blake3_mb_s']
+    s256 = r['hashing']['sha256_mb_s']
+    lines.append(f"| **BLAKE3 (Fish Default)** | **{b3} MB/s** | Cryptographic security + Tree-hashing multi-core SIMD |")
+    lines.append(f"| SHA-256 (Bazel / Git) | {s256} MB/s | Standard cryptographic hashing |")
     lines.append(f"| SHA-1 (Legacy) | {r['hashing']['sha1_mb_s']} MB/s | Broken collisions, legacy use only |")
     lines.append(f"| MD5 | {r['hashing']['md5_mb_s']} MB/s | Insecure, obsolete |")
     lines.append("")
+    if s256 > 0:
+        ratio_hash = round(b3 / s256, 1)
+        lines.append(f"> **CAS Hashing Efficiency**: BLAKE3 is **{ratio_hash}x faster** than SHA-256.")
+        lines.append("")
+
     lines.append("## 2. Artifact Compression Efficiency")
     lines.append("")
     lines.append("| Format | Compression Ratio | Compression Speed | Decompression Speed |")
@@ -283,17 +290,28 @@ def format_markdown(r: Dict) -> str:
     lines.append(f"| **Zstandard (Fish CAS)** | **{z['ratio']}:1** | **{z['compress_mb_s']} MB/s** | **{z['decompress_mb_s']} MB/s** |")
     lines.append(f"| Gzip / Deflate (Tarball) | {g['ratio']}:1 | {g['compress_mb_s']} MB/s | {g['decompress_mb_s']} MB/s |")
     lines.append("")
+    if g['decompress_mb_s'] > 0:
+        ratio_decomp = round(z['decompress_mb_s'] / g['decompress_mb_s'], 1)
+        lines.append(f"> **Cache Restore Efficiency**: Zstandard restores and decompresses artifacts **{ratio_decomp}x faster** than Gzip.")
+        lines.append("")
+
     lines.append("## 3. DAG Scheduler Traversal & Work-Stealing Latency")
     lines.append("")
     lines.append("| Paradigm | Model | Mean Traversal (ms) | Overhead / Task |")
     lines.append("| :--- | :--- | :--- | :--- |")
     s = r['scheduling']
-    lines.append(f"| **Fish Chase-Lev Stealing** | Decentralized Ring Deque | **{s['fish_work_stealing_ms']} ms** | **{s['dispatch_overhead_us_per_task']} µs** |")
-    lines.append(f"| Wavefront Scheduling | Topological Depth Phasing | {s['wavefront_ninja_ms']} ms | ~{round(s['dispatch_overhead_us_per_task'] * 1.8, 2)} µs |")
+    lines.append(f"| **Fish Chase-Lev Stealing** | Decentralized Ring Deque | **{s['fish_work_stealing_ms']} ms** | **{s['dispatch_overhead_us_per_task']} us** |")
+    lines.append(f"| Wavefront Scheduling | Topological Depth Phasing | {s['wavefront_ninja_ms']} ms | ~{round(s['dispatch_overhead_us_per_task'] * 1.8, 2)} us |")
     lines.append("")
     return "\n".join(lines)
 
 def main():
+    if hasattr(sys.stdout, "reconfigure"):
+        try:
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
     parser = argparse.ArgumentParser(description="Fish Polyglot Build Orchestrator Benchmark Suite")
     parser.add_argument("--packages", type=int, default=50, help="Number of packages in synthetic monorepo")
     parser.add_argument("--rounds", type=int, default=5, help="Number of benchmark iterations")

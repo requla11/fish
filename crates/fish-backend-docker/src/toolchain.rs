@@ -27,11 +27,20 @@ pub struct DockerToolchain {
 }
 
 impl DockerToolchain {
+    fn is_daemon_alive(bin: &str) -> bool {
+        std::process::Command::new(bin)
+            .args(["info", "--format", "{{.ServerVersion}}"])
+            .output()
+            .map(|o| o.status.success() && !o.stdout.is_empty())
+            .unwrap_or(false)
+    }
+
     pub fn detect() -> Result<Self> {
         if let Ok(output) = std::process::Command::new("docker")
             .arg("--version")
             .output()
             && output.status.success()
+            && Self::is_daemon_alive("docker")
         {
             let version = String::from_utf8_lossy(&output.stdout).trim().to_string();
             return Ok(Self {
@@ -45,6 +54,7 @@ impl DockerToolchain {
             .arg("--version")
             .output()
             && output.status.success()
+            && Self::is_daemon_alive("podman")
         {
             let version = String::from_utf8_lossy(&output.stdout).trim().to_string();
             return Ok(Self {

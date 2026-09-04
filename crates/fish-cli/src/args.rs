@@ -43,6 +43,7 @@ pub enum Command {
     Clean(CleanArgs),
     Run(RunArgs),
     Graph(GraphArgs),
+    #[command(alias = "dev")]
     Watch(WatchArgs),
     CacheServer(CacheServerArgs),
     Worker(WorkerArgs),
@@ -54,15 +55,16 @@ pub enum Command {
     Rewind(RewindArgs),
     Attest(AttestArgs),
     Verify(VerifyArgs),
+    #[command(hide = true)]
     LivePatch(LivePatchArgs),
+    #[command(hide = true)]
     Jit(JitArgs),
+    #[command(hide = true)]
     SuperOpt(SuperOptArgs),
     Plugin(PluginArgs),
     Fix(FixArgs),
     SigningKey,
-    /// Bisect recent commits after a failed build and prepare a revert branch.
     Heal(HealArgs),
-    /// Regenerate docs/cli-reference.md from clap definitions (internal).
     #[command(hide = true)]
     GenDocs(GenDocsArgs),
     CostEstimate(CostEstimateArgs),
@@ -70,10 +72,14 @@ pub enum Command {
     Ui(UiArgs),
     Query(QueryArgs),
     Daemon(DaemonArgs),
+    #[command(hide = true)]
     Ai(AiArgs),
+    #[command(hide = true)]
     Lsp(LspArgs),
     Why(WhyArgs),
+    #[command(hide = true)]
     Pash(PashArgs),
+    #[command(hide = true)]
     Qpc(QpcArgs),
 }
 
@@ -249,8 +255,18 @@ pub enum CacheCommand {
     /// Delete stale fingerprints and oversized cache content.
     #[command(alias = "gc")]
     Prune(CachePruneArgs),
+    Verify(CacheVerifyArgs),
     /// CAS operations for artifact storage
     Cas(CasArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct CacheVerifyArgs {
+    #[arg(long, short)]
+    pub repair: bool,
+
+    #[arg(long, short)]
+    pub verbose: bool,
 }
 
 /// Arguments for CAS operations
@@ -519,17 +535,27 @@ pub struct RewindArgs {
     pub path: Option<PathBuf>,
 }
 
-/// Arguments for attestation command
 #[derive(Debug, Args)]
 pub struct AttestArgs {
     pub path: Option<PathBuf>,
+    #[arg(long)]
+    pub key: Option<PathBuf>,
+    #[arg(long)]
+    pub seed: Option<String>,
+    #[arg(long)]
+    pub slsa_l3: bool,
 }
 
-/// Arguments for verify command
 #[derive(Debug, Args)]
 pub struct VerifyArgs {
     pub attestation_file: PathBuf,
     pub path: Option<PathBuf>,
+    #[arg(long)]
+    pub public_key: Option<String>,
+    #[arg(long)]
+    pub trusted_keys: Option<PathBuf>,
+    #[arg(long)]
+    pub slsa_l3: bool,
 }
 
 /// Arguments for watch command
@@ -549,10 +575,11 @@ pub struct WatchArgs {
     pub predictive: bool,
 }
 
-/// Arguments for clean command
 #[derive(Debug, Args)]
 pub struct CleanArgs {
     pub path: Option<PathBuf>,
+    #[arg(long, short = 'a')]
+    pub all: bool,
 }
 
 /// Arguments for run command
@@ -621,6 +648,9 @@ pub struct PluginArgs {
 #[derive(Debug, Subcommand)]
 pub enum PluginAction {
     List,
+    Audit {
+        path: PathBuf,
+    },
     Search {
         query: Option<String>,
         #[arg(long)]

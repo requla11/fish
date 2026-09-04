@@ -62,6 +62,12 @@ impl SecurityPolicy {
     }
 
     pub fn is_path_allowed(&self, path: &Path) -> bool {
+        if path
+            .components()
+            .any(|c| matches!(c, std::path::Component::ParentDir))
+        {
+            return false;
+        }
         match self.level {
             SecurityLevel::AllowAll => true,
             SecurityLevel::Strict | SecurityLevel::Paranoid => self
@@ -158,12 +164,17 @@ impl SecurityValidator {
     }
 
     fn is_suspicious_argument(&self, arg: &str) -> bool {
-        let cmd_substitution_patterns = [r"\$\([^)]*\)", r"`[^`]*`", r"\$\{[^}]*\}"];
+        static CMD_REGEXES: std::sync::LazyLock<Vec<regex::Regex>> =
+            std::sync::LazyLock::new(|| {
+                vec![
+                    regex::Regex::new(r"\$\([^)]*\)").unwrap(),
+                    regex::Regex::new(r"`[^`]*`").unwrap(),
+                    regex::Regex::new(r"\$\{[^}]*\}").unwrap(),
+                ]
+            });
 
-        for pattern in cmd_substitution_patterns.iter() {
-            if let Ok(re) = regex::Regex::new(pattern)
-                && re.is_match(arg)
-            {
+        for re in CMD_REGEXES.iter() {
+            if re.is_match(arg) {
                 return true;
             }
         }
@@ -185,15 +196,13 @@ impl SecurityValidator {
             return false;
         }
 
-        if arg.contains('/') || arg.contains('\\') {
-            let has_shell_operators = arg.contains(';') || arg.contains('&') || arg.contains('|');
-            if has_shell_operators {
-                return false;
-            }
-            return true;
+        if (arg.contains('/') || arg.contains('\\'))
+            && (arg.contains(';') || arg.contains('&') || arg.contains('|'))
+        {
+            return false;
         }
 
-        false
+        arg.contains('/') || arg.contains('\\')
     }
 
     pub fn update_policy(&self, new_policy: SecurityPolicy) -> Result<(), SecurityError> {
@@ -352,6 +361,7 @@ mod tests {
 
         assert!(policy.is_path_allowed(Path::new("/safe/file")));
         assert!(!policy.is_path_allowed(Path::new("/unsafe/file")));
+        assert!(!policy.is_path_allowed(Path::new("/safe/../unsafe/file")));
     }
 
     #[test]

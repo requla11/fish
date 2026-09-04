@@ -1,20 +1,16 @@
-# Scoop manifest for Fish (Windows package manager).
-# Install: scoop install https://raw.githubusercontent.com/requla11/fish/main/packaging/fish.json
-# Update this file in the release pipeline when a new version ships.
-
 {
-    "version": "0.5.0",
+    "version": "0.6.0",
     "description": "Fast, flexible, cache-first build orchestration system for Rust and beyond.",
     "homepage": "https://github.com/requla11/fish",
     "license": "MIT",
     "architecture": {
         "64bit": {
-            "url": "https://github.com/requla11/fish/releases/download/v0.5.0/fish-0.5.0-x86_64-pc-windows-msvc.zip",
+            "url": "https://github.com/requla11/fish/releases/download/v0.6.0/fish-0.6.0-x86_64-pc-windows-msvc.zip",
             "hash": "a57835a2978134b7835d19ca40ab0ba35fced8f0f6a879f215c3b3c9f644064d"
         }
     },
     "bin": [
-        ["fish-0.5.0-x86_64-pc-windows-msvc\\fish.exe", "fish"]
+        ["fish-0.6.0-x86_64-pc-windows-msvc\\fish.exe", "fish"]
     ],
     "checkver": {
         "github": "https://github.com/requla11/fish"

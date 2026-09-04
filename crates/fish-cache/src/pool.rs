@@ -143,7 +143,7 @@ impl ScopedBuffer {
 
 impl Drop for ScopedBuffer {
     fn drop(&mut self) {
-        if !self.buffer.is_empty() {
+        if !self.buffer.is_empty() || self.buffer.capacity() > 0 {
             self.pool.return_buffer(std::mem::take(&mut self.buffer));
         }
     }

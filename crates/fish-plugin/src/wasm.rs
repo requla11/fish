@@ -154,13 +154,31 @@ impl WasmPluginEngine {
     }
 
     pub fn is_path_hermetic_safe(workspace_root: &Path, target_path: &Path) -> bool {
-        if let Ok(canon_root) = fs::canonicalize(workspace_root)
-            && let Ok(canon_target) = fs::canonicalize(target_path)
+        if target_path
+            .components()
+            .any(|c| matches!(c, std::path::Component::ParentDir))
         {
-            return canon_target.starts_with(canon_root);
+            return false;
         }
-        let str_rep = target_path.to_string_lossy();
-        !str_rep.contains("..")
+        let full_path = if target_path.is_absolute() {
+            target_path.to_path_buf()
+        } else {
+            workspace_root.join(target_path)
+        };
+        let Ok(canon_root) = fs::canonicalize(workspace_root) else {
+            return false;
+        };
+        if let Ok(canon_target) = fs::canonicalize(&full_path) {
+            return canon_target.starts_with(&canon_root);
+        }
+        let mut ancestor = full_path.as_path();
+        while let Some(parent) = ancestor.parent() {
+            ancestor = parent;
+            if let Ok(canon_ancestor) = fs::canonicalize(ancestor) {
+                return canon_ancestor.starts_with(&canon_root);
+            }
+        }
+        false
     }
 
     /// Execute a declared plugin hook inside the WASM sandbox.
@@ -472,5 +490,28 @@ mod tests {
         let names = registry.plugin_names();
         assert!(names.contains(&"proto_gen".to_string()));
         assert!(names.contains(&"linter".to_string()));
+    }
+
+    #[test]
+    fn test_is_path_hermetic_safe_traversal() {
+        let temp = tempdir().unwrap();
+        let ws = temp.path();
+
+        assert!(WasmPluginEngine::is_path_hermetic_safe(
+            ws,
+            Path::new("sub/dir/file.txt")
+        ));
+        assert!(!WasmPluginEngine::is_path_hermetic_safe(
+            ws,
+            Path::new("../outside.txt")
+        ));
+        assert!(!WasmPluginEngine::is_path_hermetic_safe(
+            ws,
+            Path::new("sub/../../outside.txt")
+        ));
+
+        let outside_temp = tempdir().unwrap();
+        let outside_file = outside_temp.path().join("nonexistent.txt");
+        assert!(!WasmPluginEngine::is_path_hermetic_safe(ws, &outside_file));
     }
 }

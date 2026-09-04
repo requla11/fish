@@ -33,12 +33,16 @@ pub struct AutoRemediator;
 
 impl AutoRemediator {
     pub fn parse_diagnostics(compiler_output: &str) -> Vec<CompilerDiagnostic> {
-        let mut diagnostics = Vec::new();
-        let error_regex =
+        static ERROR_REGEX: std::sync::LazyLock<Regex> = std::sync::LazyLock::new(|| {
             Regex::new(r"(?m)^(?:error\[E\d+\]:\s+)?(.+?):(\d+):(\d+):\s+(?:error:\s+)?(.+)$")
-                .unwrap();
+                .unwrap()
+        });
+        static RUST_ALT: std::sync::LazyLock<Regex> =
+            std::sync::LazyLock::new(|| Regex::new(r"-->\s+(.+?):(\d+):(\d+)").unwrap());
 
-        for cap in error_regex.captures_iter(compiler_output) {
+        let mut diagnostics = Vec::new();
+
+        for cap in ERROR_REGEX.captures_iter(compiler_output) {
             let file_str = cap.get(1).map(|m| m.as_str()).unwrap_or_default();
             let line: usize = cap
                 .get(2)
@@ -66,8 +70,7 @@ impl AutoRemediator {
         }
 
         if diagnostics.is_empty() {
-            let rust_alt = Regex::new(r"-->\s+(.+?):(\d+):(\d+)").unwrap();
-            for cap in rust_alt.captures_iter(compiler_output) {
+            for cap in RUST_ALT.captures_iter(compiler_output) {
                 let file_str = cap.get(1).map(|m| m.as_str()).unwrap_or_default();
                 let line: usize = cap
                     .get(2)

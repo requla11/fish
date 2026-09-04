@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 use std::fs;
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -121,7 +121,7 @@ impl RemoteCacheServer {
                         });
                     }
                     Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                        thread::sleep(Duration::from_millis(5));
+                        thread::sleep(Duration::from_millis(50));
                     }
                     Err(_) => {
                         break;
@@ -166,7 +166,12 @@ impl RemoteCacheServer {
         let mut reader = BufReader::new(reader_stream);
         let mut line = String::new();
 
-        while reader.read_line(&mut line)? > 0 {
+        while reader
+            .by_ref()
+            .take(64 * 1024 * 1024 + 1)
+            .read_line(&mut line)?
+            > 0
+        {
             if line.len() > 64 * 1024 * 1024 {
                 return Err(anyhow::anyhow!("request line exceeds maximum size limit"));
             }

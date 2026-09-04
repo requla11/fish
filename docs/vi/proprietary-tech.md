@@ -1,68 +1,66 @@
-# Công nghệ độc quyền & Thuật toán thế hệ mới của Fish
+# Các Thuật Toán Nâng Cao & Cải Tiến Kiến Trúc Của Fish
 
-> 🌐 **Chuyển đổi ngôn ngữ:**
+> 🌐 **Điều hướng ngôn ngữ / Language Navigation:**
 > [English](../proprietary-tech.md) | [Tiếng Việt](proprietary-tech.md) | [日本語](../ja/proprietary-tech.md) | [简体中文](../zh-hans/proprietary-tech.md) | [繁體中文](../zh-hant/proprietary-tech.md)
 
 ---
 
-## ⚡ Tổng quan: Fish Quantum Polyglot Core (QPC)
+## ⚡ Tổng Quan: Các Cải Tiến Cốt Lõi Trong Fish
 
-Fish đang tiên phong phát triển bộ 4 thuật toán độc quyền, được thiết kế để giải quyết triệt để các điểm nghẽn hiệu năng cốt lõi trong monorepo đa ngôn ngữ và hệ thống build phân tán.
+Fish tích hợp bốn thuật toán chuyên biệt được thiết kế để giải quyết bài toán quy mô, hủy cache (invalidation) và độ trễ tăng dần trong monorepo đa ngôn ngữ:
 
 ```
 +-------------------------------------------------------------------------------+
-|                      FISH QUANTUM POLYGLOT CORE (QPC)                         |
+|                      CÁC CẢI TIẾN THUẬT TOÁN CỐT LÕI CỦA FISH                 |
 +-------------------------------------------------------------------------------+
 |  1. Poly-ABI Semantic HyperGraph (PASH)                                       |
-|     --> Trích xuất biên giới giao diện công khai & ngắt lan truyền invalidation |
+|     --> Trích xuất symbol ranh giới interface & ngăn chặn cascade hủy cache   |
 |                                                                               |
 |  2. Iso-Semantic Morphic Fingerprinting (IS-MFP)                              |
-|     --> Kiến trúc Dual-Key CAS triệt tiêu hiện tượng sụp đổ Cache (Cache Cliff)|
+|     --> Chuẩn hóa CAS Dual-Key loại bỏ tình trạng cache miss giữa Local & CI  |
 |                                                                               |
 |  3. Speculative Wavelet Pre-Execution (SWPE)                                  |
-|     --> Build đón đầu thời gian thực qua dòng token LSP với chi phí 0ms      |
+|     --> Phân loại mức năng lượng thao tác gõ phím & pre-warm đồ thị tác vụ    |
 |                                                                               |
-|  4. CAS-VLink (Virtual Jump-Table Splicer)                                    |
-|     --> Bỏ qua Linker hệ thống nhờ bảng nhảy nhị phân Zero-Copy mmap          |
+|  4. Virtual Binary Dispatch Table (CAS-VLink)                                 |
+|     --> Bảng overlay dispatch nhị phân trên RAM cho vòng lặp lặp lại nhanh    |
 +-------------------------------------------------------------------------------+
 ```
 
 ---
 
 ## 🔬 1. Poly-ABI Semantic HyperGraph (PASH)
-* **Trạng thái**: Đang phát triển tích cực (`crates/fish-graph`, `crates/fish-core`).
-* **Vấn đề**: Các build system hiện nay tự động invalidate toàn bộ target hạ nguồn khi file nguồn thượng nguồn đổi, dù API/ABI không thay đổi.
+* **Vị trí**: `crates/fish-graph`, `crates/fish-core`
+* **Vấn đề**: Các hệ thống build truyền thống thường vô hiệu hóa toàn bộ target phụ thuộc khi bất kỳ file nguồn nào thay đổi, ngay cả khi interface công khai (API/signature) không hề thay đổi.
 * **Cơ chế**:
-  * Tự động trích xuất **Public Interface Boundary (PIB)** cho cả 11 backend ngôn ngữ.
+  * Quét các chữ ký interface công khai được export trên toàn bộ 11 backend hỗ trợ (Rust, C/C++, Go, TS/JS, Python, Java, .NET, Swift, Dart, Zig, Docker).
   * Tính toán giá trị băm bất biến `Symbolic Boundary Hash (SBH)`.
-  * Khi file nguồn thay đổi nhưng `SBH` không đổi, PASH ngắt hoàn toàn chuỗi invalidation cascade xuyên biên giới ngôn ngữ.
+  * Khi các chi tiết cài đặt nội bộ thay đổi nhưng `SBH` giữ nguyên, PASH sẽ ngắt chuỗi hủy cache lan truyền, tiết kiệm đáng kể thời gian build lại.
 
 ---
 
 ## 🧬 2. Iso-Semantic Morphic Fingerprinting (IS-MFP)
-* **Trạng thái**: Đang phát triển tích cực (`crates/fish-cache`, `crates/fish-cas`).
-* **Vấn đề**: Khác biệt đường dẫn thư mục và entropy môi trường khiến tỷ lệ Cache Hit tụt về 0% khi chuyển đổi giữa máy cá nhân và CI.
+* **Vị trí**: `crates/fish-cache`, `crates/fish-cas`
+* **Vấn đề**: Sự khác biệt về đường dẫn thư mục, định dạng và biến môi trường khiến tỷ lệ cache hit thường về 0% khi chuyển đổi giữa máy phát triển cục bộ và CI runner.
 * **Cơ chế**:
-  * Triển khai kiến trúc băm 2 khóa **Dual-Key Hashing Architecture** (`ExactKey` + `MorphicKey`).
-  * Chuẩn hóa cấu trúc ngữ nghĩa AST và loại bỏ nhiễu đường dẫn/timestamp.
-  * Tự động fallback sang khớp Morphic khi Exact miss, nâng tỷ lệ tái sử dụng cache lên >95%.
+  * Triển khai **Kiến trúc Băm Khóa Kép (Dual-Key)** gồm `ExactKey` và `MorphicKey`.
+  * Chuẩn hóa đường dẫn tương đối (chuyển dấu `\` của Windows sang `/`) và lọc nhiễu môi trường biến động.
+  * Tự động fallback sang khớp morphic khi không trúng exact hit, tối đa hóa khả năng tái sử dụng cache.
 
 ---
 
 ## 🌊 3. Speculative Wavelet Pre-Execution (SWPE)
-* **Trạng thái**: Đang phát triển tích cực (`crates/fish-scheduler`, `crates/fish-incremental`).
-* **Vấn đề**: Các hệ thống bị động chỉ bắt đầu build khi bấm lưu (`Ctrl+S`) hoặc gõ lệnh, gây lãng phí thời gian chờ đợi.
+* **Vị trí**: `crates/fish-incremental`
+* **Vấn đề**: Các hệ thống build thụ động phải đợi thao tác lưu file hoặc lệnh build từ terminal, gây tích tụ độ trễ cho lập trình viên.
 * **Cơ chế**:
-  * Kết nối trực tiếp với `Fish LSP Bridge` để theo dõi dòng biến thiên cú pháp (wavelet) thời gian thực.
-  * Điều phối CPU nhàn rỗi ngầm (Jobserver) để chuẩn bị sẵn type inference và ngữ cảnh bộ nhớ codegen.
-  * Mang lại phản hồi thực thi tức thì (<1ms) ngay khi người dùng lưu file.
+  * Phân loại các thay đổi từ trình soạn thảo thành các mức năng lượng (`TrivialWhitespace`, `CommentOnly`, `InternalStatement`, `GlobalInterface`).
+  * Chuẩn bị sẵn sàng trạng thái phụ thuộc của tác vụ và buffer artifact trong bộ nhớ ngầm trước khi thực hiện lệnh build hoàn chỉnh.
 
 ---
 
-## ⚡ 4. CAS-VLink (Virtual Jump-Table Splicer)
-* **Trạng thái**: Đang phát triển tích cực (`crates/fish-executor`, `crates/fish-cas`).
-* **Vấn đề**: Linker hệ thống (`ld`, `lld`, `link.exe`) chiếm 40-60% thời gian biên dịch các binary lớn (C++, Rust, Swift, Go).
+## ⚡ 4. Virtual Binary Dispatch Table (CAS-VLink)
+* **Vị trí**: `crates/fish-executor`
+* **Vấn đề**: Quá trình liên kết (link) toàn bộ file nhị phân tiêu tốn thời gian đáng kể trong các vòng lặp phát triển nhỏ.
 * **Cơ chế**:
-  * Xây dựng bảng điều hướng nhị phân ảo **Virtual Binary Dispatch Table (VBDT)** trong output binary.
-  * Sử dụng zero-copy memory mapping để ghép nối trực tiếp binary object mới mà không cần chạy lại Linker hệ thống.
-  * Tăng tốc độ tái tạo binary lên 10x-50x trong các vòng lặp code lặp đi lặp lại.
+  * Duy trì một bảng `VirtualBinaryDispatchTable` trong bộ nhớ ánh xạ địa chỉ symbol và khối bytecode.
+  * Sinh ra cấu trúc runtime binary overlay (`VLINK_DISPATCH_HEADER_V1`) hỗ trợ thay thế symbol nhanh chóng trong chu kỳ kiểm thử tăng dần.

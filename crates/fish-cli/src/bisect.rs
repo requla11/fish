@@ -1,34 +1,28 @@
 use std::path::Path;
 use std::process::{Command, Stdio};
 
-/// One commit from the scan window.
+use crate::self_heal;
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct CommitInfo {
     pub hash: String,
     pub subject: String,
 }
 
-/// Result of a full healing run.
 #[derive(Debug, Clone, PartialEq)]
 pub enum HealOutcome {
-    /// The newest commit builds fine — nothing to do.
     NothingBroken,
-    /// Every commit in the window failed; cannot isolate a culprit.
     NoGoodCommitWithinDepth { depth: usize },
-    /// A revert branch was created locally and is ready for human review.
     RevertPrepared(Box<RevertPlan>),
 }
 
-/// A prepared, human-approved revert.
-///
-/// Fish never pushes or merges this — it only creates a local branch
-/// containing one revert commit plus the PR text to open against dev.
 #[derive(Debug, Clone, PartialEq)]
 pub struct RevertPlan {
     pub branch: String,
     pub culprit: CommitInfo,
     pub pr_title: String,
     pub pr_body: String,
+    pub suggestions: Vec<self_heal::RepairSuggestion>,
 }
 
 fn git(repo: &Path, args: &[&str]) -> std::io::Result<String> {
@@ -48,7 +42,6 @@ fn git(repo: &Path, args: &[&str]) -> std::io::Result<String> {
     Ok(String::from_utf8_lossy(&out.stdout).into_owned())
 }
 
-/// Newest-first list of commit hashes + subjects.
 pub fn list_recent_commits(repo: &Path, depth: usize) -> std::io::Result<Vec<CommitInfo>> {
     let out = git(repo, &["log", &format!("-n{depth}"), "--format=%H %s"])?;
     Ok(out
@@ -62,12 +55,10 @@ pub fn list_recent_commits(repo: &Path, depth: usize) -> std::io::Result<Vec<Com
         .collect())
 }
 
-/// True when `git status --porcelain` reports any change.
 pub fn working_tree_dirty(repo: &Path) -> std::io::Result<bool> {
     Ok(!git(repo, &["status", "--porcelain"])?.trim().is_empty())
 }
 
-/// Current branch name (falls back to short hash when detached).
 pub fn current_ref(repo: &Path) -> std::io::Result<String> {
     let out = git(repo, &["rev-parse", "--abbrev-ref", "HEAD"])?;
     let name = out.trim();
@@ -79,8 +70,7 @@ pub fn current_ref(repo: &Path) -> std::io::Result<String> {
     }
 }
 
-/// Scan newest→oldest, invoking `run_build` once per commit until the
-/// first pass. Returns the index of the newest passing commit.
+#[allow(dead_code)]
 pub fn find_first_good_index(
     commits: &[CommitInfo],
     mut run_build: impl FnMut() -> bool,
@@ -88,18 +78,64 @@ pub fn find_first_good_index(
     commits.iter().position(|_| run_build())
 }
 
-/// Pure helper producing the local branch name and PR copy for a
-/// culprit commit. No side effects.
+pub fn bisect_binary_search(
+    commits: &[CommitInfo],
+    mut run_build: impl FnMut(usize) -> bool,
+) -> Option<usize> {
+    if commits.is_empty() {
+        return None;
+    }
+    if run_build(0) {
+        return Some(0);
+    }
+    let last = commits.len() - 1;
+    if !run_build(last) {
+        return None;
+    }
+
+    let mut low = 0;
+    let mut high = last;
+    while low + 1 < high {
+        let mid = low + (high - low) / 2;
+        if run_build(mid) {
+            high = mid;
+        } else {
+            low = mid;
+        }
+    }
+    Some(high)
+}
+
+#[allow(dead_code)]
 pub fn plan_revert(culprit: &CommitInfo) -> RevertPlan {
+    plan_revert_with_diagnostics(culprit, &[])
+}
+
+pub fn plan_revert_with_diagnostics(
+    culprit: &CommitInfo,
+    suggestions: &[self_heal::RepairSuggestion],
+) -> RevertPlan {
     let short: String = culprit.hash.chars().take(8).collect();
     let branch = format!("fish/revert-{short}");
     let pr_title = format!("Revert \"{}\"", culprit.subject);
+
+    let mut diagnostics_section = String::new();
+    if !suggestions.is_empty() {
+        diagnostics_section.push_str("\n### Automated Root-Cause Analysis\n");
+        for sug in suggestions {
+            diagnostics_section.push_str(&format!(
+                "- **Category**: `{}`\n  - **Match**: `{}`\n  - **Advice**: {}\n",
+                sug.category, sug.matched_line, sug.advice
+            ));
+        }
+    }
+
     let pr_body = format!(
         "Automated revert prepared by `fish heal`.\n\n\
          Culprit: `{}` — {}\n\n\
          The build failed at HEAD but succeeded at this commit's parent.\n\
-         Review carefully before merging; the revert may conflict with \
-         later work.\n\nPublish with:\n\n    \
+         Review carefully before merging; the revert may conflict with later work.{diagnostics_section}\n\n\
+         Publish with:\n\n    \
          git push -u origin {branch}\n    \
          gh pr create --fill",
         culprit.hash,
@@ -111,6 +147,7 @@ pub fn plan_revert(culprit: &CommitInfo) -> RevertPlan {
         culprit: culprit.clone(),
         pr_title,
         pr_body,
+        suggestions: suggestions.to_vec(),
     }
 }
 
@@ -118,8 +155,6 @@ fn checkout_detached(repo: &Path, hash: &str) -> std::io::Result<()> {
     git(repo, &["checkout", "-q", "--detach", hash]).map(|_| ())
 }
 
-/// `git -c user.name=… -c user.email=…` flags injected only when the
-/// repository has no committer identity configured (fresh CI runners).
 fn git_author_flags(repo: &Path) -> Vec<String> {
     let configured = Command::new("git")
         .args(["config", "user.email"])
@@ -145,23 +180,30 @@ fn restore_ref(repo: &Path, reference: &str) -> std::io::Result<()> {
     git(repo, &["checkout", "-q", reference]).map(|_| ())
 }
 
-fn run_build_command(repo: &Path, words: &[String]) -> bool {
+fn run_build_command_captured(repo: &Path, words: &[String]) -> (bool, String) {
     match words.split_first() {
-        Some((program, rest)) => Command::new(program)
+        Some((program, rest)) => match Command::new(program)
             .args(rest)
             .current_dir(repo)
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status()
-            .map(|s| s.success())
-            .unwrap_or(false),
-        None => false,
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .output()
+        {
+            Ok(output) => {
+                let success = output.status.success();
+                let combined = format!(
+                    "{}\n{}",
+                    String::from_utf8_lossy(&output.stdout),
+                    String::from_utf8_lossy(&output.stderr)
+                );
+                (success, combined)
+            }
+            Err(e) => (false, e.to_string()),
+        },
+        None => (false, String::new()),
     }
 }
 
-/// Full orchestration: verify clean tree, walk recent commits newest→oldest
-/// running the build command at each detached HEAD, isolate the newest
-/// failing commit, prepare a revert branch, and restore the original ref.
 pub fn heal(repo: &Path, depth: usize, build_words: &[String]) -> std::io::Result<HealOutcome> {
     if working_tree_dirty(repo)? {
         return Err(std::io::Error::other(
@@ -175,13 +217,18 @@ pub fn heal(repo: &Path, depth: usize, build_words: &[String]) -> std::io::Resul
         return Err(std::io::Error::other("repository has no commits"));
     }
 
-    let mut probe_idx = 0usize;
-    let first_good = find_first_good_index(&commits, || {
-        let commit = &commits[probe_idx];
-        probe_idx += 1;
-        checkout_detached(repo, &commit.hash)
-            .map(|_| run_build_command(repo, build_words))
-            .unwrap_or(false)
+    let mut last_failure_output = String::new();
+    let first_good = bisect_binary_search(&commits, |idx| {
+        let commit = &commits[idx];
+        if checkout_detached(repo, &commit.hash).is_ok() {
+            let (success, out) = run_build_command_captured(repo, build_words);
+            if !success && idx == 0 {
+                last_failure_output = out;
+            }
+            success
+        } else {
+            false
+        }
     });
 
     restore_ref(repo, &original)?;
@@ -194,7 +241,8 @@ pub fn heal(repo: &Path, depth: usize, build_words: &[String]) -> std::io::Resul
     }
 
     let culprit = commits[good_idx - 1].clone();
-    let plan = Box::new(plan_revert(&culprit));
+    let suggestions = self_heal::analyze_failure(&last_failure_output);
+    let plan = Box::new(plan_revert_with_diagnostics(&culprit, &suggestions));
 
     git(repo, &["checkout", "-q", "-b", &plan.branch])?;
     let mut rev_args: Vec<String> = git_author_flags(repo);
@@ -202,7 +250,6 @@ pub fn heal(repo: &Path, depth: usize, build_words: &[String]) -> std::io::Resul
     let rev_refs: Vec<&str> = rev_args.iter().map(String::as_str).collect();
     let reverted = git(repo, &rev_refs);
     if let Err(e) = reverted {
-        // Clean up the conflicted branch attempt and get out safely.
         let _ = git(repo, &["revert", "--abort"]);
         let _ = restore_ref(repo, &original);
         let _ = git(repo, &["branch", "-D", &plan.branch]);
@@ -237,6 +284,35 @@ mod tests {
             plan.pr_body
                 .contains("git push -u origin fish/revert-abcdef12")
         );
+    }
+
+    #[test]
+    fn plan_revert_includes_diagnostics() {
+        let suggestions = vec![self_heal::RepairSuggestion {
+            category: "missing-symbol",
+            matched_line: "cannot find function `foo` in crate `bar`".into(),
+            advice: "Check feature gates".into(),
+        }];
+        let plan = plan_revert_with_diagnostics(
+            &commit_info("abcdef1234567890", "break the build"),
+            &suggestions,
+        );
+        assert!(plan.pr_body.contains("Automated Root-Cause Analysis"));
+        assert!(plan.pr_body.contains("missing-symbol"));
+    }
+
+    #[test]
+    fn test_bisect_binary_search_finds_exact_boundary() {
+        let commits = vec![
+            commit_info("c5", "failing head"),
+            commit_info("c4", "failing"),
+            commit_info("c3", "failing"),
+            commit_info("c2", "passing"),
+            commit_info("c1", "passing base"),
+        ];
+
+        let idx = bisect_binary_search(&commits, |i| i >= 3);
+        assert_eq!(idx, Some(3));
     }
 
     #[test]
@@ -284,8 +360,6 @@ mod tests {
         run(&["commit", "-m", "base with canary"]);
     }
 
-    /// Same as above but without committing the canary, so every commit
-    /// fails the probe command (depth-exhaustion scenario).
     fn git_init_without_canary(dir: &Path) {
         Command::new("git")
             .args(["-c", "user.email=fish@test", "-c", "user.name=fish"])
@@ -314,8 +388,6 @@ mod tests {
             .expect("git");
     }
 
-    /// Probe succeeds iff `canary.txt` is tracked at the checked-out
-    /// commit. Pure git — identical behaviour on every platform.
     fn build_cmd_for() -> Vec<String> {
         vec!["git".into(), "show".into(), "HEAD:canary.txt".into()]
     }
@@ -360,13 +432,11 @@ mod tests {
         };
         assert!(plan.culprit.subject.contains("delete canary"));
 
-        // Back on master/main, and the revert branch exists.
         let branch = current_ref(repo).unwrap();
         assert_ne!(branch, plan.branch);
         let branches = git(repo, &["branch", "--list", &plan.branch]).unwrap();
         assert!(!branches.trim().is_empty());
 
-        // Switching to the branch shows a revert commit restoring the canary.
         restore_ref(repo, &plan.branch).unwrap();
         assert!(repo.join("canary.txt").exists());
     }
@@ -384,7 +454,6 @@ mod tests {
     fn heal_all_fail_reports_depth_exhausted() {
         let dir = tempfile::tempdir().unwrap();
         let repo = dir.path();
-        // No canary ever committed → the probe fails at every commit.
         git_init_without_canary(repo);
         add_empty_commit(repo, "more work without canary");
         let build = build_cmd_for();

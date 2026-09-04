@@ -24,7 +24,7 @@ impl NodeId {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Node<T> {
     pub id: NodeId,
 
@@ -33,7 +33,7 @@ pub struct Node<T> {
     pub state: TaskState,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BuildGraph<T> {
     nodes: Vec<Node<T>>,
     deps: Vec<Vec<NodeId>>,

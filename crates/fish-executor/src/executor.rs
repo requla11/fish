@@ -101,6 +101,10 @@ fn kill_process_tree(child: &mut std::process::Child) {
 
 #[cfg(all(unix, target_os = "macos"))]
 fn kill_process_tree(child: &mut std::process::Child) {
+    let pid = child.id() as i32;
+    let _ = std::process::Command::new("pkill")
+        .args(["-P", &pid.to_string()])
+        .status();
     let _ = child.kill();
     let _ = child.wait();
 }
@@ -200,22 +204,25 @@ impl ProcessExecutor {
 
 impl TaskExecutor for ProcessExecutor {
     fn execute(&self, task: &Task) -> Result<TaskOutcome, ExecutorError> {
-        // Prefer async I/O path via shared tokio runtime to avoid 2 OS threads per task.
-        // If already inside a tokio runtime, fall back to sync to avoid nested block_on deadlock.
         if tokio::runtime::Handle::try_current().is_err() {
             let async_exec = crate::async_executor::AsyncProcessExecutor::with_timeout(
                 self.verbose,
                 self.timeout,
             );
             let rt = global_runtime();
-            // Catch panics from block_on to ensure fallback
             let res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                 rt.block_on(async_exec.execute_async(task))
             }));
             match res {
                 Ok(Ok(outcome)) => return Ok(outcome),
                 Ok(Err(e)) => return Err(e),
-                Err(_) => {} // fallback to sync
+                Err(_) => {}
+            }
+        } else {
+            let this = self.clone();
+            let task_clone = task.clone();
+            if let Ok(res) = tokio::task::block_in_place(move || this.execute_sync(&task_clone)) {
+                return Ok(res);
             }
         }
         self.execute_sync(task)

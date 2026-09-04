@@ -1,11 +1,5 @@
-# Winget manifest for Fish.
-# Submit to microsoft/winget-pkgs via:
-#   wingetcreate new https://github.com/requla11/fish/releases/download/v0.5.0/fish-0.5.0-x86_64-pc-windows-msvc.zip
-# The release pipeline can automate this with `wingetcreate update`.
-
-# yaml-language-server: $schema=https://aka.ms/winget-manifest.singleton.1.6.0.schema.json
 PackageIdentifier: requla11.fish
-PackageVersion: 0.5.0
+PackageVersion: 0.6.0
 PackageName: Fish Build
 Publisher: Fish Contributors
 License: MIT
@@ -20,11 +14,11 @@ Tags:
 Installers:
   - Architecture: x64
     InstallerType: zip
-    InstallerUrl: https://github.com/requla11/fish/releases/download/v0.5.0/fish-0.5.0-x86_64-pc-windows-msvc.zip
+    InstallerUrl: https://github.com/requla11/fish/releases/download/v0.6.0/fish-0.6.0-x86_64-pc-windows-msvc.zip
     InstallerSha256: CC2804604C1D9018246072C44DBD2AAC28B2DA2E26F7610B05A00E7D4AF7C9F8
     NestedInstallerType: portable
     NestedInstallerFiles:
-      - RelativeFilePath: fish-0.5.0-x86_64-pc-windows-msvc\fish.exe
+      - RelativeFilePath: fish-0.6.0-x86_64-pc-windows-msvc\fish.exe
         PortableCommandAlias: fish
 ManifestType: singleton
 ManifestVersion: 1.6.0

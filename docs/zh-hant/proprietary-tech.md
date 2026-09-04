@@ -1,56 +1,66 @@
-# Fish 獨家專有技術與下一代演算法
+# Fish 進階演算法與架構創新
 
-> 🌐 **語言導航 / 语言导航:**
+> 🌐 **多語言導覽 / Language Navigation:**
 > [English](../proprietary-tech.md) | [Tiếng Việt](../vi/proprietary-tech.md) | [日本語](../ja/proprietary-tech.md) | [简体中文](../zh-hans/proprietary-tech.md) | [繁體中文](proprietary-tech.md)
 
 ---
 
-## ⚡ 概述: Fish Quantum Polyglot Core (QPC)
+## ⚡ 概述: Fish 核心演算法創新
 
-Fish 正在開創性地研發四項專有核心演算法，旨在從根本上解決多語言程式碼倉庫（Monorepo）與分散式構建系統中的失效擴散與效能瓶頸。
+Fish 整合了四種專用演算法，旨在解決多語言 Monorepo 中的擴展性、快取失效與增量延遲挑戰：
 
 ```
 +-------------------------------------------------------------------------------+
-|                      FISH QUANTUM POLYGLOT CORE (QPC)                         |
+|                            FISH 核心演算法創新                                |
 +-------------------------------------------------------------------------------+
 |  1. Poly-ABI Semantic HyperGraph (PASH)                                       |
-|     --> 跨語言公共介面邊界提取與失效級聯阻斷                                  |
+|     --> 介面邊界符號提取與下游失效級聯截斷                                    |
 |                                                                               |
 |  2. Iso-Semantic Morphic Fingerprinting (IS-MFP)                              |
-|     --> 消除跨環境「快取懸崖（Cache Cliff）」的雙鍵 CAS 引擎                   |
+|     --> 雙鍵 CAS 規範化，消除跨環境快取未命中                                |
 |                                                                               |
 |  3. Speculative Wavelet Pre-Execution (SWPE)                                  |
-|     --> 基於即時 LSP 權杖流的零開銷前瞻性微編譯                               |
+|     --> 編輯事件能量分級與主動相依預熱                                        |
 |                                                                               |
-|  4. CAS-VLink (Virtual Jump-Table Splicer)                                    |
-|     --> 繞過系統連結器的零拷貝虛擬跳轉表二進位拼接引擎                        |
+|  4. Virtual Binary Dispatch Table (CAS-VLink)                                 |
+|     --> 用於快速增量迭代的記憶體符號調度覆蓋層                                |
 +-------------------------------------------------------------------------------+
 ```
 
 ---
 
 ## 🔬 1. Poly-ABI Semantic HyperGraph (PASH)
-* **狀態**: 積極開發中 (`crates/fish-graph`, `crates/fish-core`)
-* **問題**: 現有構建系統在原始碼變更時，即使公共介面（ABI）未改變，也會使所有下游多語言目標失效。
-* **機制**: 自動提取全部 11 種語言後端的公共介面邊界（PIB），計算不變的 `Symbolic Boundary Hash (SBH)`。當僅有內部邏輯變更時，PASH 會切斷跨語言失效傳播。
+* **位置**: `crates/fish-graph`, `crates/fish-core`
+* **問題**: 傳統建置系統在任何上游原始檔發生變更時，都會使所有下游目標失效，即使公開介面（API/簽章）完全未變。
+* **機制**:
+  * 掃描全部 11 個支援的後端導出的公開介面簽章。
+  * 計算確定性的符號邊界雜湊 `Symbolic Boundary Hash (SBH)`。
+  * 當內部實作變更而 `SBH` 保持相同時，PASH 截斷失效級聯，避免冗餘重建。
 
 ---
 
 ## 🧬 2. Iso-Semantic Morphic Fingerprinting (IS-MFP)
-* **狀態**: 積極開發中 (`crates/fish-cache`, `crates/fish-cas`)
-* **問題**: 路徑差異與環境熵導致本機與 CI 流水線之間的快取命中率降至 0%（快取懸崖）。
-* **機制**: 引入雙鍵雜湊架構（`ExactKey` + `MorphicKey`），正規化 AST 結構熵並剔除路徑/時間戳記干擾，實現跨環境 >95% 的快取複用率。
+* **位置**: `crates/fish-cache`, `crates/fish-cas`
+* **問題**: 工作區路徑差異、格式差異與環境波動常導致本地開發機與 CI Runner 之間的快取命中率降為 0%。
+* **機制**:
+  * 實作包含 `ExactKey` 與 `MorphicKey` 的**雙鍵雜湊架構**。
+  * 規範化相對路徑（將 Windows 反斜線轉換為斜線）並過濾易變環境變數。
+  * 未精確命中時回退至同態匹配，最大化不同環境間的快取復用率。
 
 ---
 
 ## 🌊 3. Speculative Wavelet Pre-Execution (SWPE)
-* **狀態**: 積極開發中 (`crates/fish-scheduler`, `crates/fish-incremental`)
-* **問題**: 被動式構建系統必須等待儲存快速鍵或終端命令，導致開發者頻繁等待。
-* **机制**: 直連 `Fish LSP Bridge` 接收擊鍵語法小波流，調度後台空閒 CPU 權杖預熱型別推導與中間程式碼上下文。
+* **位置**: `crates/fish-incremental`
+* **問題**: 被動式建置系統需等待手動儲存或指令執行，操作累積導致開發者等待延遲。
+* **機制**:
+  * 將編輯器事件差異劃分為不同能量級別（`TrivialWhitespace`、`CommentOnly`、`InternalStatement`、`GlobalInterface`）。
+  * 在完整建置執行前，於背景記憶體中預先準備任務相依狀態。
 
 ---
 
-## ⚡ 4. CAS-VLink (Virtual Jump-Table Splicer)
-* **狀態**: 積極開發中 (`crates/fish-executor`, `crates/fish-cas`)
-* **問題**: 系統連結器（`ld`, `lld`）消耗大型二進位檔案 40-60% 的構建耗時。
-* **機制**: 在輸出二進位中構建虛擬分發跳轉表（VBDT），零拷貝直接拼接變更段，使反覆運算連結速度提升 10 到 50 倍。
+## ⚡ 4. Virtual Binary Dispatch Table (CAS-VLink)
+* **位置**: `crates/fish-executor`
+* **問題**: 在快速增量迭代中，頻繁進行完整的二進位重新連結會帶來明顯開銷。
+* **机制**:
+  * 在記憶體中維護映射符號地址與位元組碼塊的 `VirtualBinaryDispatchTable`。
+  * 產生結構化執行時期二進位覆蓋層（`VLINK_DISPATCH_HEADER_V1`），支援快速符號替換與測試。

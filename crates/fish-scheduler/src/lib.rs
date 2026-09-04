@@ -304,6 +304,7 @@ pub struct Scheduler {
     critical_path: bool,
     ram_threshold: Option<u8>,
     ram_floor: usize,
+    jobserver: Option<JobserverPool>,
 }
 
 /// Returns the number of workers that may run concurrently once the system's
@@ -332,7 +333,13 @@ impl Scheduler {
             critical_path: true,
             ram_threshold: None,
             ram_floor: 1,
+            jobserver: None,
         }
+    }
+
+    pub fn with_jobserver(mut self, pool: JobserverPool) -> Self {
+        self.jobserver = Some(pool);
+        self
     }
 
     /// Enables (default) or disables critical-path-first task selection. When
@@ -384,11 +391,14 @@ impl Scheduler {
         let result = thread::scope(|scope| -> Result<(), SchedulerError> {
             let (task_tx, task_rx) =
                 crossbeam_channel::unbounded::<(NodeId, Task, usize, Duration)>();
+            let jobserver_pool = self.jobserver.clone();
             for _ in 0..self.workers {
                 let task_rx = task_rx.clone();
                 let tx = tx.clone();
+                let js_pool = jobserver_pool.clone();
                 scope.spawn(move || {
                     while let Ok((id, task, worker_id, task_start_offset)) = task_rx.recv() {
+                        let _token = js_pool.as_ref().and_then(|p| p.acquire().ok());
                         let outcome =
                             match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                                 executor.execute(&task)
@@ -407,6 +417,7 @@ impl Scheduler {
                                     )
                                 }
                             };
+                        drop(_token);
                         let _ = tx.send((id, outcome, worker_id, task_start_offset));
                     }
                 });

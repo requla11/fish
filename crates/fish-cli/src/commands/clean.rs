@@ -1,9 +1,9 @@
 use crate::utils::resolve_start_dir;
 use fish_core::project::Project;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-pub fn run_clean(path: Option<&Path>) -> ExitCode {
+pub fn run_clean(path: Option<&Path>, all: bool) -> ExitCode {
     let start_dir = match resolve_start_dir(path) {
         Ok(dir) => dir,
         Err(message) => {
@@ -40,6 +40,23 @@ pub fn run_clean(path: Option<&Path>) -> ExitCode {
     {
         Ok(status) if status.success() => {
             println!("Cleaned.");
+            if all {
+                let cache_dir = std::env::var("FISH_CACHE_DIR")
+                    .map(PathBuf::from)
+                    .unwrap_or_else(|_| {
+                        if let Ok(home) =
+                            std::env::var("USERPROFILE").or_else(|_| std::env::var("HOME"))
+                        {
+                            PathBuf::from(home).join(".fish").join("cache")
+                        } else {
+                            std::env::temp_dir().join("fish").join("cache")
+                        }
+                    });
+                if cache_dir.exists() {
+                    let _ = std::fs::remove_dir_all(&cache_dir);
+                    println!("Cleared cache directory at: {}", cache_dir.display());
+                }
+            }
             ExitCode::SUCCESS
         }
         Ok(status) => {

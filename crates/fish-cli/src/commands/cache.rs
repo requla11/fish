@@ -88,6 +88,40 @@ pub fn run_cache(args: CacheArgs) -> ExitCode {
                 }
             }
         }
+        CacheCommand::Verify(verify_args) => match cache.verify(verify_args.repair) {
+            Ok(report) => {
+                println!("Cache root:         {}", cache.root().display());
+                println!("Valid records:      {}", report.valid_records);
+                println!("Corrupt records:    {}", report.corrupt_records);
+                if verify_args.repair {
+                    println!("Repaired records:   {}", report.repaired_records);
+                }
+                println!("Valid objects:      {}", report.valid_objects);
+                println!("Corrupt objects:    {}", report.corrupt_objects);
+                if verify_args.repair {
+                    println!("Repaired objects:   {}", report.repaired_objects);
+                }
+                println!("Orphan objects:     {}", report.orphan_objects);
+                if verify_args.repair {
+                    println!("Repaired orphans:   {}", report.repaired_orphans);
+                }
+
+                if report.is_clean() {
+                    println!("Status: OK (Cache is clean and uncorrupted)");
+                    ExitCode::SUCCESS
+                } else if verify_args.repair {
+                    println!("Status: REPAIRED (Corrupted items cleaned)");
+                    ExitCode::SUCCESS
+                } else {
+                    println!("Status: CORRUPTED (Run with --repair to clean)");
+                    ExitCode::FAILURE
+                }
+            }
+            Err(error) => {
+                eprintln!("error: verify failed: {error}");
+                ExitCode::FAILURE
+            }
+        },
         CacheCommand::Cas(cas_args) => run_cas(&cache, cas_args),
     }
 }

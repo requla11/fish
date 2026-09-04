@@ -1,37 +1,222 @@
-# Danh mục Lệnh Fish CLI
+# Danh mục Tham khảo Lệnh Fish CLI
 
 > 🌐 **Bản dịch & Đóng góp:** Bạn muốn dịch hoặc cải thiện tài liệu này bằng ngôn ngữ của mình? Xem [Hướng dẫn Dịch thuật](TRANSLATION.md).
 
-Tài liệu tham khảo toàn diện về tất cả các lệnh và tùy chọn của giao diện dòng lệnh Fish.
+Tài liệu tham khảo toàn diện về tất cả các lệnh, cờ (flags), và tùy chọn cấu hình của giao diện dòng lệnh Fish.
 
 ---
 
-## Tùy chọn Toàn cục (Global Options)
-
-- `--experimental`: Bật các tính năng thử nghiệm.
-- `-v, --verbose`: Bật đầu ra chẩn đoán chi tiết.
-- `-j, --jobs <N>`: Số lượng luồng worker song song tối đa.
-- `--no-cache`: Bỏ qua cả cache cục bộ và cache từ xa.
-- `--cache-dir <PATH>`: Chỉ định đường dẫn thư mục cache cục bộ.
-- `--explain`: In lý do chi tiết tại sao các target bị rebuild.
-- `--pgo-generate`: Thêm công cụ đo lường vào file nhị phân cho Profile-Guided Optimization.
-- `--pgo-use`: Biên dịch file nhị phân sử dụng dữ liệu PGO đã thu thập.
-
----
-
-## Các Lệnh Chính
-
-### `fish init`
-Khởi tạo cấu hình Fish và quét workspace để tạo định nghĩa tác vụ đa ngôn ngữ (`fish.yaml`).
+## 🧭 Cú pháp Chung & Tùy chọn Toàn cục
 
 ```bash
-fish init [--force]
+fish [OPTIONS] <COMMAND>
+```
+
+### Các Cờ Toàn Cục (Global Flags)
+
+| Cờ (Flag) | Mô tả | Mặc định |
+|---|---|---|
+| `--experimental` | Bật các tính năng thử nghiệm của Fish. | `false` |
+| `--offline` | Vô hiệu hóa truy cập mạng, từ chối thực hiện các tác vụ từ xa. | `false` |
+| `-v, --verbose` | Bật đầu ra chi tiết và nhật ký chẩn đoán. | `false` |
+| `-j, --jobs <N>` | Số lượng luồng worker thực thi song song tối đa. | Số lõi CPU |
+| `--no-cache` | Vô hiệu hóa việc đọc/ghi cache (cả cục bộ lẫn từ xa). | `false` |
+| `--cache-dir <PATH>` | Đường dẫn thư mục cache cục bộ (mặc định: `~/.fish/cache`). | Mặc định hệ thống |
+
+---
+
+## 🛠️ Danh sách Tất cả Lệnh Subcommand
+
+---
+
+### `fish init`
+Khởi tạo cấu hình Fish (`fish.toml`) và quét workspace đa ngôn ngữ.
+
+```bash
+fish init [OPTIONS]
+```
+- `-p, --path <PATH>`: Thư mục cần khởi tạo.
+- `-f, --force`: Ghi đè cấu hình hiện có nếu đã tồn tại.
+- `--describe <DESC>`: Mô tả dự án bằng ngôn ngữ tự nhiên để AI cấu hình.
+
+---
+
+### `fish new`
+Tạo một dự án hoặc package mới từ các mẫu (template) có sẵn.
+
+```bash
+fish new <NAME> [OPTIONS]
+```
+- `-t, --template <TEMPLATE>`: Tên mẫu dự án (ví dụ: `rust`, `ts`, `go`, `polyglot`).
+- `-p, --path <PATH>`: Thư mục đích.
+
+---
+
+### `fish build`
+Thực thi các tác vụ biên dịch và build cho workspace.
+
+```bash
+fish build [OPTIONS] [PATH]
+```
+- `-j, --jobs <N>`: Giới hạn số worker song song.
+- `-v, --verbose`: In chi tiết các bước thực thi.
+- `--no-cache`: Bỏ qua cache.
+- `--sandbox`: Chạy tác vụ bên trong sandbox an toàn.
+- `--apple`: Chạy qua sandbox kín `apple`.
+- `--profile <FILE>`: Xuất Chrome trace JSON phân tích hiệu năng.
+- `--tui`: Bật giao diện Terminal UI tương tác.
+- `--remote-cache <URL>`: Địa chỉ máy chủ Remote Cache (HTTP hoặc gRPC REAPI).
+- `--remote-workers <URL>`: Cụm worker từ xa để điều phối DTE.
+- `--ram-limit <PCT>`: Tự động giảm mức độ đồng thời khi RAM khả dụng dưới tỷ lệ này.
+- `--semantic`: Bật cache ngữ nghĩa cấp độ AST.
+- `--reflink`: Sử dụng copy-on-write (reflink) khi khôi phục artifact từ CAS.
+- `--critical-path`: Ưu tiên xếp lịch cho các nhánh trên đường găng (critical path).
+- `--explain`: In lý do chi tiết tại sao các tác vụ bị build lại.
+- `--otel-endpoint <URL>`: Xuất OpenTelemetry trace tới OTLP collector.
+- `--no-infer-deps`: Tắt tự động suy luận phụ thuộc chéo ngôn ngữ.
+
+---
+
+### `fish check`
+Kiểm tra cú pháp, phân tích tĩnh và type-check mà không liên kết mã máy.
+
+```bash
+fish check [OPTIONS] [PATH]
+```
+- Hỗ trợ các cờ tương tự `fish build` (`--jobs`, `--no-cache`, `--sandbox`, `--explain`, v.v.).
+
+---
+
+### `fish test`
+Chạy toàn bộ các bộ kiểm thử trong workspace.
+
+```bash
+fish test [OPTIONS] [PATH]
+```
+- `--quarantine-flaky`: Tự động cách ly các bài test không tất định (flaky tests).
+- `--test-threads <N>`: Số luồng chạy test đồng thời.
+
+---
+
+### `fish clean`
+Dọn dẹp các tệp build tạm thời và giải phóng bộ nhớ cache.
+
+```bash
+fish clean [OPTIONS]
+```
+- `--all`: Dọn sạch cả cache cục bộ CAS và L1/L2.
+- `--dry-run`: Liệt kê các tệp sẽ bị xóa mà không thực hiện xóa.
+
+---
+
+### `fish run`
+Biên dịch và chạy một target thực thi cụ thể.
+
+```bash
+fish run -p <PACKAGE> [--bin <BINARY>] [-- <ARGS>...]
 ```
 
 ---
 
+### `fish graph`
+Xuất và trực quan hóa đồ thị phụ thuộc (DAG) của workspace.
+
+```bash
+fish graph [OPTIONS]
+```
+- `--format <FORMAT>`: Định dạng xuất (`dot`, `json`, `mermaid`, `svg`).
+- `--output <FILE>`: Ghi đồ thị ra tệp.
+
+---
+
+### `fish watch`
+Theo dõi các thay đổi tệp trên đĩa và tự động kích hoạt build lại tăng dần.
+
+```bash
+fish watch [OPTIONS]
+```
+- `--debounce <MS>`: Thời gian chờ gom nhóm sự kiện thay đổi (mặc định: 200ms).
+
+---
+
+### `fish query`
+Thực thi các biểu thức đại số truy vấn đồ thị phụ thuộc.
+
+```bash
+fish query "<EXPRESSION>"
+```
+- `deps(//pkg)`: Phụ thuộc xuôi của package.
+- `rdeps(//pkg)`: Phụ thuộc ngược của package.
+- `allpaths(//a, //b)`: Tất cả các đường đi giữa hai target.
+- `somepath(//a, //b)`: Đường đi ngắn nhất giữa hai target.
+
+---
+
+### `fish doctor`
+Kiểm tra sức khỏe môi trường, công cụ toolchain và cấu hình Fish.
+
+```bash
+fish doctor [OPTIONS]
+```
+- `--fix`: Tự động sửa chữa các vấn đề về quyền, tệp tạm và cấu hình `fish.toml`.
+- `--ai`: Sử dụng mô hình AI chẩn đoán chuyên sâu và đề xuất giải pháp.
+
+---
+
+### `fish why`
+Giải thích nguyên nhân tại sao một package hoặc target bị rebuild.
+
+```bash
+fish why <TARGET> [OPTIONS]
+```
+- `--ask "<QUESTION>"`: Đặt câu hỏi bằng ngôn ngữ tự nhiên về nguyên nhân rebuild.
+
+---
+
+### `fish fix`
+Tự động áp dụng các sửa đổi an toàn dựa trên cảnh báo và lỗi của trình biên dịch.
+
+```bash
+fish fix [OPTIONS]
+```
+- `--diff`: Hiển thị bản vá dưới dạng Git unified diff trước khi áp dụng.
+- `--apply`: Áp dụng trực tiếp bản sửa lỗi vào mã nguồn.
+
+---
+
+### `fish affected`
+Xác định danh sách các package bị ảnh hưởng bởi các tệp sửa đổi so với Git commit/nhánh gốc.
+
+```bash
+fish affected --base <REF> [--head <REF>]
+```
+
+---
+
+### `fish cache`
+Quản lý, kiểm toán dung lượng và tối ưu hóa hệ thống Content-Addressable Storage (CAS).
+
+```bash
+fish cache <SUBCOMMAND>
+```
+- `prune`: Dọn dẹp các khối dữ liệu cũ dựa trên LRU và ngưỡng dung lượng.
+- `stats`: Hiển thị tỷ lệ cache hit/miss và dung lượng chiếm dụng.
+- `verify`: Kiểm tra tính toàn vẹn SHA-256/BLAKE3 của tất cả artifact trong CAS.
+
+---
+
+### `fish cost-estimate`
+Tính toán chi phí tài nguyên đám mây và ước tính khoản tiết kiệm chi phí build trên AWS, GCP, Azure.
+
+```bash
+fish cost-estimate [OPTIONS]
+```
+- `--json`: Xuất dữ liệu dưới định dạng JSON cho hệ thống CI/CD.
+
+---
+
 ### `fish ui`
-Khởi chạy Web Dashboard thời gian thực và trình trực quan hóa đồ thị SVG DAG với hỗ trợ 5 ngôn ngữ (Tiếng Anh, Tiếng Việt, Tiếng Trung giản thể, Tiếng Trung phồn thể, Tiếng Nhật).
+Khởi chạy giao diện Web Dashboard phân tích hiệu năng và biểu đồ DAG.
 
 ```bash
 fish ui [--port <PORT>] [--open]
@@ -39,140 +224,38 @@ fish ui [--port <PORT>] [--open]
 
 ---
 
-### `fish build`
-Thực thi các tác vụ build cho các package trong workspace.
+### `fish pash`
+Hiển thị và kiểm tra thuật toán băm nhận biết ngữ nghĩa (Path-Aware Semantic Hashing).
 
 ```bash
-fish build [OPTIONS]
-```
-
-**Các cờ phổ biến:**
-- `-p, --package <NAME>`: Biên dịch một package cụ thể.
-- `--explain`: Chẩn đoán nguyên nhân các package bị build lại.
-- `--profile [FILE]`: Tạo tệp hồ sơ hiệu năng Chrome trace JSON.
-- `--sandbox`: Chạy trong môi trường sandbox cách ly.
-- `--ram-limit <PCT>`: Điều tiết mức độ đồng thời khi bộ nhớ vượt ngưỡng phần trăm cho phép.
-
----
-
-### `fish check`
-Kiểm tra kiểu dữ liệu và phân tích tĩnh mà không liên kết (link) toàn bộ artifact.
-
-```bash
-fish check [OPTIONS]
+fish pash <TARGET>
 ```
 
 ---
 
-### `fish test`
-Thực thi các bộ kiểm thử trên tất cả các package trong workspace.
+### `fish qpc`
+Truy vấn bộ nhớ đệm pipeline (Query Pipeline Cache) để kiểm tra các phần tử biên dịch tăng dần.
 
 ```bash
-fish test [OPTIONS]
+fish qpc <TARGET>
 ```
 
 ---
 
-### `fish run`
-Biên dịch và chạy một target thực thi nhị phân cụ thể.
+### `fish attest` & `fish verify`
+Ký số mật mã (Ed25519) và xác minh chứng chỉ nguồn gốc SLSA / in-toto cho artifact.
 
 ```bash
-fish run -p <PACKAGE> --bin <BINARY> [-- <ARGS>...]
+fish attest --out <ATTESTATION_FILE>
+fish verify --attestation <ATTESTATION_FILE>
 ```
 
 ---
 
-### `fish query <EXPR>`
-Đánh giá các truy vấn đại số trên đồ thị phụ thuộc của workspace.
+### `fish lsp` & `fish daemon`
+Chạy máy chủ LSP cho IDE hoặc tiến trình nền daemon để tối ưu hóa IPC.
 
 ```bash
-fish query "<EXPRESSION>"
-```
-
-**Các hàm được hỗ trợ:**
-- `deps(//pkg)`: Tất cả các phụ thuộc bắc cầu của `//pkg`.
-- `rdeps(//pkg)`: Tất cả các phụ thuộc ngược bắc cầu của `//pkg`.
-- `allpaths(//from, //to)`: Tất cả đường đi giữa `//from` và `//to`.
-- `somepath(//from, //to)`: Đường đi ngắn nhất giữa `//from` và `//to`.
-- `filter('pattern', expr)`: Lọc các package khớp theo từ khóa hoặc mẫu regex.
-
-**Ví dụ:**
-```bash
-# Tìm tất cả những gì cần thiết để biên dịch fish-cli
-fish query "deps(//fish-cli)"
-
-# Tìm tất cả các crate bị ảnh hưởng khi fish-graph thay đổi
-fish query "rdeps(//fish-graph)"
-
-# Tìm chuỗi phụ thuộc ngắn nhất giữa app và util
-fish query "somepath(//app, //util)"
-```
-
----
-
-### `fish daemon`
-Quản lý build daemon chạy ngầm để tăng tốc độ phân giải đồ thị ấm.
-
-```bash
-# Khởi động daemon
-fish daemon start [--port 9527]
-
-# Kiểm tra trạng thái daemon
-fish daemon status [--port 9527]
-
-# Dừng daemon
-fish daemon stop [--port 9527]
-```
-
----
-
-### `fish graph`
-In hoặc xuất đồ thị phụ thuộc của dự án.
-
-```bash
-fish graph [--format <tree|dot|json>]
-```
-
----
-
-### `fish affected`
-Xác định và chỉ thực thi các tác vụ trên các package bị thay đổi kể từ một mốc Git commit.
-
-```bash
-fish affected --since <GIT_REF> [--mode <build|check|test>]
-```
-
----
-
-### `fish cache`
-Quản lý kho lưu trữ Content-Addressable Storage (CAS) và dấu vân tay cục bộ.
-
-```bash
-# Hiển thị dung lượng và số lượng đối tượng trong cache
-fish cache stats
-
-# Dọn dẹp dấu vân tay cũ và các artifact mồ côi
-fish cache prune
-
-# Kiểm tra kho lưu trữ CAS
-fish cache cas stats
-fish cache cas list
-```
-
----
-
-### `fish doctor`
-Kiểm tra tính sẵn sàng của các toolchain, trình biên dịch, trình liên kết và các phụ thuộc hệ thống.
-
-```bash
-fish doctor [--fix] [--ai]
-```
-
----
-
-### `fish ci init` / `fish ci export`
-Tự động sinh cấu hình CI workflow cho nhiều nền tảng khác nhau.
-
-```bash
-fish ci init --platform <github|gitlab|circleci|bitbucket|all>
+fish lsp
+fish daemon [--socket <PATH>]
 ```

@@ -271,65 +271,56 @@ Supports multiple CI/CD platforms:
 - Performance visualization
 - Optimization suggestions
 
-### 2. Multi-Platform CI (`fish-multiplatform`)
-
-- Platform detection
-- Target triple generation
-- Matrix configuration
-- Parallel execution
-
-### 3. Notifications (`fish-notifications`)
-
-- Slack webhook integration
-- Discord webhook support
-- Email notifications
-- Rich build context
-
-### 4. Flaky Test Detection (`fish-flaky-detection`)
-
-- Statistical analysis
-- Configurable retry policies
-- Test history tracking
-- Failure rate monitoring
-
-### 5. Docker Builder (`fish-docker-builder`)
-
-- First-class Docker artifacts
-- Layer caching
-- Registry integration
-- Multi-stage builds
-
-### 6. Incremental Analysis (`fish-incremental`)
+### 2. Incremental Analysis (`fish-incremental`)
 
 - AST-based dependency inference (`DependencyInferenceEngine`) for Rust, TypeScript/JavaScript, Python, and Go
 - Dirty rebuild diagnostics (`DirtyExplainer`, `fish build --explain`) identifying exact source file modifications or hash mismatches
 - Build pattern detection and hotspot identification
 - Refactoring suggestions and rebuild frequency analysis
 
-### 7. Build Daemon & IPC (`fish-cli::daemon`)
+### 3. Build Daemon & IPC (`fish-cli::daemon`)
 
-- Background loopback TCP daemon (`FishDaemon`) on `127.0.0.1:9527`
-- Sub-millisecond graph caching and warm execution
-- Commands: `Fish daemon start`, `Fish daemon status`, `Fish daemon stop`
+- Background daemon (`FishDaemon`) speaking JSON-RPC 2.0 over
+  newline-delimited messages
+- Transport: Unix domain socket on Unix, TCP on `127.0.0.1` on Windows
+- Port is configurable: `fish daemon start --port <PORT>` (default `9527`)
+- Warm graph caching for repeated invocations
+- Commands: `fish daemon start`, `fish daemon status`, `fish daemon stop`
 
-### 8. Profile-Guided Optimization (`fish-cli::pgo`)
+### 4. Profile-Guided Optimization (`fish-cli::pgo`)
 
 - 2-phase LLVM PGO workflow orchestration (`PgoManager`)
 - Automated `-Cprofile-generate` instrumentation and `llvm-profdata merge`
 - Recompilation with `-Cprofile-use` for maximum runtime performance
 
-### 9. Task Pipeline Topology (`fish-cli::pipeline`)
+### 5. Task Pipeline Topology (`fish-cli::pipeline`)
 
 - Turborepo/Nx style topological task pipelines configured via `fish.toml`
 - Cross-package dependency rules (e.g. `^build` ensuring dependency outputs are built first)
 - Configurable environment variable and input file fingerprint hashes
 
-### 10. Pipeline Templates (`fish-templates`)
+### Planned crates (not yet in the workspace)
 
-- Shareable templates
-- Handlebars rendering
-- Template registry
-- Custom templates
+The following crates were described in earlier drafts but do not exist in
+the workspace yet. They are listed here as roadmap items only:
+
+- `fish-multiplatform` — platform detection, target triples, CI matrices
+- `fish-notifications` — Slack/Discord/email build notifications
+- `fish-flaky-detection` — statistical flaky test detection and retry policies
+- `fish-docker-builder` — first-class Docker artifacts and layer caching
+  (Docker orchestration today lives in `fish-backend-docker`)
+- `fish-templates` — shareable pipeline templates (Handlebars rendering)
+
+## Vendored submodules
+
+Two companion projects are vendored as git submodules and are members of the
+workspace:
+
+- **`submodules/apple`** — hermetic sandbox and process isolation daemon
+  (kernel-level sandboxing, CoW storage jails, SLSA/SPDX/CycloneDX
+  provenance). Independent project, not affiliated with Apple Inc.
+- **`submodules/banana`** — distribution, P2P swarm, and supply-chain
+  infrastructure companion for Fish.
 
 ## Data Flow
 

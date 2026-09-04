@@ -58,7 +58,37 @@ jobs:
       - name: Generate AI Review and Benchmark Summary
         id: ai_review
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          AI_MODEL_API_1: ${{ secrets.AI_MODEL_API_1 || secrets.AI_API_KEY_1 }}
+          AI_MODEL_1: ${{ secrets.AI_MODEL_1 }}
+          AI_ENDPOINT_1: ${{ secrets.AI_ENDPOINT_1 }}
+          AI_MODEL_API_2: ${{ secrets.AI_MODEL_API_2 || secrets.AI_API_KEY_2 }}
+          AI_MODEL_2: ${{ secrets.AI_MODEL_2 }}
+          AI_ENDPOINT_2: ${{ secrets.AI_ENDPOINT_2 }}
+          AI_MODEL_API_3: ${{ secrets.AI_MODEL_API_3 || secrets.AI_API_KEY_3 }}
+          AI_MODEL_3: ${{ secrets.AI_MODEL_3 }}
+          AI_ENDPOINT_3: ${{ secrets.AI_ENDPOINT_3 }}
+          AI_MODEL_API_4: ${{ secrets.AI_MODEL_API_4 || secrets.AI_API_KEY_4 }}
+          AI_MODEL_4: ${{ secrets.AI_MODEL_4 }}
+          AI_ENDPOINT_4: ${{ secrets.AI_ENDPOINT_4 }}
+          AI_MODEL_API_5: ${{ secrets.AI_MODEL_API_5 || secrets.AI_API_KEY_5 }}
+          AI_MODEL_5: ${{ secrets.AI_MODEL_5 }}
+          AI_ENDPOINT_5: ${{ secrets.AI_ENDPOINT_5 }}
+          AI_MODEL_API_6: ${{ secrets.AI_MODEL_API_6 || secrets.AI_API_KEY_6 }}
+          AI_MODEL_6: ${{ secrets.AI_MODEL_6 }}
+          AI_ENDPOINT_6: ${{ secrets.AI_ENDPOINT_6 }}
+          AI_MODEL_API_7: ${{ secrets.AI_MODEL_API_7 || secrets.AI_API_KEY_7 }}
+          AI_MODEL_7: ${{ secrets.AI_MODEL_7 }}
+          AI_ENDPOINT_7: ${{ secrets.AI_ENDPOINT_7 }}
+          AI_MODEL_API_8: ${{ secrets.AI_MODEL_API_8 || secrets.AI_API_KEY_8 }}
+          AI_MODEL_8: ${{ secrets.AI_MODEL_8 }}
+          AI_ENDPOINT_8: ${{ secrets.AI_ENDPOINT_8 }}
+          AI_MODEL_API_9: ${{ secrets.AI_MODEL_API_9 || secrets.AI_API_KEY_9 }}
+          AI_MODEL_9: ${{ secrets.AI_MODEL_9 }}
+          AI_ENDPOINT_9: ${{ secrets.AI_ENDPOINT_9 }}
+          AI_API_KEY: ${{ secrets.AI_API_KEY || secrets.GEMINI_API_KEY || secrets.OPENAI_API_KEY || secrets.GROQ_API_KEY }}
+          AI_API_KEYS: ${{ secrets.AI_API_KEYS || secrets.GEMINI_API_KEYS }}
+          AI_MODEL: ${{ secrets.AI_MODEL || vars.AI_MODEL || secrets.GEMINI_MODEL }}
+          AI_ENDPOINT: ${{ secrets.AI_ENDPOINT || secrets.AI_BASE_URL }}
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_BODY: ${{ github.event.pull_request.body }}
           AFFECTED: ${{ steps.analysis.outputs.affected }}
@@ -84,18 +114,7 @@ jobs:
           3. AI Architecture & Code Review Insights (Key improvements, safety/concurrency considerations, potential edge cases).
           Keep it clean, formatting in standard GitHub Markdown."
 
-          if [ -n "$GEMINI_API_KEY" ]; then
-            PAYLOAD=$(jq -n --arg text "$PROMPT" '{"contents": [{"parts": [{"text": $text}]}]}')
-            for MODEL in "gemini-3.7-flash" "gemini-2.5-flash" "gemini-2.0-flash" "gemini-1.5-flash"; do
-              RESPONSE=$(curl -s -X POST "https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}" \
-                -H "Content-Type: application/json" \
-                -d "$PAYLOAD")
-              AI_TEXT=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text // empty')
-              if [ -n "$AI_TEXT" ]; then
-                break
-              fi
-            done
-          fi
+          AI_TEXT=$(python scripts/universal_ai.py --prompt "$PROMPT" || true)
 
           if [ -z "$AI_TEXT" ]; then
             AI_TEXT="### 🐟 Fish Bot Analysis

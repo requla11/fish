@@ -1,41 +1,54 @@
 # Fish CLI コマンドリファレンス
 
-> 🌐 **翻訳と貢献:** このドキュメントをあなたの言語で翻訳または改善したいですか？ [翻訳ガイドライン](TRANSLATION.md) をご覧ください。
+> 🌐 **翻訳と貢献:** このドキュメントをあなたの言語に翻訳または改善したいですか？ [翻訳ガイドライン](TRANSLATION.md) を参照してください。
 
-Fish コマンドラインインターフェイスのすべてのコマンドとオプションに関する完全なリファレンスです。
-
----
-
-## グローバルオプション (Global Options)
-
-- `--experimental`: 実験的機能を有効化。
-- `-v, --verbose`: 詳細な診断ログ出力を有効化。
-- `-j, --jobs <N>`: 最大並列ワーカースレッド数。
-- `--no-cache`: ローカルおよびリモートキャッシュをバイパス。
-- `--cache-dir <PATH>`: カスタムローカルキャッシュディレクトリを指定。
-- `--explain`: ターゲットが再ビルドされた詳細な理由を出力。
-- `--pgo-generate`: Profile-Guided Optimization 用のインストルメント付きバイナリを生成。
-- `--pgo-use`: 収集した PGO プロファイルデータを使用して最適化ビルドを実行。
+Fish コマンドラインインターフェースのすべてのコマンド、フラグ、および設定オプションに関する包括的なリファレンスです。
 
 ---
 
-## 主要コマンド
+## 🧭 基本構文とグローバルオプション
+
+```bash
+fish [OPTIONS] <COMMAND>
+```
+
+### グローバルフラグ (Global Flags)
+
+| フラグ | 説明 | デフォルト |
+|---|---|---|
+| `--experimental` | 実験的機能を有効化します。 | `false` |
+| `--offline` | ネットワークアクセスを無効化し、オフラインで実行します。 | `false` |
+| `-v, --verbose` | 詳細な診断ログと出力を有効化します。 | `false` |
+| `-j, --jobs <N>` | 同時実行するワーカーの最大スレッド数。 | CPUコア数 |
+| `--no-cache` | キャッシュ（ローカルおよびリモート）の使用を無効化します。 | `false` |
+| `--cache-dir <PATH>` | ローカルキャッシュディレクトリのパス（デフォルト: `~/.fish/cache`）。 | システム標準 |
+
+---
+
+## 🛠️ サブコマンド一覧
+
+---
 
 ### `fish init`
-Fish 設定を初期化し、ワークスペースをスキャンして多言語タスク定義 (`fish.yaml`) を生成します。
+Fish の設定（`fish.toml`）を初期化し、多言語ワークスペースを検出します。
 
 ```bash
-fish init [--force]
+fish init [OPTIONS]
 ```
+- `-p, --path <PATH>`: 初期化する対象ディレクトリ。
+- `-f, --force`: 既存の設定が存在する場合に上書きします。
+- `--describe <DESC>`: 自然言語によるプロジェクト概要（AI支援用）。
 
 ---
 
-### `fish ui`
-リアルタイムの Web ダッシュボードと SVG DAG 依存グラフビジュアライザを起動します。5言語（英語、ベトナム語、簡体字中国語、繁体字中国語、日本語）に対応しています。
+### `fish new`
+テンプレートから新しいプロジェクトまたはパッケージを作成します。
 
 ```bash
-fish ui [--port <PORT>] [--open]
+fish new <NAME> [OPTIONS]
 ```
+- `-t, --template <TEMPLATE>`: テンプレート名（例: `rust`、`ts`、`go`、`polyglot`）。
+- `-p, --path <PATH>`: 作成先ディレクトリ。
 
 ---
 
@@ -43,136 +56,204 @@ fish ui [--port <PORT>] [--open]
 ワークスペース内のパッケージのビルドタスクを実行します。
 
 ```bash
-fish build [OPTIONS]
+fish build [OPTIONS] [PATH]
 ```
-
-**主なフラグ:**
-- `-p, --package <NAME>`: 特定のパッケージをビルド。
-- `--explain`: パッケージが再ビルドされた理由を診断。
-- `--profile [FILE]`: Chrome Trace JSON 形式のプロファイルデータを生成。
-- `--sandbox`: 隔離されたサンドボックス環境で実行。
-- `--ram-limit <PCT>`: メモリ使用率がしきい値を超えた場合に並列数を動的に制御。
+- `-j, --jobs <N>`: 同時実行ジョブ数の上限。
+- `-v, --verbose`: 詳細な実行ログを表示。
+- `--no-cache`: キャッシュをスキップ。
+- `--sandbox`: サンドボックス内で安全に実行。
+- `--apple`: `apple` ハーメティックサンドボックス経由で実行。
+- `--profile <FILE>`: Chrome trace JSON プロファイルを生成。
+- `--tui`: インタラクティブなターミナルUIを有効化。
+- `--remote-cache <URL>`: リモートキャッシュサーバーのURL。
+- `--remote-workers <URL>`: 分散タスク実行用のリモートワーカープール。
+- `--ram-limit <PCT>`: 利用可能RAMが閾値を下回った際に並行度を制限。
+- `--semantic`: ASTレベルのセマンティックキャッシュを有効化。
+- `--reflink`: CASからのアーティファクト復元時にCoW（reflink）を使用。
+- `--critical-path`: クリティカルパス上のタスクを優先的にスケジューリング。
+- `--explain`: タスクが再ビルドされた理由を出力。
+- `--otel-endpoint <URL>`: OpenTelemetry コレクターへのトレース送信。
 
 ---
 
 ### `fish check`
-アーティファクトの完全なリンクを行わずに、型チェックと静的解析を実行します。
+実行可能バイナリをリンクせずに、高速な型チェックおよび静的解析を行います。
 
 ```bash
-fish check [OPTIONS]
+fish check [OPTIONS] [PATH]
 ```
 
 ---
 
 ### `fish test`
-ワークスペース内のパッケージ全体でテストスイートを実行します。
+ワークスペース内のテストスイートを実行します。
 
 ```bash
-fish test [OPTIONS]
+fish test [OPTIONS] [PATH]
 ```
+- `--quarantine-flaky`: 不安定なテスト（flaky test）を自動検出して隔離。
+- `--test-threads <N>`: テストの並列実行スレッド数。
+
+---
+
+### `fish clean`
+ビルド生成物と一時ファイルを削除し、キャッシュを解放します。
+
+```bash
+fish clean [OPTIONS]
+```
+- `--all`: ローカルCASおよびL1/L2キャッシュ全体を消去。
+- `--dry-run`: 削除対象のファイル一覧をシミュレーション表示。
 
 ---
 
 ### `fish run`
-指定した実行可能バイナリをビルドして実行します。
+特定の実行可能ターゲットをビルドして実行します。
 
 ```bash
-fish run -p <PACKAGE> --bin <BINARY> [-- <ARGS>...]
-```
-
----
-
-### `fish query <EXPR>`
-ワークスペースの依存関係グラフに対して代数クエリを実行します。
-
-```bash
-fish query "<EXPRESSION>"
-```
-
-**サポートされている関数:**
-- `deps(//pkg)`: `//pkg` のすべての推移的依存関係。
-- `rdeps(//pkg)`: `//pkg` に依存するすべての逆依存関係。
-- `allpaths(//from, //to)`: `//from` と `//to` の間のすべての経路。
-- `somepath(//from, //to)`: `//from` と `//to` の間の最短経路。
-- `filter('pattern', expr)`: キーワードまたは正規表現でパッケージを絞り込み。
-
-**使用例:**
-```bash
-# fish-cli のビルドに必要なすべての依存関係を検索
-fish query "deps(//fish-cli)"
-
-# fish-graph の変更によって影響を受けるすべてのクレートを検索
-fish query "rdeps(//fish-graph)"
-
-# app と util の間の最短依存チェーンを検索
-fish query "somepath(//app, //util)"
-```
-
----
-
-### `fish daemon`
-高速なウォームグラフ解決を実現するバックグラウンドビルドデーモンを管理します。
-
-```bash
-# デーモンを起動
-fish daemon start [--port 9527]
-
-# デーモンの状態を確認
-fish daemon status [--port 9527]
-
-# デーモンを停止
-fish daemon stop [--port 9527]
+fish run -p <PACKAGE> [--bin <BINARY>] [-- <ARGS>...]
 ```
 
 ---
 
 ### `fish graph`
-プロジェクトの依存関係グラフを出力またはエクスポートします。
+ワークスペースの依存関係グラフ（DAG）を出力・可視化します。
 
 ```bash
-fish graph [--format <tree|dot|json>]
+fish graph [OPTIONS]
 ```
+- `--format <FORMAT>`: 出力形式（`dot`, `json`, `mermaid`, `svg`）。
+- `--output <FILE>`: グラフをファイルに出力。
+
+---
+
+### `fish watch`
+ファイル変更を検知し、自動的にインクリメンタルビルドを実行します。
+
+```bash
+fish watch [OPTIONS]
+```
+- `--debounce <MS>`: 変更イベントのデバウンス時間（デフォルト: 200ms）。
+
+---
+
+### `fish query`
+依存関係グラフに対する代数クエリ式を評価します。
+
+```bash
+fish query "<EXPRESSION>"
+```
+- `deps(//pkg)`: 順方向の依存関係。
+- `rdeps(//pkg)`: 逆方向の依存関係。
+- `allpaths(//a, //b)`: 2つのターゲット間の全パス。
+- `somepath(//a, //b)`: 2つのターゲット間の最短パス。
+
+---
+
+### `fish doctor`
+環境設定、ツールチェーン、および Fish の構成の健全性を診断します。
+
+```bash
+fish doctor [OPTIONS]
+```
+- `--fix`: 権限、一時ファイル、`fish.toml` の問題を自動修復。
+- `--ai`: AIモデルによる高度な診断と修正提案を取得。
+
+---
+
+### `fish why`
+特定のターゲットが再ビルドされた理由を説明します。
+
+```bash
+fish why <TARGET> [OPTIONS]
+```
+- `--ask "<QUESTION>"`: 自然言語で再ビルド理由を質問。
+
+---
+
+### `fish fix`
+コンパイラ警告やエラーに基づいて、安全な自動修正パッチを適用します。
+
+```bash
+fish fix [OPTIONS]
+```
+- `--diff`: 適用前に Git unified diff をプレビュー表示。
+- `--apply`: ソースコードに直接修正を適用。
 
 ---
 
 ### `fish affected`
-指定した Git リビジョン以降に変更されたパッケージのみを特定してタスクを実行します。
+Git のコミットやベースブランチと比較して、影響を受けるパッケージを特定します。
 
 ```bash
-fish affected --since <GIT_REF> [--mode <build|check|test>]
+fish affected --base <REF> [--head <REF>]
 ```
 
 ---
 
 ### `fish cache`
-ローカルのコンテンツアドレス可能ストレージ (CAS) とフィンガープリントを管理します。
+Content-Addressable Storage (CAS) の管理、クォータ監視、および最適化を行います。
 
 ```bash
-# キャッシュサイズとオブジェクト数を表示
-fish cache stats
+fish cache <SUBCOMMAND>
+```
+- `prune`: LRUおよびサイズ閾値に基づき古いブロックを整理。
+- `stats`: ヒット率と使用容量の統計情報を表示。
+- `verify`: CAS内アーティファクトの整合性を検証。
 
-# 古いフィンガープリントと孤立した成果物を削除
-fish cache prune
+---
 
-# CAS ストレージの検査
-fish cache cas stats
-fish cache cas list
+### `fish cost-estimate`
+AWS、GCP、Azure 上でのクラウドコンピューティングコストと削減額を見積もります。
+
+```bash
+fish cost-estimate [OPTIONS]
+```
+- `--json`: CI/CD 向けの JSON 形式で出力。
+
+---
+
+### `fish ui`
+リアルタイム分析ダッシュボードとDAGグラフビューアーを起動します。
+
+```bash
+fish ui [--port <PORT>] [--open]
 ```
 
 ---
 
-### `fish doctor`
-システムツールチェーン、コンパイラ、リンカー、依存関係の準備状況を診断します。
+### `fish pash`
+パス対応セマンティックハッシュ（PASH）の計算結果を表示・検証します。
 
 ```bash
-fish doctor [--fix] [--ai]
+fish pash <TARGET>
 ```
 
 ---
 
-### `fish ci init` / `fish ci export`
-各種 CI/CD プラットフォーム向けのワークフロー設定を自動生成します。
+### `fish qpc`
+クエリパイプラインキャッシュ（QPC）の状態を検査します。
 
 ```bash
-fish ci init --platform <github|gitlab|circleci|bitbucket|all>
+fish qpc <TARGET>
+```
+
+---
+
+### `fish attest` & `fish verify`
+アーティファクトに対する Ed25519 デジタル署名と SLSA / in-toto 証明書の生成・検証を行います。
+
+```bash
+fish attest --out <ATTESTATION_FILE>
+fish verify --attestation <ATTESTATION_FILE>
+```
+
+---
+
+### `fish lsp` & `fish daemon`
+IDE用LSPサーバーまたはIPC最適化デーモンプロセスを実行します。
+
+```bash
+fish lsp
+fish daemon [--socket <PATH>]
 ```

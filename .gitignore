@@ -30,3 +30,4 @@ venv/
 .venv/
 .env
 *.local
+bazel-examples/

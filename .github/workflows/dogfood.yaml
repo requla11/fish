@@ -92,3 +92,12 @@ jobs:
           else
             ./target/release/fish doctor
           fi
+
+      - name: Dogfood Polyglot Monorepo Example
+        shell: bash
+        run: |
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            ./target/release/fish.exe build -C examples/polyglot-demo
+          else
+            ./target/release/fish build -C examples/polyglot-demo
+          fi

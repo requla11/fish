@@ -70,6 +70,11 @@ Fish is a high-performance, cache-first build orchestration system designed for 
 - **Fingerprinting**: Blake3 content hashing over source files, environment variables, and compiler flags.
 - **CAS Storage**: Deduplicated artifact storage with Zstandard compression.
 - **Tiered Composite Caching**: L1 local in-memory/disk cache and L2 remote S3/HTTP cache integration.
+- **Bit-Level Read Verification & Self-Healing**: Automatically validates BLAKE3 hashes on every read; bit-rot or corrupted objects are immediately excised and forced to cleanly rebuild.
+- **Target Materialization Guard**: Validates BLAKE3 checksums of workspace artifacts on cache hits, preventing modified, truncated, or stale outputs from generating false hits.
+- **Durable Atomic Writes**: Hardware-level `sync_all()` flushing guarantees durability before atomic renaming, preventing zero-byte or corrupted entries on sudden power cuts or process kills.
+- **Cache Audit & Repair CLI (`fish cache verify [--repair]`)**: Deep-inspection tool validating every record and object against bit-rot, broken manifests, and orphaned artifacts.
+
 
 ### 6. User Interface & Telemetry (`fish-cli`)
 - **Command-Line Interface**: Ergonomic subcommands for build, test, check, graph, doctor, query, affected, and daemon management.

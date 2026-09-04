@@ -70,6 +70,11 @@ Fish là hệ thống điều phối biên dịch hiệu năng cao, ưu tiên b�
 - **Dấu vân tay (Fingerprinting)**: Băm nội dung bằng hàm băm Blake3 trên các tệp nguồn, biến môi trường và cờ biên dịch.
 - **Kho lưu trữ CAS**: Lưu trữ artifact khử trùng lặp (deduplicated) với chuẩn nén Zstandard siêu tốc.
 - **Cache phân tầng kết hợp**: Tích hợp tầng L1 bộ nhớ/ổ đĩa cục bộ và tầng L2 cache từ xa (S3/HTTP).
+- **Xác thực Checksum khi đọc & Tự sửa lỗi (Self-Healing)**: Tự động đối soát băm BLAKE3 trong mỗi thao tác đọc; các object bị bit rot hoặc hỏng file sẽ bị tiêu hủy ngay lập tức và kích hoạt build lại sạch sẽ.
+- **Chốt chặn khôi phục Artifact**: Kiểm tra checksum BLAKE3 của các file output trên workspace khi cache hit, ngăn chặn triệt để tình trạng file bị sửa tay, cắt cụt hoặc sai lệch nội dung.
+- **Ghi bền vững nguyên tử (Durable Writes)**: Đẩy dữ liệu xuống phiến đĩa vật lý bằng `sync_all()` trước khi đổi tên file (atomic rename), chống hiện tượng file 0 byte khi mất điện hoặc bị ngắt tiến trình đột ngột.
+- **Lệnh kiểm toán & phục hồi CLI (`fish cache verify [--repair]`)**: Công cụ kiểm tra toàn diện phát hiện bản ghi hỏng, sai lệch manifest và dọn dẹp các object mồ côi (orphans).
+
 
 ### 6. Giao diện Người dùng & Đo lường (`fish-cli`)
 - **Giao diện dòng lệnh (CLI)**: Các lệnh tiện dụng cho build, test, check, graph, doctor, query, affected, và quản lý daemon.

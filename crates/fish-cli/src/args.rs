@@ -255,8 +255,18 @@ pub enum CacheCommand {
     /// Delete stale fingerprints and oversized cache content.
     #[command(alias = "gc")]
     Prune(CachePruneArgs),
+    Verify(CacheVerifyArgs),
     /// CAS operations for artifact storage
     Cas(CasArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct CacheVerifyArgs {
+    #[arg(long, short)]
+    pub repair: bool,
+
+    #[arg(long, short)]
+    pub verbose: bool,
 }
 
 /// Arguments for CAS operations

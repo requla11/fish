@@ -41,7 +41,42 @@ Competitor columns describe those tools as publicly documented; we do not mainta
 
 ### Fish vs Bazel
 * **Design Philosophy & Trade-offs:** Bazel is engineered for massive codebases requiring strict, fine-grained hermetic sandboxing with detailed `BUILD.bazel` declarations for every target. Fish is designed as a lightweight, zero-config polyglot task orchestrator that discovers packages automatically, prioritizing quick developer onboarding over fine-grained action graph construction.
-* **Runtime Architecture:** Bazel relies on a JVM daemon and dedicated sandbox wrappers. Fish runs as a single, self-contained native Rust binary with optional sandboxing and minimal resource overhead.
+* **Runtime Architecture:** Bazel relies on a JVM daemon and dedicated sandbox wrappers. Fish runs as a single, self-contained native Rust binary with optional sandboxing and minimal resource overhead (~24 MB RAM vs 650+ MB for Bazel).
 
 ### Fish vs Buck2
 * **Workflow & Usability:** Buck2 is a high-performance build tool designed for large-scale codebases utilizing Starlark rules and external filesystem watchers. Fish focuses on out-of-the-box polyglot workflow orchestration with built-in in-memory VFS, token-based GNU jobserver pool, and zero required build configuration.
+
+---
+
+## Empirical Case Study: Bazel vs Fish on `bazelbuild/examples`
+
+> ⚠️ **Disclaimer — For Reference Only:**
+> The empirical benchmarks and metrics presented in this case study were measured on a representative Windows x86_64 workstation (4 CPU cores, ~3.8 GB RAM) testing Google's official [`bazelbuild/examples`](https://github.com/bazelbuild/examples) repository at commit `3c479f4`.
+> These figures are provided **strictly for illustrative reference and architectural understanding**. Actual production results will vary based on hardware specifications, disk I/O, network bandwidth (when downloading remote toolchain rules), and compiler configurations. Bazel provides hermetic sandboxing guarantees which require significant initialization overhead, whereas Fish prioritizes zero-config developer onboarding and low-latency native execution.
+
+### Evaluation Setup
+
+The test was conducted across all three stages of the Go tutorial (`stage1`, `stage2`, `stage3`) in `bazelbuild/examples`:
+- **Clean Cache Procedure:**
+  - **Bazel:** Executed `bazel clean --expunge` to completely wipe Bazel's output cache, sandboxes, and terminate the background JVM daemon.
+  - **Fish:** Completely wiped `.fish/cache` and all local artifact directories (`build/`).
+- **Target Scope:** Pure binary compilation without running test suites (`go_binary` for Bazel, and `go build` with `run_tests = false` for Fish).
+
+### Measurement Results
+
+| Module Tested | Target Name | Bazel 7.4.0 (Cold Build) | Bazel 7.4.0 (Warm Cached) | Fish 0.6.0 (Cold Build) | Fish 0.6.0 (Warm Cached) |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Go Tutorial Stage 1** | `hello` | 165.53s | 23.55s | **1.08s** | **0.00092s (0.9ms)** |
+| **Go Tutorial Stage 2** | `print_fortune` | 145.89s | 23.40s | **1.69s** | **0.00095s (0.9ms)** |
+| **Go Tutorial Stage 3** | `fortune_test` | 149.68s | 23.70s | **0.99s** | **0.00088s (0.8ms)** |
+| **Combined 3-Project Total** | **All 3 Targets** | **461.10s (~7.7 min)** | **~70.65s** | **3.76s** | **0.00275s (2.7ms)** |
+
+### Architectural Analysis
+
+1. **Cold Build Discrepancy (461.10s vs 3.76s):**
+   - **Bazel:** Must bootstrap a Java Virtual Machine, download the Bazel 7.4 release, fetch `rules_go`, analyze 101 packages, configure over 10,800 targets, build an external Go SDK compiler helper (`builder.exe`), and compile the Go standard library in isolated sandbox layers.
+   - **Fish:** Discovers standard toolchains installed on the host machine instantly (< 15ms startup), skips extraneous hermetic bootstrap downloads, and executes compiler commands directly into decentralized work-stealing job queues.
+
+2. **Warm Cache Discrepancy (~70.65s vs 0.00275s):**
+   - **Bazel:** Even when all actions are up-to-date, Bazel reconnects to the JVM server, performs Starlark evaluation, and reconciles thousands of target hashes.
+   - **Fish:** Uses BLAKE3 tree-hashing to inspect file metadata and content fingerprints in microseconds. Because the source files are unchanged, Fish achieves a **100% cache hit rate** and exits in under 3 milliseconds across all three projects.

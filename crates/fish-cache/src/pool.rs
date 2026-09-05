@@ -13,17 +13,22 @@
 use parking_lot::Mutex;
 use std::collections::VecDeque;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
-/// Size tiers for memory pools (powers of 2 for efficient reuse)
 const SIZE_TIERS: &[usize] = &[256, 1024, 4096, 16384, 65536, 262144];
 
-/// Memory pool for `Vec<u8>` buffers
+#[derive(Debug, Default)]
+struct AtomicPoolStats {
+    hits: AtomicUsize,
+    misses: AtomicUsize,
+    allocations: AtomicUsize,
+    deallocations: AtomicUsize,
+}
+
 #[derive(Debug)]
 pub struct BufferPool {
-    /// Multiple pools for different size tiers
     pools: Vec<Mutex<VecDeque<Vec<u8>>>>,
-    /// Statistics
-    allocations: Arc<Mutex<PoolStats>>,
+    allocations: Arc<AtomicPoolStats>,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -41,38 +46,36 @@ impl BufferPool {
                 .iter()
                 .map(|_| Mutex::new(VecDeque::new()))
                 .collect(),
-            allocations: Arc::new(Mutex::new(PoolStats::default())),
+            allocations: Arc::new(AtomicPoolStats::default()),
         }
     }
 
     /// Get a buffer of at least the requested size
     pub fn get_buffer(&self, min_size: usize) -> Vec<u8> {
         let tier_index = self.find_tier(min_size);
-
-        let mut stats = self.allocations.lock();
-        stats.allocations += 1;
+        self.allocations.allocations.fetch_add(1, Ordering::Relaxed);
 
         if let Some(pool) = self.pools.get(tier_index) {
             let mut pool = pool.lock();
             if let Some(mut buffer) = pool.pop_front() {
-                stats.hits += 1;
+                self.allocations.hits.fetch_add(1, Ordering::Relaxed);
                 buffer.clear();
                 buffer.reserve(min_size);
                 return buffer;
             }
         }
 
-        stats.misses += 1;
+        self.allocations.misses.fetch_add(1, Ordering::Relaxed);
         Vec::with_capacity(min_size)
     }
 
-    /// Return a buffer to the pool
     pub fn return_buffer(&self, buffer: Vec<u8>) {
         let capacity = buffer.capacity();
         let tier_index = self.find_tier(capacity);
 
-        let mut stats = self.allocations.lock();
-        stats.deallocations += 1;
+        self.allocations
+            .deallocations
+            .fetch_add(1, Ordering::Relaxed);
 
         if let Some(&tier_size) = SIZE_TIERS.get(tier_index)
             && capacity >= tier_size * 2 / 3
@@ -86,7 +89,6 @@ impl BufferPool {
         }
     }
 
-    /// Find the appropriate size tier for a given size
     fn find_tier(&self, size: usize) -> usize {
         SIZE_TIERS
             .iter()
@@ -94,10 +96,13 @@ impl BufferPool {
             .unwrap_or(SIZE_TIERS.len() - 1)
     }
 
-    /// Get pool statistics
     pub fn stats(&self) -> PoolStats {
-        let stats = self.allocations.lock();
-        stats.clone()
+        PoolStats {
+            hits: self.allocations.hits.load(Ordering::Relaxed),
+            misses: self.allocations.misses.load(Ordering::Relaxed),
+            allocations: self.allocations.allocations.load(Ordering::Relaxed),
+            deallocations: self.allocations.deallocations.load(Ordering::Relaxed),
+        }
     }
 
     /// Clear all pools (useful for memory pressure scenarios)
@@ -163,13 +168,10 @@ impl Drop for ScopedBuffer {
 /// Size tiers for string pools (powers of 2 for efficient reuse)
 const STRING_SIZE_TIERS: &[usize] = &[32, 64, 128, 256, 512, 1024, 2048, 4096];
 
-/// Memory pool for `String` buffers
 #[derive(Debug)]
 pub struct StringPool {
-    /// Multiple pools for different size tiers
     pools: Vec<Mutex<VecDeque<String>>>,
-    /// Statistics
-    allocations: Arc<Mutex<PoolStats>>,
+    allocations: Arc<AtomicPoolStats>,
 }
 
 impl StringPool {
@@ -179,38 +181,35 @@ impl StringPool {
                 .iter()
                 .map(|_| Mutex::new(VecDeque::new()))
                 .collect(),
-            allocations: Arc::new(Mutex::new(PoolStats::default())),
+            allocations: Arc::new(AtomicPoolStats::default()),
         }
     }
 
-    /// Get a string with at least the requested capacity
     pub fn get_string(&self, min_capacity: usize) -> String {
         let tier_index = self.find_tier(min_capacity);
-
-        let mut stats = self.allocations.lock();
-        stats.allocations += 1;
+        self.allocations.allocations.fetch_add(1, Ordering::Relaxed);
 
         if let Some(pool) = self.pools.get(tier_index) {
             let mut pool = pool.lock();
             if let Some(mut s) = pool.pop_front() {
-                stats.hits += 1;
+                self.allocations.hits.fetch_add(1, Ordering::Relaxed);
                 s.clear();
                 s.reserve(min_capacity);
                 return s;
             }
         }
 
-        stats.misses += 1;
+        self.allocations.misses.fetch_add(1, Ordering::Relaxed);
         String::with_capacity(min_capacity)
     }
 
-    /// Return a string to the pool
     pub fn return_string(&self, s: String) {
         let capacity = s.capacity();
         let tier_index = self.find_tier(capacity);
 
-        let mut stats = self.allocations.lock();
-        stats.deallocations += 1;
+        self.allocations
+            .deallocations
+            .fetch_add(1, Ordering::Relaxed);
 
         if let Some(&tier_size) = STRING_SIZE_TIERS.get(tier_index)
             && capacity >= tier_size * 2 / 3
@@ -224,7 +223,6 @@ impl StringPool {
         }
     }
 
-    /// Find the appropriate size tier for a given capacity
     fn find_tier(&self, size: usize) -> usize {
         STRING_SIZE_TIERS
             .iter()
@@ -232,10 +230,13 @@ impl StringPool {
             .unwrap_or(STRING_SIZE_TIERS.len() - 1)
     }
 
-    /// Get pool statistics
     pub fn stats(&self) -> PoolStats {
-        let stats = self.allocations.lock();
-        stats.clone()
+        PoolStats {
+            hits: self.allocations.hits.load(Ordering::Relaxed),
+            misses: self.allocations.misses.load(Ordering::Relaxed),
+            allocations: self.allocations.allocations.load(Ordering::Relaxed),
+            deallocations: self.allocations.deallocations.load(Ordering::Relaxed),
+        }
     }
 
     /// Clear all pools (useful for memory pressure scenarios)

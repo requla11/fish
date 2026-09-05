@@ -217,21 +217,22 @@ impl<T> BuildGraph<T> {
     pub fn topological_order(&self) -> Vec<NodeId> {
         let n = self.nodes.len();
         let mut indegree: Vec<usize> = self.deps.iter().map(Vec::len).collect();
-        let mut ready: VecDeque<NodeId> = VecDeque::with_capacity(n);
+        let mut order = Vec::with_capacity(n);
         for (index, deps) in self.deps.iter().enumerate() {
             if deps.is_empty() {
-                ready.push_back(NodeId(index));
+                order.push(NodeId(index));
             }
         }
 
-        let mut order = Vec::with_capacity(n);
-        while let Some(id) = ready.pop_front() {
-            order.push(id);
+        let mut i = 0;
+        while i < order.len() {
+            let id = order[i];
+            i += 1;
             if let Some(dependents) = self.dependents.get(id.0) {
-                for dependent in dependents {
+                for &dependent in dependents {
                     indegree[dependent.0] -= 1;
                     if indegree[dependent.0] == 0 {
-                        ready.push_back(*dependent);
+                        order.push(dependent);
                     }
                 }
             }
@@ -358,17 +359,25 @@ impl<T> BuildGraph<T> {
     }
 
     fn reaches(&self, from: NodeId, to: NodeId) -> bool {
+        if from == to {
+            return true;
+        }
         let n = self.nodes.len();
         let mut seen = vec![false; n];
+        if from.0 < n {
+            seen[from.0] = true;
+        }
         let mut queue = VecDeque::from([from]);
         while let Some(id) = queue.pop_front() {
-            if id == to {
-                return true;
-            }
-            if id.0 < n && !seen[id.0] {
-                seen[id.0] = true;
-                if let Some(dependents) = self.dependents.get(id.0) {
-                    queue.extend(dependents.iter().copied());
+            if let Some(dependents) = self.dependents.get(id.0) {
+                for &next in dependents {
+                    if next == to {
+                        return true;
+                    }
+                    if next.0 < n && !seen[next.0] {
+                        seen[next.0] = true;
+                        queue.push_back(next);
+                    }
                 }
             }
         }

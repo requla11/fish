@@ -265,35 +265,34 @@ where
     G: FnMut(&Task, &TaskOutcome),
 {
     *in_flight -= 1;
-    let task = graph.node(id).map(|node| node.payload.clone());
-    if let Some(task) = &task {
-        timings.push(TaskTiming {
-            label: task.label.clone(),
-            description: task.description.clone(),
-            start_offset,
-            duration: outcome.duration,
-            node_id: id,
-            worker_id,
-            status: outcome.status,
-        });
-    }
+    let (label, description) = match graph.node(id) {
+        Some(node) => (node.payload.label.clone(), node.payload.description.clone()),
+        None => return Err(SchedulerError::InvalidGraph(GraphError::MissingNode(id))),
+    };
+    timings.push(TaskTiming {
+        label: label.clone(),
+        description: description.clone(),
+        start_offset,
+        duration: outcome.duration,
+        node_id: id,
+        worker_id,
+        status: outcome.status,
+    });
     match outcome.status {
         TaskStatus::Executed => graph.set_state(id, TaskState::Succeeded)?,
         TaskStatus::Cached => graph.set_state(id, TaskState::Cached)?,
         TaskStatus::Failed => {
             graph.mark_failed(id)?;
-            if let Some(task) = &task {
-                failures.push(FailureRecord {
-                    label: task.label.clone(),
-                    description: task.description.clone(),
-                    stdout: outcome.stdout.clone(),
-                    stderr: outcome.stderr.clone(),
-                });
-            }
+            failures.push(FailureRecord {
+                label,
+                description,
+                stdout: outcome.stdout.clone(),
+                stderr: outcome.stderr.clone(),
+            });
         }
     }
-    if let Some(task) = &task {
-        on_progress(task, &outcome);
+    if let Some(node) = graph.node(id) {
+        on_progress(&node.payload, &outcome);
     }
     Ok(())
 }
@@ -423,16 +422,16 @@ impl Scheduler {
                 });
             }
 
-            let mut ready: Vec<NodeId> = Vec::new();
+            let mut ready: Vec<NodeId> = graph.ready_nodes();
+            if self.critical_path {
+                ready.sort_by_key(|id| Reverse(tail[id.index()]));
+            }
+            let mut enqueued = vec![false; graph.len()];
+            for &id in &ready {
+                enqueued[id.index()] = true;
+            }
             let mut ready_index: usize = 0;
             loop {
-                if ready_index >= ready.len() {
-                    ready = graph.ready_nodes();
-                    if self.critical_path {
-                        ready.sort_by_key(|id| Reverse(tail[id.index()]));
-                    }
-                    ready_index = 0;
-                }
                 let effective_workers = if let Some(threshold) = self.ram_threshold {
                     if last_ram_check.elapsed() >= Duration::from_millis(500) {
                         last_ram_check = Instant::now();
@@ -468,8 +467,11 @@ impl Scheduler {
                     let _ = task_tx.send((id, task, worker_id, task_start_offset));
                 }
 
-                if graph.nodes().iter().all(|node| node.state.is_terminal()) {
-                    break;
+                if ready_index >= ready.len() && in_flight == 0 {
+                    if graph.nodes().iter().all(|node| node.state.is_terminal()) {
+                        break;
+                    }
+                    return Err(SchedulerError::Stalled);
                 }
 
                 if in_flight == 0 {
@@ -500,14 +502,16 @@ impl Scheduler {
                     worker_id,
                     task_start_offset,
                 )?;
-                if was_success && let Ok(dependents) = graph.dependents(id).map(|s| s.to_vec()) {
-                    for dep in dependents {
-                        if matches!(graph.state(dep), Ok(TaskState::Pending))
+                if was_success && let Ok(dependents) = graph.dependents(id) {
+                    for &dep in dependents {
+                        let dep_idx = dep.index();
+                        if !enqueued[dep_idx]
+                            && matches!(graph.state(dep), Ok(TaskState::Pending))
                             && graph.is_ready(dep).unwrap_or(false)
-                            && !ready.contains(&dep)
                         {
+                            enqueued[dep_idx] = true;
                             if self.critical_path {
-                                let tail_val = tail[dep.index()];
+                                let tail_val = tail[dep_idx];
                                 let slice = &ready[ready_index..];
                                 let pos = slice
                                     .binary_search_by(|probe| {
@@ -544,16 +548,16 @@ impl Scheduler {
                         worker_id,
                         task_start_offset,
                     )?;
-                    if was_success_batch
-                        && let Ok(dependents) = graph.dependents(id).map(|s| s.to_vec())
-                    {
-                        for dep in dependents {
-                            if matches!(graph.state(dep), Ok(TaskState::Pending))
+                    if was_success_batch && let Ok(dependents) = graph.dependents(id) {
+                        for &dep in dependents {
+                            let dep_idx = dep.index();
+                            if !enqueued[dep_idx]
+                                && matches!(graph.state(dep), Ok(TaskState::Pending))
                                 && graph.is_ready(dep).unwrap_or(false)
-                                && !ready.contains(&dep)
                             {
+                                enqueued[dep_idx] = true;
                                 if self.critical_path {
-                                    let tail_val = tail[dep.index()];
+                                    let tail_val = tail[dep_idx];
                                     let slice = &ready[ready_index..];
                                     let pos = slice
                                         .binary_search_by(|probe| {

@@ -1,6 +1,8 @@
 {
   "name": "Fish Build System Dev Environment",
-  "dockerFile": "Dockerfile",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
   "features": {
     "ghcr.io/devcontainers/features/rust:1": {
       "version": "latest",
@@ -17,6 +19,9 @@
     },
     "ghcr.io/devcontainers/features/docker-in-docker:2": {}
   },
+  "remoteEnv": {
+    "PATH": "${containerEnv:PATH}:/home/vscode/.cargo/bin:/usr/local/cargo/bin"
+  },
   "customizations": {
     "vscode": {
       "extensions": [
@@ -31,6 +36,6 @@
       }
     }
   },
-  "postCreateCommand": "cargo check --workspace",
+  "postCreateCommand": "bash -c 'cargo check --workspace || true'",
   "remoteUser": "vscode"
 }

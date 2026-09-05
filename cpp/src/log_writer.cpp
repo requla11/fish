@@ -27,11 +27,9 @@ std::string get_log_path() {
     return p ? std::string(p) : std::string();
 #endif
 }
-}
 
-void initialize() {
-    std::lock_guard<std::mutex> lock(g_log_mutex);
-    if (g_initialized) {
+void try_open_log_file_locked() {
+    if (g_log_file.is_open()) {
         return;
     }
     std::string path = get_log_path();
@@ -43,6 +41,12 @@ void initialize() {
         }
         g_log_file.open(path, std::ios::out | std::ios::app);
     }
+}
+}
+
+void initialize() {
+    std::lock_guard<std::mutex> lock(g_log_mutex);
+    try_open_log_file_locked();
     g_initialized = true;
 }
 
@@ -61,6 +65,7 @@ void record_access(OpType op, std::string_view path) {
     }
 
     std::lock_guard<std::mutex> lock(g_log_mutex);
+    try_open_log_file_locked();
     if (!g_log_file.is_open()) {
         return;
     }

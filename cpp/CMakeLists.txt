@@ -9,7 +9,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 if(MSVC)
-    add_compile_options(/W4 /WX /permissive- /Zc:__cplusplus)
+    add_compile_options(/W4 /WX /wd4251 /permissive- /Zc:__cplusplus)
 else()
     add_compile_options(-Wall -Wextra -Werror -pedantic)
 endif()
@@ -19,6 +19,9 @@ add_library(fish_shim SHARED
     src/shim_main.cpp
     src/interceptor_posix.cpp
     src/interceptor_win.cpp
+    src/usn_watcher.cpp
+    src/symbol_inspector.cpp
+    src/binary_surgeon.cpp
 )
 
 target_include_directories(fish_shim PUBLIC

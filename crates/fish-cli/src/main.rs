@@ -23,6 +23,7 @@ mod ramdisk;
 mod render;
 mod self_heal;
 mod semantic;
+pub mod summary;
 mod swarm;
 mod timemachine;
 mod tui;

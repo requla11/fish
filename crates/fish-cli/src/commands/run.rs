@@ -109,6 +109,8 @@ pub fn run_run(args: RunArgs) -> ExitCode {
         super_opt: false,
         apple: false,
         explain: false,
+        summary: false,
+        summary_file: None,
         otel_endpoint: None,
         replay_trace: None,
         no_infer_deps: false,

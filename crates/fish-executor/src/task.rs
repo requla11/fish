@@ -23,6 +23,8 @@ pub struct Task {
     /// Paths (relative to `spec.cwd`) of the build outputs produced by this
     /// task; they are packed, content-addressed and restored from cache.
     pub artifacts: Vec<PathBuf>,
+
+    pub inputs: Vec<PathBuf>,
 }
 
 impl Task {
@@ -37,6 +39,7 @@ impl Task {
             spec,
             cache: None,
             artifacts: Vec::new(),
+            inputs: Vec::new(),
         }
     }
 
@@ -47,6 +50,11 @@ impl Task {
 
     pub fn with_artifacts(mut self, artifacts: Vec<PathBuf>) -> Self {
         self.artifacts = artifacts;
+        self
+    }
+
+    pub fn with_inputs(mut self, inputs: Vec<PathBuf>) -> Self {
+        self.inputs = inputs;
         self
     }
 }

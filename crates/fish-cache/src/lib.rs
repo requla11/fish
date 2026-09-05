@@ -4,6 +4,7 @@ pub mod async_io;
 pub mod file_level;
 pub mod file_level_adapter;
 pub mod gc;
+pub mod manifest;
 pub mod morphic;
 pub mod pool;
 pub mod prediction;
@@ -13,6 +14,9 @@ pub mod uring;
 pub use async_io::{AsyncCache, AsyncFileReader, AsyncFileWriter, AsyncIoError};
 pub use file_level_adapter::{FileLevelCacheAdapter, HybridCachingExecutor};
 pub use gc::{BackgroundCacheGc, EvictionPolicy, GcConfig};
+pub use manifest::{
+    DepDiff, EnvDiff, FileDiff, FileDigest, ManifestDiff, ManifestVerdict, TaskManifest,
+};
 pub use morphic::{
     DualKeyFingerprint, MorphicCacheCatalog, MorphicEnvironmentFilter, MorphicFingerprintEngine,
     MorphicLookupResult, MorphicPathNormalizer, MorphicSourceNormalizer,
@@ -196,6 +200,7 @@ impl LocalCache {
             }
         })?;
 
+        let _ = fs::create_dir_all(root.join("metadata").join("manifests"));
         let _ = fs::create_dir_all(root.join("objects"));
         let _ = fs::create_dir_all(root.join("artifacts"));
 
@@ -326,6 +331,93 @@ impl LocalCache {
             .ok()
             .flatten()
             .and_then(|r| r.artifact_hash)
+    }
+
+    pub fn manifests_dir(&self) -> PathBuf {
+        self.root.join("metadata").join("manifests")
+    }
+
+    pub fn put_manifest(&self, manifest: &crate::manifest::TaskManifest) -> Result<(), CacheError> {
+        let dir = self.manifests_dir();
+        fs::create_dir_all(&dir).map_err(|source| CacheError::Write {
+            key: manifest.key.clone(),
+            source,
+        })?;
+        let encoded = encode_key(&manifest.key);
+        let path = dir.join(format!("{encoded}.json"));
+        let payload = serde_json::to_vec_pretty(manifest).map_err(|e| CacheError::Write {
+            key: manifest.key.clone(),
+            source: io::Error::other(e.to_string()),
+        })?;
+        let tmp = unique_tmp_path(&path);
+        {
+            let mut file = fs::File::create(&tmp).map_err(|source| CacheError::Write {
+                key: manifest.key.clone(),
+                source,
+            })?;
+            std::io::Write::write_all(&mut file, &payload).map_err(|source| CacheError::Write {
+                key: manifest.key.clone(),
+                source,
+            })?;
+            file.sync_all().map_err(|source| CacheError::Write {
+                key: manifest.key.clone(),
+                source,
+            })?;
+        }
+        atomic_rename(&tmp, &path).map_err(|source| CacheError::Write {
+            key: manifest.key.clone(),
+            source,
+        })?;
+        Ok(())
+    }
+
+    pub fn get_manifest(&self, key: &str) -> Option<crate::manifest::TaskManifest> {
+        let encoded = encode_key(key);
+        let path = self.manifests_dir().join(format!("{encoded}.json"));
+        let bytes = fs::read(&path).ok()?;
+        serde_json::from_slice(&bytes).ok()
+    }
+
+    pub fn list_manifests(&self) -> Vec<crate::manifest::TaskManifest> {
+        let mut list = Vec::new();
+        let dir = self.manifests_dir();
+        if let Ok(entries) = fs::read_dir(dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.extension().and_then(|s| s.to_str()) == Some("json")
+                    && let Ok(bytes) = fs::read(&path)
+                    && let Ok(manifest) =
+                        serde_json::from_slice::<crate::manifest::TaskManifest>(&bytes)
+                {
+                    list.push(manifest);
+                }
+            }
+        }
+        list
+    }
+
+    pub fn find_manifest_by_target(&self, target: &str) -> Option<crate::manifest::TaskManifest> {
+        if let Some(m) = self.get_manifest(target) {
+            return Some(m);
+        }
+        let all = self.list_manifests();
+        let target_lower = target.to_lowercase();
+        for m in &all {
+            if m.label == target || m.key == target {
+                return Some(m.clone());
+            }
+        }
+        for m in &all {
+            if m.label.to_lowercase() == target_lower || m.key.to_lowercase() == target_lower {
+                return Some(m.clone());
+            }
+        }
+        for m in &all {
+            if m.label.contains(target) || m.key.contains(target) {
+                return Some(m.clone());
+            }
+        }
+        all.into_iter().max_by_key(|m| m.stored_at)
     }
 
     pub fn objects_dir(&self) -> PathBuf {
@@ -1233,6 +1325,8 @@ impl<I: TaskExecutor> TaskExecutor for CachingExecutor<I> {
             {
                 self.cache.stats().record_error();
             }
+            let manifest = TaskManifest::from_task(task, &std::collections::BTreeMap::new());
+            let _ = self.cache.put_manifest(&manifest);
         }
         Ok(outcome)
     }

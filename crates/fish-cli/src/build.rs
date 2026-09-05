@@ -272,6 +272,8 @@ pub(crate) fn run_build_mode_with(
         super_opt: args.super_opt || config.super_opt,
         apple: args.apple,
         explain: args.explain,
+        summary: args.summary,
+        summary_file: args.summary_file,
         otel_endpoint: args
             .otel_endpoint
             .or(config.otel_endpoint)
@@ -622,7 +624,45 @@ pub(crate) fn run_rust_build(
         summary
     } else {
         match scheduler.run(&mut task_graph, &executor, |task, outcome| {
-            render::print_progress(task, outcome)
+            render::print_progress(task, outcome);
+            if args.explain
+                && outcome.status != fish_executor::TaskStatus::Cached
+                && let Some(ref c) = cache_handle
+            {
+                if let Some(m) = c.find_manifest_by_target(&task.label) {
+                    let diff = m.diff_against_working_tree(start_dir);
+                    if let Some(first_mod) = diff.modified_files.first() {
+                        println!(
+                            "  [explain] {} rebuilt: modified {}",
+                            task.label, first_mod.path
+                        );
+                    } else if !diff.added_files.is_empty() {
+                        println!(
+                            "  [explain] {} rebuilt: added {} file(s)",
+                            task.label,
+                            diff.added_files.len()
+                        );
+                    } else if !diff.removed_files.is_empty() {
+                        println!(
+                            "  [explain] {} rebuilt: removed {} file(s)",
+                            task.label,
+                            diff.removed_files.len()
+                        );
+                    } else if !diff.changed_envs.is_empty() {
+                        println!(
+                            "  [explain] {} rebuilt: changed env {}",
+                            task.label, diff.changed_envs[0].key
+                        );
+                    } else {
+                        println!("  [explain] {} rebuilt: fingerprint drift", task.label);
+                    }
+                } else {
+                    println!(
+                        "  [explain] {} cold cache miss (no prior manifest)",
+                        task.label
+                    );
+                }
+            }
         }) {
             Ok(summary) => summary,
             Err(error) => {
@@ -641,6 +681,12 @@ pub(crate) fn run_rust_build(
             eprintln!("warning: failed to write profile trace: {err}");
         } else {
             render::print_profile_saved(trace_path);
+        }
+    }
+    if args.summary || args.summary_file.is_some() {
+        let run_summary = crate::summary::RunSummary::from_build(&summary, &task_graph);
+        if let Ok(saved_path) = run_summary.auto_save(start_dir, args.summary_file.as_deref()) {
+            println!("Summary saved to {}", saved_path.display());
         }
     }
 

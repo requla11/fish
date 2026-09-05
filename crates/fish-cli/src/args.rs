@@ -461,6 +461,10 @@ pub struct CommonArgs {
     pub super_opt: bool,
     #[arg(long = "explain")]
     pub explain: bool,
+    #[arg(long = "summary")]
+    pub summary: bool,
+    #[arg(long = "summary-file")]
+    pub summary_file: Option<PathBuf>,
     #[arg(long = "otel-endpoint")]
     pub otel_endpoint: Option<String>,
     /// Disable automatic cross-language dependency inference between detected

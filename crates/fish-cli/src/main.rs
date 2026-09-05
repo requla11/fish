@@ -12,6 +12,7 @@ mod config;
 mod critical_path;
 mod cross_deps;
 pub mod daemon;
+pub mod dry_run;
 pub mod experimental;
 mod nl_authoring;
 mod nl_query;

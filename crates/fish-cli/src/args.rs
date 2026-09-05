@@ -502,6 +502,8 @@ pub struct CommonArgs {
     /// ecosystem builds independently.
     #[arg(long = "no-infer-deps")]
     pub no_infer_deps: bool,
+    #[arg(long = "dry-run", alias = "dry", num_args = 0..=1, default_missing_value = "text")]
+    pub dry_run: Option<String>,
 }
 
 #[derive(Debug, Args)]

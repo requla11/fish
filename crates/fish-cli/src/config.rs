@@ -108,6 +108,8 @@ pub struct FishConfig {
     pub boundaries: Vec<fish_core::BoundaryTagRule>,
     #[serde(default)]
     pub execution_log: Option<String>,
+    #[serde(default)]
+    pub dry_run: Option<String>,
 }
 
 impl FishConfig {

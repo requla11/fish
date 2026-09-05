@@ -127,15 +127,20 @@ pub fn open_cache(args: &CommonArgs) -> Option<LocalCache> {
         Some(dir) => LocalCache::new(dir),
         None => LocalCache::default_location(),
     };
+    let is_json = args
+        .dry_run
+        .as_deref()
+        .map(|m| m.eq_ignore_ascii_case("json"))
+        .unwrap_or(false);
     match result {
         Ok(cache) => {
-            if !args.tui {
+            if !args.tui && !is_json {
                 render::print_cache_location(cache.root());
             }
             Some(cache)
         }
         Err(error) => {
-            if !args.tui {
+            if !args.tui && !is_json {
                 eprintln!("warning: fingerprint cache disabled: {error}");
             }
             None

@@ -504,6 +504,11 @@ pub(crate) fn execute_task_graph(
 ) -> ExitCode {
     let cache = utils::open_cache(args);
     let cache_handle = cache.clone();
+
+    if let Some(ref dry_mode) = args.dry_run {
+        return crate::dry_run::execute_dry_run(task_graph, cache_handle.as_ref(), dry_mode);
+    }
+
     let executor = crate::build::build_executor(args, cache);
 
     let workers = args.jobs.unwrap_or_else(utils::default_jobs).max(1);

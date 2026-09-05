@@ -285,6 +285,7 @@ pub(crate) fn run_build_mode_with(
             .or_else(|| std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT").ok()),
         replay_trace: args.replay_trace,
         no_infer_deps: args.no_infer_deps || config.no_infer_deps,
+        dry_run: args.dry_run.or(config.dry_run),
     };
 
     if let Some(endpoint) = &merged.otel_endpoint {
@@ -589,6 +590,11 @@ pub(crate) fn run_rust_build(
 
     let cache = utils::open_cache(args);
     let cache_handle = cache.clone();
+
+    if let Some(ref dry_mode) = args.dry_run {
+        return crate::dry_run::execute_dry_run(&task_graph, cache_handle.as_ref(), dry_mode);
+    }
+
     let executor = build_executor(args, cache);
 
     let workers = args.jobs.unwrap_or_else(utils::default_jobs).max(1);

@@ -117,6 +117,7 @@ pub fn run_run(args: RunArgs) -> ExitCode {
         otel_endpoint: None,
         replay_trace: None,
         no_infer_deps: false,
+        dry_run: None,
     };
 
     let build_status = crate::run_build_mode(common_args, BuildMode::Build);

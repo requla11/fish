@@ -95,6 +95,7 @@ Usage: fish build [OPTIONS] [PATH]
 | `--telemetry` |  | `false` |
 | `--otel-endpoint` `<OTEL_ENDPOINT>` |  |  |
 | `--no-infer-deps` | Disable automatic cross-language dependency inference between detected projects (see `cross_deps`); references are then ignored and each ecosystem builds independently | `false` |
+| `--dry-run` `<DRY_RUN>` |  |  |
 
 ### fish-check
 
@@ -144,6 +145,7 @@ Usage: fish check [OPTIONS] [PATH]
 | `--telemetry` |  | `false` |
 | `--otel-endpoint` `<OTEL_ENDPOINT>` |  |  |
 | `--no-infer-deps` | Disable automatic cross-language dependency inference between detected projects (see `cross_deps`); references are then ignored and each ecosystem builds independently | `false` |
+| `--dry-run` `<DRY_RUN>` |  |  |
 | `--boundaries` |  | `false` |
 
 ### fish-test
@@ -194,6 +196,7 @@ Usage: fish test [OPTIONS] [PATH]
 | `--telemetry` |  | `false` |
 | `--otel-endpoint` `<OTEL_ENDPOINT>` |  |  |
 | `--no-infer-deps` | Disable automatic cross-language dependency inference between detected projects (see `cross_deps`); references are then ignored and each ecosystem builds independently | `false` |
+| `--dry-run` `<DRY_RUN>` |  |  |
 
 ### fish-clean
 
@@ -285,6 +288,7 @@ Usage: fish watch [OPTIONS] [PATH]
 | `--telemetry` |  | `false` |
 | `--otel-endpoint` `<OTEL_ENDPOINT>` |  |  |
 | `--no-infer-deps` | Disable automatic cross-language dependency inference between detected projects (see `cross_deps`); references are then ignored and each ecosystem builds independently | `false` |
+| `--dry-run` `<DRY_RUN>` |  |  |
 | `--mode` `<MODE>` |  | `build` |
 | `--debounce` `<DEBOUNCE>` |  | `200` |
 | `--clear` |  | `false` |
@@ -367,6 +371,7 @@ Usage: fish affected [OPTIONS] [PATH]
 | `--telemetry` |  | `false` |
 | `--otel-endpoint` `<OTEL_ENDPOINT>` |  |  |
 | `--no-infer-deps` | Disable automatic cross-language dependency inference between detected projects (see `cross_deps`); references are then ignored and each ecosystem builds independently | `false` |
+| `--dry-run` `<DRY_RUN>` |  |  |
 | `--since` `<SINCE>` | The git revision (commit/tag/branch) to diff against. `HEAD` compares the working tree, an explicit revision compares the tree of that revision against the working tree | `HEAD` |
 | `--base` `<BASE>` | Git base reference to compare against (e.g. `--base origin/main`) |  |
 | `--mode` `<MODE>` |  | `build` |

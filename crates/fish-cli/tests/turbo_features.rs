@@ -320,3 +320,35 @@ fn test_wasm_plugin_sandbox_cli() {
     assert!(out.contains("WASM / WASI Hermetic Plugin Sandbox active"));
     assert!(out.contains("my_codegen"));
 }
+
+#[test]
+fn test_dry_run_text_cli() {
+    let dir = fixture(&[
+        ("Cargo.toml", CARGO_MANIFEST),
+        ("src/lib.rs", "pub fn dry_run_test() -> bool { true }\n"),
+    ]);
+
+    let output = run(fish().arg("build").arg("--dry-run").arg(dir.path()));
+    let out = stdout(&output);
+    let err = stderr(&output);
+    assert!(output.status.success(), "stdout: {out}, stderr: {err}");
+    assert!(out.contains("Fish Dry Run Execution Plan"));
+    assert!(out.contains("Dry Run Summary:"));
+    assert!(out.contains("To execute (Miss):"));
+}
+
+#[test]
+fn test_dry_run_json_cli() {
+    let dir = fixture(&[
+        ("Cargo.toml", CARGO_MANIFEST),
+        ("src/lib.rs", "pub fn dry_run_json() -> bool { true }\n"),
+    ]);
+
+    let output = run(fish().arg("build").arg("--dry-run=json").arg(dir.path()));
+    let out = stdout(&output);
+    let err = stderr(&output);
+    assert!(output.status.success(), "stdout: {out}, stderr: {err}");
+    let val: serde_json::Value = serde_json::from_str(&out).expect("valid json output");
+    assert!(val.get("total_tasks").is_some());
+    assert!(val.get("execution_order").is_some());
+}

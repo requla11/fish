@@ -14,21 +14,23 @@ pub fn resolve_start_dir(path: Option<&Path>) -> Result<PathBuf, String> {
 
     let base = match path {
         Some(path) => {
+            if path.is_file() {
+                return Err(format!(
+                    "`{}` is a file; expected a project directory",
+                    path.display()
+                ));
+            }
             let str_val = path.to_string_lossy();
             let normalized = str_val.replace('\\', "/");
             if normalized == "//..."
                 || normalized == "/..."
                 || normalized == "..."
                 || normalized == "//"
-                || normalized == "/"
                 || normalized == "."
                 || normalized.starts_with(':')
             {
                 workspace_root
-            } else if let Some(stripped) = normalized
-                .strip_prefix("//")
-                .or_else(|| normalized.strip_prefix("/"))
-            {
+            } else if let Some(stripped) = normalized.strip_prefix("//") {
                 let target_path = stripped
                     .split(':')
                     .next()
@@ -49,11 +51,6 @@ pub fn resolve_start_dir(path: Option<&Path>) -> Result<PathBuf, String> {
                         }
                     }
                 }
-            } else if path.is_file() {
-                return Err(format!(
-                    "`{}` is a file; expected a project directory",
-                    path.display()
-                ));
             } else if !path.exists() {
                 let name = str_val.as_ref();
                 let crates_candidate = workspace_root.join("crates").join(name);

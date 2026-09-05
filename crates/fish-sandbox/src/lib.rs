@@ -6,6 +6,7 @@ pub mod executor;
 pub mod file_events;
 pub mod hermetic;
 pub mod isolation;
+pub mod landlock;
 pub mod microvm;
 pub mod microvm_config;
 pub mod snapshot;
@@ -17,6 +18,7 @@ pub use executor::{SandboxConfig, SandboxedExecutor};
 pub use file_events::{FileAccessType, FileEventRecorder, HermeticitySummary};
 pub use hermetic::{HermeticProcessSandbox, SandboxPlatform};
 pub use isolation::{FsPolicy, SandboxWorkspace};
+pub use landlock::{LandlockAccessFs, LandlockPathRule, LandlockPolicy};
 pub use snapshot::{SandboxSnapshot, SnapshotBackend, SnapshotManager};
 pub use tracer::{HermeticTraceResult, SyscallTracer};
 

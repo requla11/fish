@@ -10,9 +10,13 @@ use fish_graph::BuildGraph;
 pub mod config;
 pub mod ecosystem;
 pub mod fingerprint;
+pub mod pubspec_lock;
+pub mod source_scanner;
 pub mod toolchain;
 
 pub use config::{DartProjectConfig, DartTargetPlatform};
+pub use pubspec_lock::{PubspecLock, PubspecPackage};
+pub use source_scanner::{DartImportKind, DartSourceGraph};
 pub use toolchain::{DartCompiler, DartToolchain};
 
 #[derive(Debug, Error)]

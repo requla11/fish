@@ -130,6 +130,57 @@ impl ReapiClient {
         Ok(digest)
     }
 
+    pub fn read_blob_chunks(
+        &self,
+        digest: &ReapiDigest,
+        chunk_size: usize,
+    ) -> Result<Vec<Vec<u8>>, RemoteCacheError> {
+        let blob = self.read_blob(digest)?.ok_or_else(|| {
+            RemoteCacheError::Protocol(format!("blob not found: {}", digest.hash))
+        })?;
+        let size = if chunk_size == 0 {
+            2 * 1024 * 1024
+        } else {
+            chunk_size
+        };
+        let chunks = blob.chunks(size).map(|c| c.to_vec()).collect();
+        Ok(chunks)
+    }
+
+    pub fn write_blob_chunks(&self, chunks: &[&[u8]]) -> Result<ReapiDigest, RemoteCacheError> {
+        let mut total_len = 0;
+        for c in chunks {
+            total_len += c.len();
+        }
+        let mut combined = Vec::with_capacity(total_len);
+        for c in chunks {
+            combined.extend_from_slice(c);
+        }
+        self.write_blob(&combined)
+    }
+
+    pub fn write_blob_compressed(
+        &self,
+        data: &[u8],
+    ) -> Result<(ReapiDigest, usize), RemoteCacheError> {
+        let compressed = zstd::encode_all(data, 3).map_err(RemoteCacheError::Io)?;
+        let compressed_size = compressed.len();
+        let digest = self.write_blob(&compressed)?;
+        Ok((digest, compressed_size))
+    }
+
+    pub fn read_blob_decompressed(
+        &self,
+        digest: &ReapiDigest,
+    ) -> Result<Option<Vec<u8>>, RemoteCacheError> {
+        if let Some(compressed) = self.read_blob(digest)? {
+            let decompressed = zstd::decode_all(&compressed[..]).map_err(RemoteCacheError::Io)?;
+            Ok(Some(decompressed))
+        } else {
+            Ok(None)
+        }
+    }
+
     pub fn find_missing_blobs(
         &self,
         digests: &[ReapiDigest],
@@ -327,5 +378,33 @@ mod tests {
         assert_eq!(cached.exit_code, 0);
         assert_eq!(cached.output_files.len(), 1);
         assert_eq!(cached.output_files[0].path, "target/app.exe");
+    }
+
+    #[test]
+    fn test_reapi_blob_chunking() {
+        let client = ReapiClient::new();
+        let payload = vec![42u8; 1024 * 1024 * 5];
+        let digest = client.write_blob(&payload).unwrap();
+
+        let chunks = client.read_blob_chunks(&digest, 2 * 1024 * 1024).unwrap();
+        assert_eq!(chunks.len(), 3);
+        assert_eq!(chunks[0].len(), 2 * 1024 * 1024);
+        assert_eq!(chunks[1].len(), 2 * 1024 * 1024);
+        assert_eq!(chunks[2].len(), 1024 * 1024);
+
+        let chunk_refs: Vec<&[u8]> = chunks.iter().map(|c| c.as_slice()).collect();
+        let assembled_digest = client.write_blob_chunks(&chunk_refs).unwrap();
+        assert_eq!(assembled_digest, digest);
+    }
+
+    #[test]
+    fn test_reapi_zstd_compression_roundtrip() {
+        let client = ReapiClient::new();
+        let payload = b"repeated-repeated-repeated-payload-for-compression-testing".repeat(50);
+        let (digest, compressed_size) = client.write_blob_compressed(&payload).unwrap();
+        assert!(compressed_size < payload.len());
+
+        let decompressed = client.read_blob_decompressed(&digest).unwrap().unwrap();
+        assert_eq!(decompressed, payload);
     }
 }

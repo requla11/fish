@@ -19,6 +19,7 @@ pub enum LoadBalancingStrategy {
 #[derive(Debug, Clone)]
 pub struct WorkerCircuitBreaker {
     failure_counts: Arc<Mutex<HashMap<String, (usize, Instant)>>>,
+    latencies: Arc<Mutex<HashMap<String, Vec<Duration>>>>,
     failure_threshold: usize,
     cooldown: Duration,
 }
@@ -27,6 +28,7 @@ impl WorkerCircuitBreaker {
     pub fn new(failure_threshold: usize, cooldown: Duration) -> Self {
         Self {
             failure_counts: Arc::new(Mutex::new(HashMap::new())),
+            latencies: Arc::new(Mutex::new(HashMap::new())),
             failure_threshold,
             cooldown,
         }
@@ -43,6 +45,56 @@ impl WorkerCircuitBreaker {
     pub fn record_success(&self, addr: &str) {
         if let Ok(mut map) = self.failure_counts.lock() {
             map.remove(addr);
+        }
+    }
+
+    pub fn record_latency(&self, addr: &str, latency: Duration) {
+        if let Ok(mut map) = self.latencies.lock() {
+            let samples = map.entry(addr.to_string()).or_insert_with(Vec::new);
+            if samples.len() >= 50 {
+                samples.remove(0);
+            }
+            samples.push(latency);
+        }
+    }
+
+    pub fn p95_latency(&self, addr: &str) -> Option<Duration> {
+        let map = self.latencies.lock().ok()?;
+        let samples = map.get(addr)?;
+        if samples.is_empty() {
+            return None;
+        }
+        let mut sorted = samples.clone();
+        sorted.sort();
+        let idx = ((sorted.len() as f64) * 0.95).ceil() as usize;
+        let p95_idx = (idx.saturating_sub(1)).min(sorted.len() - 1);
+        Some(sorted[p95_idx])
+    }
+
+    pub fn cluster_p95_latency(&self) -> Option<Duration> {
+        let map = self.latencies.lock().ok()?;
+        let mut all_samples = Vec::new();
+        for samples in map.values() {
+            all_samples.extend_from_slice(samples);
+        }
+        if all_samples.is_empty() {
+            return None;
+        }
+        all_samples.sort();
+        let idx = ((all_samples.len() as f64) * 0.95).ceil() as usize;
+        let p95_idx = (idx.saturating_sub(1)).min(all_samples.len() - 1);
+        Some(all_samples[p95_idx])
+    }
+
+    pub fn should_trigger_local_race(&self, addr: &str, elapsed: Duration) -> bool {
+        let baseline = self
+            .p95_latency(addr)
+            .or_else(|| self.cluster_p95_latency());
+        if let Some(target) = baseline {
+            let threshold = target.mul_f64(1.5).max(Duration::from_millis(50));
+            elapsed >= threshold
+        } else {
+            elapsed >= Duration::from_secs(3)
         }
     }
 
@@ -342,5 +394,21 @@ mod tests {
         let candidates = cluster.select_candidate_indices();
         assert_eq!(candidates[0], 1);
         assert_eq!(candidates[1], 0);
+    }
+
+    #[test]
+    fn test_circuit_breaker_latency_tracking_and_racing() {
+        let breaker = WorkerCircuitBreaker::default();
+        let node = "10.0.0.9:9000";
+
+        for ms in [10, 20, 30, 40, 50, 60, 70, 80, 90, 100] {
+            breaker.record_latency(node, Duration::from_millis(ms));
+        }
+
+        let p95 = breaker.p95_latency(node).unwrap();
+        assert!(p95 >= Duration::from_millis(90));
+
+        assert!(!breaker.should_trigger_local_race(node, Duration::from_millis(50)));
+        assert!(breaker.should_trigger_local_race(node, Duration::from_millis(200)));
     }
 }

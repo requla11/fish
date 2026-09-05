@@ -10,9 +10,11 @@ use fish_graph::BuildGraph;
 pub mod config;
 pub mod ecosystem;
 pub mod fingerprint;
+pub mod package_dump;
 pub mod toolchain;
 
 pub use config::{SwiftPlatform, SwiftProjectConfig};
+pub use package_dump::{SwiftPackageDescription, SwiftProduct, SwiftTarget, SwiftTargetDependency};
 pub use toolchain::{SwiftCompiler, SwiftToolchain};
 
 #[derive(Debug, Error)]

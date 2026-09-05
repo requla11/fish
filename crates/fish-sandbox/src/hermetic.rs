@@ -3,6 +3,7 @@ use std::path::PathBuf;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SandboxPlatform {
     LinuxBubblewrap,
+    LinuxLandlock,
     MacOSSandboxExec,
     WindowsJobObject,
     AppleDaemon,
@@ -52,16 +53,28 @@ impl HermeticProcessSandbox {
                 ("apple".to_string(), apple_args)
             }
             SandboxPlatform::LinuxBubblewrap => {
-                let mut bwrap_args = vec![
-                    "--unshare-all".to_string(),
+                let mut bwrap_args = vec!["--unshare-all".to_string()];
+                if !self.allow_network {
+                    bwrap_args.push("--unshare-net".to_string());
+                }
+                bwrap_args.extend_from_slice(&[
                     "--ro-bind".to_string(),
-                    "/".to_string(),
-                    "/".to_string(),
+                    "/usr".to_string(),
+                    "/usr".to_string(),
+                    "--ro-bind".to_string(),
+                    "/bin".to_string(),
+                    "/bin".to_string(),
+                    "--ro-bind".to_string(),
+                    "/lib".to_string(),
+                    "/lib".to_string(),
                     "--dev".to_string(),
                     "/dev".to_string(),
                     "--proc".to_string(),
                     "/proc".to_string(),
-                ];
+                    "--ro-bind".to_string(),
+                    self.root_dir.to_string_lossy().to_string(),
+                    self.root_dir.to_string_lossy().to_string(),
+                ]);
                 for w in &self.writable_dirs {
                     bwrap_args.push("--bind".to_string());
                     bwrap_args.push(w.to_string_lossy().to_string());
@@ -72,18 +85,35 @@ impl HermeticProcessSandbox {
                 ("bwrap".to_string(), bwrap_args)
             }
             SandboxPlatform::MacOSSandboxExec => {
+                let mut profile = String::from(
+                    "(version 1)(deny default)(allow process-exec)(allow file-read* (subpath \"/usr\")(subpath \"/bin\")(subpath \"/lib\")(subpath \"/System\")(subpath \"/Library\")",
+                );
+                profile.push_str(&format!(
+                    "(subpath \"{}\"))",
+                    self.root_dir.to_string_lossy()
+                ));
+                if !self.writable_dirs.is_empty() {
+                    profile.push_str("(allow file-write*");
+                    for w in &self.writable_dirs {
+                        profile.push_str(&format!("(subpath \"{}\")", w.to_string_lossy()));
+                    }
+                    profile.push(')');
+                }
+                if self.allow_network {
+                    profile.push_str("(allow network*)");
+                }
                 let mut sb_args = vec![
                     "-n".to_string(),
                     "-p".to_string(),
-                    "(version 1)(deny default)(allow process-exec)(allow file-read*)".to_string(),
+                    profile,
                     executable.to_string(),
                 ];
                 sb_args.extend_from_slice(args);
                 ("sandbox-exec".to_string(), sb_args)
             }
-            SandboxPlatform::WindowsJobObject | SandboxPlatform::FallbackRestricted => {
-                (executable.to_string(), args.to_vec())
-            }
+            SandboxPlatform::LinuxLandlock
+            | SandboxPlatform::WindowsJobObject
+            | SandboxPlatform::FallbackRestricted => (executable.to_string(), args.to_vec()),
         }
     }
 }
@@ -105,7 +135,26 @@ mod tests {
         let (cmd, args) = sb.wrap_command_args("gcc", &["-c".to_string(), "main.c".to_string()]);
         assert_eq!(cmd, "bwrap");
         assert!(args.contains(&"--unshare-all".to_string()));
+        assert!(args.contains(&"--unshare-net".to_string()));
+        assert!(args.contains(&"/workspace".to_string()));
         assert!(args.contains(&"gcc".to_string()));
+    }
+
+    #[test]
+    fn test_macos_sandbox_exec_wrapping() {
+        let sb = HermeticProcessSandbox {
+            platform: SandboxPlatform::MacOSSandboxExec,
+            root_dir: PathBuf::from("/workspace"),
+            writable_dirs: vec![PathBuf::from("/workspace/target")],
+            allow_network: false,
+            max_memory_bytes: 1024 * 1024,
+        };
+
+        let (cmd, args) = sb.wrap_command_args("clang", &["-c".to_string(), "main.c".to_string()]);
+        assert_eq!(cmd, "sandbox-exec");
+        assert!(args[2].contains("(version 1)"));
+        assert!(args[2].contains("(subpath \"/workspace\")"));
+        assert!(args[2].contains("(allow file-write*(subpath \"/workspace/target\"))"));
     }
 
     #[test]

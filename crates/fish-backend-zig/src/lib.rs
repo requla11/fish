@@ -10,10 +10,14 @@ use fish_graph::BuildGraph;
 pub mod config;
 pub mod ecosystem;
 pub mod fingerprint;
+pub mod source_scanner;
 pub mod toolchain;
+pub mod zon_parser;
 
 pub use config::{ZigProjectConfig, ZigTarget};
+pub use source_scanner::{ZigDependencyGraph, ZigImportKind};
 pub use toolchain::{ZigCompiler, ZigToolchain};
+pub use zon_parser::{ZonDependency, ZonManifest};
 
 #[derive(Debug, Error)]
 pub enum ZigBackendError {

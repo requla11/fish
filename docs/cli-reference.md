@@ -15,7 +15,7 @@ Usage: fish [OPTIONS] <COMMAND>
 | `--experimental` | Enable experimental features (use at your own risk) | `false` |
 | `--offline` | Disallow network access and fail-fast on remote operations | `false` |
 
-**Subcommands:** [`version`](#fish-version), [`init`](#fish-init), [`new`](#fish-new), [`build`](#fish-build), [`check`](#fish-check), [`test`](#fish-test), [`clean`](#fish-clean), [`run`](#fish-run), [`graph`](#fish-graph), [`watch`](#fish-watch), [`cache-server`](#fish-cache-server), [`worker`](#fish-worker), [`affected`](#fish-affected), [`doctor`](#fish-doctor), [`cache`](#fish-cache), [`ci`](#fish-ci), [`history`](#fish-history), [`rewind`](#fish-rewind), [`attest`](#fish-attest), [`verify`](#fish-verify), [`live-patch`](#fish-live-patch), [`jit`](#fish-jit), [`super-opt`](#fish-super-opt), [`plugin`](#fish-plugin), [`fix`](#fish-fix), [`signing-key`](#fish-signing-key), [`heal`](#fish-heal), [`cost-estimate`](#fish-cost-estimate), [`ui`](#fish-ui), [`query`](#fish-query), [`daemon`](#fish-daemon), [`ai`](#fish-ai), [`lsp`](#fish-lsp), [`why`](#fish-why), [`pash`](#fish-pash), [`qpc`](#fish-qpc)
+**Subcommands:** [`version`](#fish-version), [`init`](#fish-init), [`new`](#fish-new), [`build`](#fish-build), [`check`](#fish-check), [`test`](#fish-test), [`clean`](#fish-clean), [`run`](#fish-run), [`graph`](#fish-graph), [`watch`](#fish-watch), [`cache-server`](#fish-cache-server), [`worker`](#fish-worker), [`affected`](#fish-affected), [`doctor`](#fish-doctor), [`cache`](#fish-cache), [`ci`](#fish-ci), [`history`](#fish-history), [`rewind`](#fish-rewind), [`attest`](#fish-attest), [`verify`](#fish-verify), [`plugin`](#fish-plugin), [`fix`](#fish-fix), [`signing-key`](#fish-signing-key), [`heal`](#fish-heal), [`cost-estimate`](#fish-cost-estimate), [`ui`](#fish-ui), [`query`](#fish-query), [`daemon`](#fish-daemon), [`why`](#fish-why)
 
 ### fish-version
 
@@ -181,8 +181,6 @@ Usage: fish test [OPTIONS] [PATH]
 
 ### fish-clean
 
-Arguments for clean command
-
 ```
 Usage: fish clean [OPTIONS] [PATH]
 ```
@@ -190,6 +188,7 @@ Usage: fish clean [OPTIONS] [PATH]
 | Flag | Description | Default |
 |---|---|---|
 | path `<PATH>` |  |  |
+| `--all`, `-a` |  | `false` |
 
 ### fish-run
 
@@ -370,7 +369,7 @@ Usage: fish cache [OPTIONS] <COMMAND>
 |---|---|---|
 | `--dir` `<DIR>` | Cache directory; defaults to `FISH_CACHE_DIR` or `~/.fish/cache` |  |
 
-**Subcommands:** [`stats`](#fish-cache-stats), [`prune`](#fish-cache-prune), [`cas`](#fish-cache-cas)
+**Subcommands:** [`stats`](#fish-cache-stats), [`prune`](#fish-cache-prune), [`verify`](#fish-cache-verify), [`cas`](#fish-cache-cas)
 
 #### fish-cache-stats
 
@@ -392,6 +391,17 @@ Usage: fish cache prune [OPTIONS]
 |---|---|---|
 | `--older-than` `<OLDER_THAN>` | Delete records older than this age, e.g. `7d`, `12h`, `30m` |  |
 | `--max-size` `<MAX_SIZE>` | Keep the cache under this size, e.g. `10GB`, `500MB`. The oldest entries are removed first |  |
+
+#### fish-cache-verify
+
+```
+Usage: fish cache verify [OPTIONS]
+```
+
+| Flag | Description | Default |
+|---|---|---|
+| `--repair`, `-r` |  | `false` |
+| `--verbose`, `-v` |  | `false` |
 
 #### fish-cache-cas
 
@@ -545,7 +555,7 @@ Print this message or the help of the given subcommand(s)
 Usage: fish cache help [COMMAND]
 ```
 
-**Subcommands:** [`stats`](#fish-cache-help-stats), [`prune`](#fish-cache-help-prune), [`cas`](#fish-cache-help-cas)
+**Subcommands:** [`stats`](#fish-cache-help-stats), [`prune`](#fish-cache-help-prune), [`verify`](#fish-cache-help-verify), [`cas`](#fish-cache-help-cas)
 
 ##### fish-cache-help-stats
 
@@ -561,6 +571,12 @@ Delete stale fingerprints and oversized cache content
 
 ```
 Usage: fish cache help prune
+```
+
+##### fish-cache-help-verify
+
+```
+Usage: fish cache help verify
 ```
 
 ##### fish-cache-help-cas
@@ -727,8 +743,6 @@ Usage: fish rewind [OPTIONS] <SNAPSHOT_ID> [PATH]
 
 ### fish-attest
 
-Arguments for attestation command
-
 ```
 Usage: fish attest [OPTIONS] [PATH]
 ```
@@ -736,10 +750,11 @@ Usage: fish attest [OPTIONS] [PATH]
 | Flag | Description | Default |
 |---|---|---|
 | path `<PATH>` |  |  |
+| `--key` `<KEY>` |  |  |
+| `--seed` `<SEED>` |  |  |
+| `--slsa-l3` |  | `false` |
 
 ### fish-verify
-
-Arguments for verify command
 
 ```
 Usage: fish verify [OPTIONS] <ATTESTATION_FILE> [PATH]
@@ -749,46 +764,9 @@ Usage: fish verify [OPTIONS] <ATTESTATION_FILE> [PATH]
 |---|---|---|
 | attestation_file `<ATTESTATION_FILE>` |  |  |
 | path `<PATH>` |  |  |
-
-### fish-live-patch
-
-Arguments for live-patch command
-
-```
-Usage: fish live-patch [OPTIONS] <PROCESS_ID> <TARGET_BINARY> [PATH]
-```
-
-| Flag | Description | Default |
-|---|---|---|
-| process_id `<PROCESS_ID>` |  |  |
-| target_binary `<TARGET_BINARY>` |  |  |
-| path `<PATH>` |  |  |
-
-### fish-jit
-
-Arguments for JIT command
-
-```
-Usage: fish jit [OPTIONS] <FUNCTION_NAME> [VALUE]
-```
-
-| Flag | Description | Default |
-|---|---|---|
-| function_name `<FUNCTION_NAME>` |  |  |
-| value `<VALUE>` |  | `42` |
-
-### fish-super-opt
-
-Arguments for super-opt command
-
-```
-Usage: fish super-opt [OPTIONS] <INPUT_FILE> <OUTPUT_FILE>
-```
-
-| Flag | Description | Default |
-|---|---|---|
-| input_file `<INPUT_FILE>` |  |  |
-| output_file `<OUTPUT_FILE>` |  |  |
+| `--public-key` `<PUBLIC_KEY>` |  |  |
+| `--trusted-keys` `<TRUSTED_KEYS>` |  |  |
+| `--slsa-l3` |  | `false` |
 
 ### fish-plugin
 
@@ -802,13 +780,23 @@ Usage: fish plugin [OPTIONS] <COMMAND>
 |---|---|---|
 | `--path`, `-p` `<PATH>` | Project directory |  |
 
-**Subcommands:** [`list`](#fish-plugin-list), [`search`](#fish-plugin-search), [`install`](#fish-plugin-install), [`uninstall`](#fish-plugin-uninstall), [`publish`](#fish-plugin-publish), [`execute`](#fish-plugin-execute)
+**Subcommands:** [`list`](#fish-plugin-list), [`audit`](#fish-plugin-audit), [`search`](#fish-plugin-search), [`install`](#fish-plugin-install), [`uninstall`](#fish-plugin-uninstall), [`publish`](#fish-plugin-publish), [`execute`](#fish-plugin-execute)
 
 #### fish-plugin-list
 
 ```
 Usage: fish plugin list [OPTIONS]
 ```
+
+#### fish-plugin-audit
+
+```
+Usage: fish plugin audit [OPTIONS] <PATH>
+```
+
+| Flag | Description | Default |
+|---|---|---|
+| path `<PATH>` |  |  |
 
 #### fish-plugin-search
 
@@ -878,12 +866,18 @@ Print this message or the help of the given subcommand(s)
 Usage: fish plugin help [COMMAND]
 ```
 
-**Subcommands:** [`list`](#fish-plugin-help-list), [`search`](#fish-plugin-help-search), [`install`](#fish-plugin-help-install), [`uninstall`](#fish-plugin-help-uninstall), [`publish`](#fish-plugin-help-publish), [`execute`](#fish-plugin-help-execute)
+**Subcommands:** [`list`](#fish-plugin-help-list), [`audit`](#fish-plugin-help-audit), [`search`](#fish-plugin-help-search), [`install`](#fish-plugin-help-install), [`uninstall`](#fish-plugin-help-uninstall), [`publish`](#fish-plugin-help-publish), [`execute`](#fish-plugin-help-execute)
 
 ##### fish-plugin-help-list
 
 ```
 Usage: fish plugin help list
+```
+
+##### fish-plugin-help-audit
+
+```
+Usage: fish plugin help audit
 ```
 
 ##### fish-plugin-help-search
@@ -945,7 +939,7 @@ Usage: fish signing-key [OPTIONS]
 
 ### fish-heal
 
-Bisect recent commits after a failed build and prepare a revert branch
+Arguments for `fish heal`
 
 ```
 Usage: fish heal [OPTIONS] [CMD]...
@@ -1074,107 +1068,6 @@ Print this message or the help of the given subcommand(s)
 Usage: fish daemon help help
 ```
 
-### fish-ai
-
-```
-Usage: fish ai [OPTIONS] <COMMAND>
-```
-
-**Subcommands:** [`analyze`](#fish-ai-analyze), [`optimize`](#fish-ai-optimize), [`recommend`](#fish-ai-recommend), [`ping`](#fish-ai-ping)
-
-#### fish-ai-analyze
-
-```
-Usage: fish ai analyze [OPTIONS]
-```
-
-| Flag | Description | Default |
-|---|---|---|
-| `--toolchain`, `-t` `<TOOLCHAIN>` |  | `rust` |
-| `--stderr` `<STDERR>` |  |  |
-| `--file` `<FILE>` |  |  |
-| `--exit-code` `<EXIT_CODE>` |  | `1` |
-
-#### fish-ai-optimize
-
-```
-Usage: fish ai optimize [OPTIONS]
-```
-
-| Flag | Description | Default |
-|---|---|---|
-| `--path`, `-p` `<PATH>` |  |  |
-| `--workers` `<WORKERS>` |  | `8` |
-
-#### fish-ai-recommend
-
-```
-Usage: fish ai recommend [OPTIONS]
-```
-
-| Flag | Description | Default |
-|---|---|---|
-| `--path`, `-p` `<PATH>` |  |  |
-| `--files` `<FILES>` |  |  |
-
-#### fish-ai-ping
-
-```
-Usage: fish ai ping [OPTIONS]
-```
-
-#### fish-ai-help
-
-Print this message or the help of the given subcommand(s)
-
-```
-Usage: fish ai help [COMMAND]
-```
-
-**Subcommands:** [`analyze`](#fish-ai-help-analyze), [`optimize`](#fish-ai-help-optimize), [`recommend`](#fish-ai-help-recommend), [`ping`](#fish-ai-help-ping)
-
-##### fish-ai-help-analyze
-
-```
-Usage: fish ai help analyze
-```
-
-##### fish-ai-help-optimize
-
-```
-Usage: fish ai help optimize
-```
-
-##### fish-ai-help-recommend
-
-```
-Usage: fish ai help recommend
-```
-
-##### fish-ai-help-ping
-
-```
-Usage: fish ai help ping
-```
-
-##### fish-ai-help-help
-
-Print this message or the help of the given subcommand(s)
-
-```
-Usage: fish ai help help
-```
-
-### fish-lsp
-
-```
-Usage: fish lsp [OPTIONS]
-```
-
-| Flag | Description | Default |
-|---|---|---|
-| `--stdio` |  | `false` |
-
 ### fish-why
 
 ```
@@ -1186,85 +1079,6 @@ Usage: fish why [OPTIONS] <TARGET>
 | target `<TARGET>` |  |  |
 | `--path`, `-p` `<PATH>` |  |  |
 
-### fish-pash
-
-```
-Usage: fish pash [OPTIONS] <FILE>
-```
-
-| Flag | Description | Default |
-|---|---|---|
-| file `<FILE>` |  |  |
-| `--compare-with`, `-c` `<COMPARE_WITH>` |  |  |
-| `--lang`, `-l` `<LANG>` |  |  |
-| `--json` |  | `false` |
-
-### fish-qpc
-
-```
-Usage: fish qpc [OPTIONS] <COMMAND>
-```
-
-**Subcommands:** [`status`](#fish-qpc-status), [`bench`](#fish-qpc-bench), [`morphic`](#fish-qpc-morphic)
-
-#### fish-qpc-status
-
-```
-Usage: fish qpc status [OPTIONS]
-```
-
-#### fish-qpc-bench
-
-```
-Usage: fish qpc bench [OPTIONS]
-```
-
-#### fish-qpc-morphic
-
-```
-Usage: fish qpc morphic [OPTIONS]
-```
-
-| Flag | Description | Default |
-|---|---|---|
-| `--path`, `-p` `<PATH>` |  |  |
-
-#### fish-qpc-help
-
-Print this message or the help of the given subcommand(s)
-
-```
-Usage: fish qpc help [COMMAND]
-```
-
-**Subcommands:** [`status`](#fish-qpc-help-status), [`bench`](#fish-qpc-help-bench), [`morphic`](#fish-qpc-help-morphic)
-
-##### fish-qpc-help-status
-
-```
-Usage: fish qpc help status
-```
-
-##### fish-qpc-help-bench
-
-```
-Usage: fish qpc help bench
-```
-
-##### fish-qpc-help-morphic
-
-```
-Usage: fish qpc help morphic
-```
-
-##### fish-qpc-help-help
-
-Print this message or the help of the given subcommand(s)
-
-```
-Usage: fish qpc help help
-```
-
 ### fish-help
 
 Print this message or the help of the given subcommand(s)
@@ -1273,7 +1087,7 @@ Print this message or the help of the given subcommand(s)
 Usage: fish help [COMMAND]
 ```
 
-**Subcommands:** [`version`](#fish-help-version), [`init`](#fish-help-init), [`new`](#fish-help-new), [`build`](#fish-help-build), [`check`](#fish-help-check), [`test`](#fish-help-test), [`clean`](#fish-help-clean), [`run`](#fish-help-run), [`graph`](#fish-help-graph), [`watch`](#fish-help-watch), [`cache-server`](#fish-help-cache-server), [`worker`](#fish-help-worker), [`affected`](#fish-help-affected), [`doctor`](#fish-help-doctor), [`cache`](#fish-help-cache), [`ci`](#fish-help-ci), [`history`](#fish-help-history), [`rewind`](#fish-help-rewind), [`attest`](#fish-help-attest), [`verify`](#fish-help-verify), [`live-patch`](#fish-help-live-patch), [`jit`](#fish-help-jit), [`super-opt`](#fish-help-super-opt), [`plugin`](#fish-help-plugin), [`fix`](#fish-help-fix), [`signing-key`](#fish-help-signing-key), [`heal`](#fish-help-heal), [`cost-estimate`](#fish-help-cost-estimate), [`ui`](#fish-help-ui), [`query`](#fish-help-query), [`daemon`](#fish-help-daemon), [`ai`](#fish-help-ai), [`lsp`](#fish-help-lsp), [`why`](#fish-help-why), [`pash`](#fish-help-pash), [`qpc`](#fish-help-qpc)
+**Subcommands:** [`version`](#fish-help-version), [`init`](#fish-help-init), [`new`](#fish-help-new), [`build`](#fish-help-build), [`check`](#fish-help-check), [`test`](#fish-help-test), [`clean`](#fish-help-clean), [`run`](#fish-help-run), [`graph`](#fish-help-graph), [`watch`](#fish-help-watch), [`cache-server`](#fish-help-cache-server), [`worker`](#fish-help-worker), [`affected`](#fish-help-affected), [`doctor`](#fish-help-doctor), [`cache`](#fish-help-cache), [`ci`](#fish-help-ci), [`history`](#fish-help-history), [`rewind`](#fish-help-rewind), [`attest`](#fish-help-attest), [`verify`](#fish-help-verify), [`plugin`](#fish-help-plugin), [`fix`](#fish-help-fix), [`signing-key`](#fish-help-signing-key), [`heal`](#fish-help-heal), [`cost-estimate`](#fish-help-cost-estimate), [`ui`](#fish-help-ui), [`query`](#fish-help-query), [`daemon`](#fish-help-daemon), [`why`](#fish-help-why)
 
 #### fish-help-version
 
@@ -1318,8 +1132,6 @@ Usage: fish help test
 ```
 
 #### fish-help-clean
-
-Arguments for clean command
 
 ```
 Usage: fish help clean
@@ -1387,7 +1199,7 @@ Arguments for cache command
 Usage: fish help cache [COMMAND]
 ```
 
-**Subcommands:** [`stats`](#fish-help-cache-stats), [`prune`](#fish-help-cache-prune), [`cas`](#fish-help-cache-cas)
+**Subcommands:** [`stats`](#fish-help-cache-stats), [`prune`](#fish-help-cache-prune), [`verify`](#fish-help-cache-verify), [`cas`](#fish-help-cache-cas)
 
 ##### fish-help-cache-stats
 
@@ -1403,6 +1215,12 @@ Delete stale fingerprints and oversized cache content
 
 ```
 Usage: fish help cache prune
+```
+
+##### fish-help-cache-verify
+
+```
+Usage: fish help cache verify
 ```
 
 ##### fish-help-cache-cas
@@ -1507,42 +1325,14 @@ Usage: fish help rewind
 
 #### fish-help-attest
 
-Arguments for attestation command
-
 ```
 Usage: fish help attest
 ```
 
 #### fish-help-verify
 
-Arguments for verify command
-
 ```
 Usage: fish help verify
-```
-
-#### fish-help-live-patch
-
-Arguments for live-patch command
-
-```
-Usage: fish help live-patch
-```
-
-#### fish-help-jit
-
-Arguments for JIT command
-
-```
-Usage: fish help jit
-```
-
-#### fish-help-super-opt
-
-Arguments for super-opt command
-
-```
-Usage: fish help super-opt
 ```
 
 #### fish-help-plugin
@@ -1553,12 +1343,18 @@ Arguments for plugin command
 Usage: fish help plugin [COMMAND]
 ```
 
-**Subcommands:** [`list`](#fish-help-plugin-list), [`search`](#fish-help-plugin-search), [`install`](#fish-help-plugin-install), [`uninstall`](#fish-help-plugin-uninstall), [`publish`](#fish-help-plugin-publish), [`execute`](#fish-help-plugin-execute)
+**Subcommands:** [`list`](#fish-help-plugin-list), [`audit`](#fish-help-plugin-audit), [`search`](#fish-help-plugin-search), [`install`](#fish-help-plugin-install), [`uninstall`](#fish-help-plugin-uninstall), [`publish`](#fish-help-plugin-publish), [`execute`](#fish-help-plugin-execute)
 
 ##### fish-help-plugin-list
 
 ```
 Usage: fish help plugin list
+```
+
+##### fish-help-plugin-audit
+
+```
+Usage: fish help plugin audit
 ```
 
 ##### fish-help-plugin-search
@@ -1605,7 +1401,7 @@ Usage: fish help signing-key
 
 #### fish-help-heal
 
-Bisect recent commits after a failed build and prepare a revert branch
+Arguments for `fish heal`
 
 ```
 Usage: fish help heal
@@ -1655,80 +1451,10 @@ Usage: fish help daemon status
 Usage: fish help daemon stop
 ```
 
-#### fish-help-ai
-
-```
-Usage: fish help ai [COMMAND]
-```
-
-**Subcommands:** [`analyze`](#fish-help-ai-analyze), [`optimize`](#fish-help-ai-optimize), [`recommend`](#fish-help-ai-recommend), [`ping`](#fish-help-ai-ping)
-
-##### fish-help-ai-analyze
-
-```
-Usage: fish help ai analyze
-```
-
-##### fish-help-ai-optimize
-
-```
-Usage: fish help ai optimize
-```
-
-##### fish-help-ai-recommend
-
-```
-Usage: fish help ai recommend
-```
-
-##### fish-help-ai-ping
-
-```
-Usage: fish help ai ping
-```
-
-#### fish-help-lsp
-
-```
-Usage: fish help lsp
-```
-
 #### fish-help-why
 
 ```
 Usage: fish help why
-```
-
-#### fish-help-pash
-
-```
-Usage: fish help pash
-```
-
-#### fish-help-qpc
-
-```
-Usage: fish help qpc [COMMAND]
-```
-
-**Subcommands:** [`status`](#fish-help-qpc-status), [`bench`](#fish-help-qpc-bench), [`morphic`](#fish-help-qpc-morphic)
-
-##### fish-help-qpc-status
-
-```
-Usage: fish help qpc status
-```
-
-##### fish-help-qpc-bench
-
-```
-Usage: fish help qpc bench
-```
-
-##### fish-help-qpc-morphic
-
-```
-Usage: fish help qpc morphic
 ```
 
 #### fish-help-help

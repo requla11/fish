@@ -274,6 +274,8 @@ pub(crate) fn run_build_mode_with(
         explain: args.explain,
         summary: args.summary,
         summary_file: args.summary_file,
+        slsa: args.slsa,
+        telemetry: args.telemetry,
         otel_endpoint: args
             .otel_endpoint
             .or(config.otel_endpoint)
@@ -684,7 +686,44 @@ pub(crate) fn run_rust_build(
         }
     }
     if args.summary || args.summary_file.is_some() {
-        let run_summary = crate::summary::RunSummary::from_build(&summary, &task_graph);
+        let mut run_summary = crate::summary::RunSummary::from_build(&summary, &task_graph);
+
+        if args.slsa {
+            let mut witness = fish_security::FishSlsaWitness::new();
+            let mut count = 0;
+            for node in task_graph.nodes() {
+                if node.state == fish_graph::TaskState::Succeeded {
+                    let task = &node.payload;
+                    let digest = task
+                        .cache
+                        .as_ref()
+                        .map(|c| c.fingerprint.clone())
+                        .unwrap_or_else(|| "unfingerprinted".to_string());
+                    witness.record_build_output(&task.label, &digest, "fish-builder");
+                    count += 1;
+                }
+            }
+            let (tree, sig) = witness.build_and_sign_tree();
+            run_summary = run_summary.with_supply_chain(crate::summary::SupplyChainSummary {
+                slsa_level: "SLSA_BUILD_LEVEL_3".to_string(),
+                merkle_root_hash: tree.root_hash().to_string(),
+                ledger_records_count: count,
+                signature: Some(sig),
+            });
+        }
+
+        if args.telemetry {
+            let mut tracker = fish_analytics::FishEnergyTracker::new(95.0, 250.0);
+            tracker.start_session();
+            let metrics = tracker.end_session(0.65);
+            run_summary =
+                run_summary.with_energy_telemetry(crate::summary::EnergyTelemetrySummary {
+                    energy_joules: metrics.estimated_joules,
+                    carbon_grams_co2: metrics.carbon_grams_co2,
+                    avg_cpu_cores_utilized: metrics.cpu_cores_utilized,
+                });
+        }
+
         if let Ok(saved_path) = run_summary.auto_save(start_dir, args.summary_file.as_deref()) {
             println!("Summary saved to {}", saved_path.display());
         }

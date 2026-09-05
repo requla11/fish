@@ -12,6 +12,7 @@ pub struct AppleSandboxConfig {
     pub timeout_seconds: Option<u64>,
     pub socket_path: Option<String>,
     pub declared_inputs: Vec<PathBuf>,
+    pub declared_outputs: Vec<PathBuf>,
     pub max_processes: Option<u32>,
     pub numa_node: Option<u32>,
 }
@@ -25,7 +26,7 @@ impl Default for AppleSandboxConfig {
             timeout_seconds: Some(300),
             socket_path: None,
             declared_inputs: Vec::new(),
-
+            declared_outputs: Vec::new(),
             max_processes: Some(512),
             numa_node: None,
         }
@@ -61,6 +62,16 @@ impl AppleSandboxAdapter {
             apple_args.push(cwd.display().to_string());
         }
 
+        for input in &config.declared_inputs {
+            apple_args.push("--input".to_string());
+            apple_args.push(input.display().to_string());
+        }
+
+        for output in &config.declared_outputs {
+            apple_args.push("--output".to_string());
+            apple_args.push(output.display().to_string());
+        }
+
         apple_args.push("--".to_string());
         apple_args.push(spec.program.clone());
         apple_args.extend(spec.args.clone());
@@ -86,7 +97,18 @@ impl AppleSandboxMiddleware {
 
 impl TaskMiddleware for AppleSandboxMiddleware {
     fn pre_execute(&self, task: &mut Task) -> Result<(), ExecutorError> {
-        task.spec = AppleSandboxAdapter::wrap_command(&task.spec, &self.config);
+        let mut task_config = self.config.clone();
+        for input in &task.inputs {
+            if !task_config.declared_inputs.contains(input) {
+                task_config.declared_inputs.push(input.clone());
+            }
+        }
+        for artifact in &task.artifacts {
+            if !task_config.declared_outputs.contains(artifact) {
+                task_config.declared_outputs.push(artifact.clone());
+            }
+        }
+        task.spec = AppleSandboxAdapter::wrap_command(&task.spec, &task_config);
         Ok(())
     }
 }
@@ -137,5 +159,33 @@ mod tests {
         assert_eq!(task.spec.program, "apple");
         assert!(task.spec.args.contains(&"cargo".to_string()));
         assert!(task.spec.args.contains(&"build".to_string()));
+    }
+
+    #[test]
+    fn test_apple_sandbox_middleware_propagates_inputs_and_outputs() {
+        let spec = CommandSpec::new("rustc").arg("src/lib.rs");
+        let task = Task::new("rustc_lib", "compile library", spec)
+            .with_inputs(vec![
+                PathBuf::from("src/lib.rs"),
+                PathBuf::from("Cargo.toml"),
+            ])
+            .with_artifacts(vec![PathBuf::from("target/libfoo.rlib")]);
+
+        let middleware = AppleSandboxMiddleware::new(AppleSandboxConfig::default());
+        let mut transformed = task.clone();
+        middleware.pre_execute(&mut transformed).unwrap();
+
+        assert_eq!(transformed.spec.program, "apple");
+        let args = &transformed.spec.args;
+        assert!(args.iter().any(|a| a == "--input"));
+        assert!(
+            args.iter()
+                .any(|a| a.contains("src/lib.rs") || a.contains("src\\lib.rs"))
+        );
+        assert!(args.iter().any(|a| a == "--output"));
+        assert!(
+            args.iter()
+                .any(|a| a.contains("target/libfoo.rlib") || a.contains("target\\libfoo.rlib"))
+        );
     }
 }

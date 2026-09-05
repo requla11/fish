@@ -465,6 +465,10 @@ pub struct CommonArgs {
     pub summary: bool,
     #[arg(long = "summary-file")]
     pub summary_file: Option<PathBuf>,
+    #[arg(long = "slsa")]
+    pub slsa: bool,
+    #[arg(long = "telemetry")]
+    pub telemetry: bool,
     #[arg(long = "otel-endpoint")]
     pub otel_endpoint: Option<String>,
     /// Disable automatic cross-language dependency inference between detected

@@ -36,6 +36,41 @@ impl AppleBridge {
         self.server.execute_task(request).await
     }
 
+    pub async fn execute_task_hermetic(
+        &self,
+        task: &fish_executor::Task,
+        level: Option<apple::protocol::IsolationLevel>,
+    ) -> ExecutionResult {
+        let mut argv = vec![task.spec.program.clone()];
+        argv.extend(task.spec.args.clone());
+
+        let working_dir = task
+            .spec
+            .cwd
+            .clone()
+            .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+
+        let profile = SandboxProfile {
+            level: level.unwrap_or(apple::protocol::IsolationLevel::StrictFilesystem),
+            declared_inputs: task.inputs.clone(),
+            declared_outputs: task.artifacts.clone(),
+            ..SandboxProfile::default()
+        };
+
+        self.execute_sandboxed(
+            task.label.clone(),
+            working_dir,
+            argv,
+            task.spec
+                .env
+                .iter()
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect(),
+            Some(profile),
+        )
+        .await
+    }
+
     pub async fn verify_artifact_reproducibility(
         &self,
         task_id: impl Into<String>,

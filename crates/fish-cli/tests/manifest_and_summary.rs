@@ -112,3 +112,53 @@ edition = "2021"
     let drift_str = String::from_utf8_lossy(&drift_out.stdout);
     assert!(drift_str.contains("Cache drift summary"));
 }
+
+#[test]
+fn test_build_generates_slsa_and_telemetry_in_summary() {
+    let dir = tempdir().unwrap();
+    let root = dir.path();
+
+    fs::write(
+        root.join("Cargo.toml"),
+        r#"[workspace]
+members = ["app"]
+resolver = "2"
+"#,
+    )
+    .unwrap();
+
+    let app_dir = root.join("app");
+    fs::create_dir_all(app_dir.join("src")).unwrap();
+    fs::write(
+        app_dir.join("Cargo.toml"),
+        r#"[package]
+name = "app"
+version = "0.1.0"
+edition = "2021"
+"#,
+    )
+    .unwrap();
+    fs::write(app_dir.join("src").join("main.rs"), "fn main() {}\n").unwrap();
+
+    let summary_path = root.join("supply-chain-summary.json");
+    let status = Command::new(fish_bin())
+        .arg("build")
+        .arg("--summary")
+        .arg("--summary-file")
+        .arg(&summary_path)
+        .arg("--slsa")
+        .arg("--telemetry")
+        .current_dir(root)
+        .status()
+        .expect("fish build failed");
+
+    assert!(status.success());
+    assert!(summary_path.exists());
+
+    let content = fs::read_to_string(&summary_path).unwrap();
+    assert!(content.contains("\"supply_chain\""));
+    assert!(content.contains("\"slsa_level\": \"SLSA_BUILD_LEVEL_3\""));
+    assert!(content.contains("\"merkle_root_hash\""));
+    assert!(content.contains("\"energy_telemetry\""));
+    assert!(content.contains("\"carbon_grams_co2\""));
+}

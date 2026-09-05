@@ -89,4 +89,27 @@ mod tests {
         assert_eq!(res.exit_code, 0);
         assert!(res.hermetic_guarantee);
     }
+
+    #[tokio::test]
+    async fn test_apple_bridge_executes_task_hermetic() {
+        let temp = tempdir().unwrap();
+        let bridge = AppleBridge::new(temp.path().to_path_buf());
+
+        let prog = if cfg!(windows) { "cmd" } else { "sh" };
+        let args = if cfg!(windows) {
+            vec!["/C".to_string(), "echo hermetic".to_string()]
+        } else {
+            vec!["-c".to_string(), "echo hermetic".to_string()]
+        };
+
+        let spec = CommandSpec::new(prog).args(args).cwd(temp.path());
+        let task = Task::new("hermetic_task", "hermetic description", spec)
+            .with_inputs(vec![temp.path().join("input.txt")])
+            .with_artifacts(vec![temp.path().join("output.bin")]);
+
+        let res = bridge.execute_task_hermetic(&task, None).await;
+
+        assert_eq!(res.exit_code, 0);
+        assert_eq!(res.task_id, "hermetic_task");
+    }
 }

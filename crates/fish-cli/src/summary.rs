@@ -21,6 +21,21 @@ pub struct TaskRunReport {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SupplyChainSummary {
+    pub slsa_level: String,
+    pub merkle_root_hash: String,
+    pub ledger_records_count: usize,
+    pub signature: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct EnergyTelemetrySummary {
+    pub energy_joules: f64,
+    pub carbon_grams_co2: f64,
+    pub avg_cpu_cores_utilized: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RunSummary {
     pub fish_version: String,
     pub run_id: String,
@@ -34,9 +49,22 @@ pub struct RunSummary {
     pub failed_tasks: usize,
     pub cancelled_tasks: usize,
     pub tasks: Vec<TaskRunReport>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub supply_chain: Option<SupplyChainSummary>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub energy_telemetry: Option<EnergyTelemetrySummary>,
 }
 
 impl RunSummary {
+    pub fn with_supply_chain(mut self, supply_chain: SupplyChainSummary) -> Self {
+        self.supply_chain = Some(supply_chain);
+        self
+    }
+
+    pub fn with_energy_telemetry(mut self, energy: EnergyTelemetrySummary) -> Self {
+        self.energy_telemetry = Some(energy);
+        self
+    }
     pub fn from_build(summary: &BuildSummary, graph: &BuildGraph<Task>) -> Self {
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -103,6 +131,8 @@ impl RunSummary {
             failed_tasks: summary.failed,
             cancelled_tasks: summary.cancelled,
             tasks,
+            supply_chain: None,
+            energy_telemetry: None,
         }
     }
 
@@ -182,5 +212,40 @@ mod tests {
 
         let read_back: RunSummary = serde_json::from_slice(&fs::read(&out_file).unwrap()).unwrap();
         assert_eq!(read_back.run_id, run_summary.run_id);
+    }
+
+    #[test]
+    fn test_run_summary_with_supply_chain_and_energy_telemetry() {
+        let graph = BuildGraph::<Task>::new();
+        let summary = BuildSummary {
+            total: 0,
+            executed: 0,
+            cached: 0,
+            failed: 0,
+            cancelled: 0,
+            duration: std::time::Duration::from_millis(50),
+            workers: 2,
+            failures: Vec::new(),
+            timings: Vec::new(),
+        };
+
+        let run_summary = RunSummary::from_build(&summary, &graph)
+            .with_supply_chain(SupplyChainSummary {
+                slsa_level: "SLSA_BUILD_LEVEL_3".to_string(),
+                merkle_root_hash: "blake3:abc123merkle".to_string(),
+                ledger_records_count: 5,
+                signature: Some("ed25519:test_signature".to_string()),
+            })
+            .with_energy_telemetry(EnergyTelemetrySummary {
+                energy_joules: 1250.5,
+                carbon_grams_co2: 0.08,
+                avg_cpu_cores_utilized: 3.5,
+            });
+
+        let serialized = serde_json::to_string_pretty(&run_summary).unwrap();
+        assert!(serialized.contains("SLSA_BUILD_LEVEL_3"));
+        assert!(serialized.contains("blake3:abc123merkle"));
+        assert!(serialized.contains("1250.5"));
+        assert!(serialized.contains("carbon_grams_co2"));
     }
 }

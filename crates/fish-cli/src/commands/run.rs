@@ -111,6 +111,8 @@ pub fn run_run(args: RunArgs) -> ExitCode {
         explain: false,
         summary: false,
         summary_file: None,
+        slsa: false,
+        telemetry: false,
         otel_endpoint: None,
         replay_trace: None,
         no_infer_deps: false,

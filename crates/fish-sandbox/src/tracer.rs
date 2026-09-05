@@ -53,6 +53,89 @@ impl SyscallTracer {
         })
     }
 
+    pub fn trace_execution_with_shim(
+        mut command: Command,
+        watch_root: &Path,
+        shim_lib_path: Option<&Path>,
+    ) -> io::Result<HermeticTraceResult> {
+        let temp_dir = tempfile::tempdir()?;
+        let log_path = temp_dir.path().join("shim_trace.log");
+
+        command.env("FISH_SHIM_LOG", &log_path);
+        if let Some(shim) = shim_lib_path {
+            if cfg!(target_os = "linux") {
+                command.env("LD_PRELOAD", shim);
+            } else if cfg!(target_os = "macos") {
+                command.env("DYLD_INSERT_LIBRARIES", shim);
+            } else if cfg!(target_os = "windows") {
+                command.env("FISH_SHIM_PATH", shim);
+            }
+        }
+
+        let before_snapshot = Self::scan_directory_timestamps(watch_root)?;
+        let start_time = SystemTime::now();
+
+        let output = command.output()?;
+
+        if log_path.exists()
+            && let Ok(content) = fs::read_to_string(&log_path)
+            && !content.trim().is_empty()
+        {
+            let mut recorder = crate::file_events::FileEventRecorder::new();
+            let _ = recorder.load_from_shim_log(&log_path);
+
+            let mut produced_outputs = HashSet::new();
+            let mut accessed_inputs = HashSet::new();
+
+            for event in recorder.events() {
+                if event.path.starts_with(watch_root) || !watch_root.is_absolute() {
+                    match event.access_type {
+                        crate::file_events::FileAccessType::Read => {
+                            accessed_inputs.insert(event.path.clone());
+                        }
+                        crate::file_events::FileAccessType::Write => {
+                            produced_outputs.insert(event.path.clone());
+                        }
+                        crate::file_events::FileAccessType::Execute => {}
+                    }
+                }
+            }
+
+            return Ok(HermeticTraceResult {
+                accessed_inputs,
+                produced_outputs,
+                exit_code: output.status.code().unwrap_or(-1),
+                stdout: String::from_utf8_lossy(&output.stdout).to_string(),
+                stderr: String::from_utf8_lossy(&output.stderr).to_string(),
+            });
+        }
+
+        let after_snapshot = Self::scan_directory_timestamps(watch_root)?;
+
+        let mut produced_outputs = HashSet::new();
+        let mut accessed_inputs = HashSet::new();
+
+        for (path, modified) in &after_snapshot {
+            if let Some(before_time) = before_snapshot.get(path) {
+                if modified > before_time || *modified >= start_time {
+                    produced_outputs.insert(path.clone());
+                } else {
+                    accessed_inputs.insert(path.clone());
+                }
+            } else {
+                produced_outputs.insert(path.clone());
+            }
+        }
+
+        Ok(HermeticTraceResult {
+            accessed_inputs,
+            produced_outputs,
+            exit_code: output.status.code().unwrap_or(-1),
+            stdout: String::from_utf8_lossy(&output.stdout).to_string(),
+            stderr: String::from_utf8_lossy(&output.stderr).to_string(),
+        })
+    }
+
     fn scan_directory_timestamps(
         root: &Path,
     ) -> io::Result<std::collections::HashMap<PathBuf, SystemTime>> {
@@ -110,6 +193,31 @@ mod tests {
         cmd.current_dir(temp.path());
 
         let result = SyscallTracer::trace_execution(cmd, temp.path()).unwrap();
+        assert_eq!(result.exit_code, 0);
+        assert!(out_file.exists());
+        assert!(result.produced_outputs.contains(&out_file));
+    }
+
+    #[test]
+    fn test_syscall_tracer_with_shim_fallback() {
+        let temp = tempdir().unwrap();
+        let src_file = temp.path().join("source2.txt");
+        fs::write(&src_file, "input content").unwrap();
+
+        let out_file = temp.path().join("output2.txt");
+
+        let mut cmd = if cfg!(windows) {
+            let mut c = Command::new("cmd");
+            c.arg("/C").arg("echo generated > output2.txt");
+            c
+        } else {
+            let mut c = Command::new("sh");
+            c.arg("-c").arg("echo generated > output2.txt");
+            c
+        };
+        cmd.current_dir(temp.path());
+
+        let result = SyscallTracer::trace_execution_with_shim(cmd, temp.path(), None).unwrap();
         assert_eq!(result.exit_code, 0);
         assert!(out_file.exists());
         assert!(result.produced_outputs.contains(&out_file));

@@ -107,6 +107,19 @@ impl FsWatcherDaemon {
     pub fn dirty_count(&self) -> usize {
         self.invalidated_targets.len()
     }
+
+    pub fn ingest_change_events<I, S>(&self, paths: I)
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        for path in paths {
+            let p = path.as_ref();
+            if !p.contains(".git") && !p.contains("target") {
+                self.invalidated_targets.insert(p.to_string());
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -145,5 +158,22 @@ mod tests {
         assert!(watcher.is_running());
         watcher.stop();
         assert!(!watcher.is_running());
+    }
+
+    #[test]
+    fn test_fs_watcher_ingest_change_events() {
+        let watcher = FsWatcherDaemon::new(Duration::from_millis(50));
+        assert_eq!(watcher.dirty_count(), 0);
+
+        watcher.ingest_change_events([
+            "crates/fish-core/src/lib.rs",
+            "crates/fish-scheduler/src/lib.rs",
+            "target/debug/build.log",
+            ".git/HEAD",
+        ]);
+
+        assert_eq!(watcher.dirty_count(), 2);
+        assert!(watcher.is_dirty("crates/fish-core/src/lib.rs"));
+        assert!(watcher.is_dirty("crates/fish-scheduler/src/lib.rs"));
     }
 }

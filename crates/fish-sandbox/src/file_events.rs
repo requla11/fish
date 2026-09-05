@@ -58,6 +58,10 @@ impl FileEventRecorder {
         self.enabled
     }
 
+    pub fn events(&self) -> &[TracedFileEvent] {
+        &self.events
+    }
+
     pub fn record_access(&mut self, pid: u32, path: PathBuf, access_type: FileAccessType) {
         self.events.push(TracedFileEvent {
             process_id: pid,

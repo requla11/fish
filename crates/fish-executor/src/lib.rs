@@ -18,7 +18,7 @@ pub use command::CommandSpec;
 pub use cow::{CloneStrategy, KernelCowCloner};
 pub use executor::{ExecutorError, ProcessExecutor, TaskExecutor};
 pub use linker::{LinkerDispatcher, LinkerKind};
-pub use middleware::{MiddlewareChainExecutor, TaskMiddleware};
+pub use middleware::{MiddlewareChainExecutor, NativeShimMiddleware, TaskMiddleware};
 pub use response_file::ResponseFileWriter;
 pub use task::{CacheEntry, ResourceRequirements, Task, TaskOutcome, TaskStatus};
 pub use vlink::{VLinkJumpEntry, VLinkSpliceEngine, VirtualBinaryDispatchTable};

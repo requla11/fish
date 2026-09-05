@@ -133,6 +133,34 @@ impl SemanticAbiExtractor {
         let interface_text = Self::extract_polyglot_public_interface(ecosystem, source);
         blake3::hash(interface_text.as_bytes()).to_hex().to_string()
     }
+
+    pub fn extract_native_binary_symbols(data: &[u8]) -> Vec<String> {
+        let mut symbols = Vec::new();
+        if data.len() >= 4
+            && data[0] == 0x7F
+            && data[1] == b'E'
+            && data[2] == b'L'
+            && data[3] == b'F'
+        {
+            symbols.push("elf".to_string());
+        } else if data.len() >= 2 && data[0] == b'M' && data[1] == b'Z' {
+            symbols.push("pe".to_string());
+            if data.len() >= 0x40 {
+                let pe_offset =
+                    u32::from_le_bytes([data[0x3C], data[0x3D], data[0x3E], data[0x3F]]) as usize;
+                if pe_offset + 24 <= data.len() && &data[pe_offset..pe_offset + 4] == b"PE\0\0" {
+                    let machine = u16::from_le_bytes([data[pe_offset + 4], data[pe_offset + 5]]);
+                    match machine {
+                        0x8664 => symbols.push("arch:x86_64".to_string()),
+                        0xAA64 => symbols.push("arch:arm64".to_string()),
+                        0x014C => symbols.push("arch:i386".to_string()),
+                        _ => {}
+                    }
+                }
+            }
+        }
+        symbols
+    }
 }
 
 #[cfg(test)]
@@ -183,5 +211,26 @@ mod tests {
         "#;
         let ts_hash = SemanticAbiExtractor::compute_polyglot_interface_hash("ts", ts_code);
         assert!(!ts_hash.is_empty());
+    }
+
+    #[test]
+    fn test_native_binary_symbols_extraction() {
+        let elf_header = vec![0x7F, b'E', b'L', b'F', 2, 1, 1, 0];
+        let elf_syms = SemanticAbiExtractor::extract_native_binary_symbols(&elf_header);
+        assert_eq!(elf_syms, vec!["elf"]);
+
+        let mut pe_header = vec![0u8; 128];
+        pe_header[0] = b'M';
+        pe_header[1] = b'Z';
+        pe_header[0x3C] = 0x40;
+        pe_header[0x40] = b'P';
+        pe_header[0x41] = b'E';
+        pe_header[0x42] = 0;
+        pe_header[0x43] = 0;
+        pe_header[0x44] = 0x64;
+        pe_header[0x45] = 0x86;
+
+        let pe_syms = SemanticAbiExtractor::extract_native_binary_symbols(&pe_header);
+        assert_eq!(pe_syms, vec!["pe", "arch:x86_64"]);
     }
 }

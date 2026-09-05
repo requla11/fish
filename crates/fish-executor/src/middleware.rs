@@ -49,6 +49,89 @@ impl<E: TaskExecutor> TaskExecutor for MiddlewareChainExecutor<E> {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct NativeShimMiddleware {
+    shim_path: Option<std::path::PathBuf>,
+    log_dir: std::path::PathBuf,
+}
+
+impl NativeShimMiddleware {
+    pub fn new(log_dir: impl Into<std::path::PathBuf>) -> Self {
+        Self {
+            shim_path: Self::discover_default_shim(),
+            log_dir: log_dir.into(),
+        }
+    }
+
+    pub fn with_shim_path(mut self, path: impl Into<std::path::PathBuf>) -> Self {
+        self.shim_path = Some(path.into());
+        self
+    }
+
+    pub fn shim_path(&self) -> Option<&std::path::Path> {
+        self.shim_path.as_deref()
+    }
+
+    pub fn log_dir(&self) -> &std::path::Path {
+        &self.log_dir
+    }
+
+    pub fn discover_default_shim() -> Option<std::path::PathBuf> {
+        if let Ok(path_str) = std::env::var("FISH_SHIM_PATH") {
+            let p = std::path::PathBuf::from(path_str);
+            if p.exists() {
+                return Some(p);
+            }
+        }
+        let candidates = [
+            "fish_shim.dll",
+            "libfish_shim.so",
+            "libfish_shim.dylib",
+            "cpp/build/bin/fish_shim.dll",
+            "cpp/build/bin/libfish_shim.so",
+            "cpp/build/bin/Release/fish_shim.dll",
+        ];
+        for candidate in candidates {
+            let p = std::path::PathBuf::from(candidate);
+            if p.exists() {
+                return Some(p);
+            }
+        }
+        None
+    }
+}
+
+impl TaskMiddleware for NativeShimMiddleware {
+    fn pre_execute(&self, task: &mut Task) -> Result<(), ExecutorError> {
+        let safe_label = task.label.replace([':', '/', '\\'], "_");
+        let log_path = self.log_dir.join(format!("shim_trace_{}.log", safe_label));
+        task.spec.env.insert(
+            "FISH_SHIM_LOG".to_string(),
+            log_path.to_string_lossy().to_string(),
+        );
+
+        if let Some(ref shim) = self.shim_path {
+            let shim_str = shim.to_string_lossy().to_string();
+            if cfg!(target_os = "linux") {
+                task.spec
+                    .env
+                    .insert("LD_PRELOAD".to_string(), shim_str.clone());
+            } else if cfg!(target_os = "macos") {
+                task.spec
+                    .env
+                    .insert("DYLD_INSERT_LIBRARIES".to_string(), shim_str.clone());
+            } else if cfg!(target_os = "windows") {
+                task.spec.env.insert("FISH_SHIM_PATH".to_string(), shim_str);
+            }
+        }
+        Ok(())
+    }
+
+    fn post_execute(&self, _task: &Task, _outcome: &mut TaskOutcome) -> Result<(), ExecutorError> {
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -200,5 +283,42 @@ mod tests {
 
         let entries = log.lock().unwrap().clone();
         assert_eq!(entries, vec!["A:pre"]);
+    }
+
+    #[test]
+    fn test_native_shim_middleware() {
+        let temp = tempfile::tempdir().unwrap();
+        let dummy_shim = temp.path().join("dummy_shim.dll");
+        std::fs::write(&dummy_shim, b"").unwrap();
+
+        let middleware = NativeShimMiddleware::new(temp.path()).with_shim_path(&dummy_shim);
+        assert_eq!(middleware.shim_path(), Some(dummy_shim.as_path()));
+        assert_eq!(middleware.log_dir(), temp.path());
+
+        let spec = CommandSpec::new("echo");
+        let mut task = Task::new("shim_test", "shim task", spec);
+        middleware.pre_execute(&mut task).unwrap();
+
+        assert!(task.spec.env.contains_key("FISH_SHIM_LOG"));
+        if cfg!(windows) {
+            assert_eq!(
+                task.spec.env.get("FISH_SHIM_PATH"),
+                Some(&dummy_shim.to_string_lossy().to_string())
+            );
+        } else if cfg!(target_os = "linux") {
+            assert_eq!(
+                task.spec.env.get("LD_PRELOAD"),
+                Some(&dummy_shim.to_string_lossy().to_string())
+            );
+        }
+
+        let mut outcome = TaskOutcome {
+            status: TaskStatus::Executed,
+            exit_code: Some(0),
+            stdout: String::new(),
+            stderr: String::new(),
+            duration: Duration::from_millis(5),
+        };
+        assert!(middleware.post_execute(&task, &mut outcome).is_ok());
     }
 }

@@ -10,15 +10,7 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [
-    "onCommand:fish.build",
-    "onCommand:fish.test",
-    "onCommand:fish.graph",
-    "onCommand:fish.clean",
-    "onCommand:fish.doctor",
-    "onCommand:fish.affected",
-    "onView:fishPackages"
-  ],
+
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
@@ -86,7 +78,8 @@
         {
           "id": "fishPackages",
           "name": "Packages",
-          "when": "workspaceHasFolder"
+          "when": "workspaceHasFolder",
+          "icon": "$(package)"
         }
       ]
     },
@@ -151,13 +144,15 @@
         "id": "fish.status",
         "name": "fish Build Status",
         "alignment": "left",
-        "priority": 100
+        "priority": 100,
+        "text": "$(loading~spin) fish"
       },
       {
         "id": "fish.cacheHitRate",
         "name": "fish Cache Hit Rate",
         "alignment": "right",
-        "priority": 90
+        "priority": 90,
+        "text": "$(database) 0%"
       }
     ],
     "configuration": {

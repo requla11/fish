@@ -15,9 +15,20 @@ pub fn resolve_start_dir(path: Option<&Path>) -> Result<PathBuf, String> {
     let base = match path {
         Some(path) => {
             let str_val = path.to_string_lossy();
-            if str_val == "//..." || str_val == "//" || str_val == "." || str_val.starts_with(':') {
+            let normalized = str_val.replace('\\', "/");
+            if normalized == "//..."
+                || normalized == "/..."
+                || normalized == "..."
+                || normalized == "//"
+                || normalized == "/"
+                || normalized == "."
+                || normalized.starts_with(':')
+            {
                 workspace_root
-            } else if let Some(stripped) = str_val.strip_prefix("//") {
+            } else if let Some(stripped) = normalized
+                .strip_prefix("//")
+                .or_else(|| normalized.strip_prefix("/"))
+            {
                 let target_path = stripped
                     .split(':')
                     .next()

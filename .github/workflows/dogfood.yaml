@@ -92,6 +92,12 @@ jobs:
             ./target/release/fish doctor
           fi
 
+      - name: Setup Polyglot Demo Dependencies
+        shell: bash
+        run: |
+          cd examples/polyglot-demo/web-frontend
+          npm ci
+
       - name: Dogfood Polyglot Monorepo Example
         shell: bash
         run: |

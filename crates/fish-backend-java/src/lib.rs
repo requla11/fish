@@ -206,7 +206,11 @@ impl JavaBackend {
             .as_ref()
             .ok_or_else(|| JavaBackendError::Toolchain("Gradle not found".to_string()))?;
 
-        let clean_args = vec!["clean".to_string()];
+        let clean_args = vec![
+            "clean".to_string(),
+            "--no-daemon".to_string(),
+            "--console=plain".to_string(),
+        ];
         let clean_spec = CommandSpec::new(gradle).args(clean_args).cwd(project_dir);
         let clean_task = Task::new(
             format!("gradle clean {}", config.artifact_id),
@@ -215,7 +219,11 @@ impl JavaBackend {
         );
         let clean_node_id = graph.add_node(clean_task);
 
-        let mut build_args = vec!["build".to_string()];
+        let mut build_args = vec![
+            "build".to_string(),
+            "--no-daemon".to_string(),
+            "--console=plain".to_string(),
+        ];
         // The dedicated cached `gradle test` task below is the single test
         // runner; leaving `test` inside the build lifecycle executed every
         // suite twice per uncached build.
@@ -242,7 +250,11 @@ impl JavaBackend {
         graph.add_dependency(clean_node_id, build_node_id)?;
 
         if !config.skip_tests {
-            let test_args = vec!["test".to_string()];
+            let test_args = vec![
+                "test".to_string(),
+                "--no-daemon".to_string(),
+                "--console=plain".to_string(),
+            ];
             let test_spec = CommandSpec::new(gradle).args(test_args).cwd(project_dir);
             let test_cache = CacheEntry {
                 key: FingerprintUtils::format_cache_key(

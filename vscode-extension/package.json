@@ -10,13 +10,7 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [
-    "onView:fishDAGView",
-    "onCommand:fish.runBuild",
-    "onCommand:fish.runTest",
-    "onCommand:fish.refreshGraph",
-    "onCommand:fish.showDiagnostics"
-  ],
+
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
@@ -79,21 +73,23 @@
       "fish-sidebar": [
         {
           "id": "fishDAGView",
-          "name": "Dependency Graph"
+          "name": "Dependency Graph",
+          "icon": "$(graph)"
         },
         {
           "id": "fishTasksView",
-          "name": "Build Tasks"
+          "name": "Build Tasks",
+          "icon": "$(list-tree)"
         }
       ]
     },
-    "viewsWelcome": {
-      "fish-sidebar": [
-        {
-          "contents": "Fish Build Orchestration\n\n[Run Build](command:fish.runBuild)\n[Run Tests](command:fish.runTest)\n[Refresh Graph](command:fish.refreshGraph)\n\nGet started by running Fish commands in your workspace."
-        }
-      ]
-    },
+    "viewsWelcome": [
+      {
+        "view": "fish-sidebar",
+        "contents": "Fish Build Orchestration\n\n[Run Build](command:fish.runBuild)\n[Run Tests](command:fish.runTest)\n[Refresh Graph](command:fish.refreshGraph)\n\nGet started by running Fish commands in your workspace.",
+        "when": "workspaceHasFishProject"
+      }
+    ],
     "menus": {
       "view/title": [
         {

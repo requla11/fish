@@ -274,6 +274,9 @@ pub(crate) fn run_build_mode_with(
         explain: args.explain,
         summary: args.summary,
         summary_file: args.summary_file,
+        execution_log: args
+            .execution_log
+            .or_else(|| config.execution_log.map(PathBuf::from)),
         slsa: args.slsa,
         telemetry: args.telemetry,
         otel_endpoint: args
@@ -726,6 +729,18 @@ pub(crate) fn run_rust_build(
 
         if let Ok(saved_path) = run_summary.auto_save(start_dir, args.summary_file.as_deref()) {
             println!("Summary saved to {}", saved_path.display());
+        }
+    }
+
+    if let Some(ref exec_log_path) = args.execution_log {
+        let run_summary = crate::summary::RunSummary::from_build(&summary, &task_graph);
+        if let Err(e) = run_summary.save_execution_log(exec_log_path) {
+            eprintln!(
+                "warning: failed to write execution log to {}: {e}",
+                exec_log_path.display()
+            );
+        } else {
+            println!("Execution log saved to {}", exec_log_path.display());
         }
     }
 

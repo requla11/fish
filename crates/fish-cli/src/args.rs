@@ -489,6 +489,8 @@ pub struct CommonArgs {
     pub summary: bool,
     #[arg(long = "summary-file")]
     pub summary_file: Option<PathBuf>,
+    #[arg(long = "execution-log")]
+    pub execution_log: Option<PathBuf>,
     #[arg(long = "slsa")]
     pub slsa: bool,
     #[arg(long = "telemetry")]

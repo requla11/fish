@@ -94,6 +94,15 @@ pub fn hash_single_file(path: &Path) -> Option<(String, u64)> {
         return None;
     }
     let size = meta.len();
+    if crate::lockfile_hash::LockfileHasher::detect_kind(path)
+        != crate::lockfile_hash::LockfileKind::Generic
+        && size <= 16 * 1024 * 1024
+    {
+        let mut content = Vec::with_capacity(size as usize);
+        file.read_to_end(&mut content).ok()?;
+        let hash = crate::lockfile_hash::LockfileHasher::compute_canonical_hash(path, &content);
+        return Some((hash, size));
+    }
     let mut hasher = blake3::Hasher::new();
     let mut buffer = [0u8; 64 * 1024];
     loop {

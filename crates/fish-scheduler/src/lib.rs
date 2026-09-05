@@ -310,6 +310,20 @@ where
     Ok(())
 }
 
+pub fn is_oom_failure(outcome: &TaskOutcome) -> bool {
+    if let Some(code) = outcome.exit_code
+        && (code == 137 || code == -1073741819 || code == (0xC0000005u32 as i32))
+    {
+        return true;
+    }
+    let lower = outcome.stderr.to_ascii_lowercase();
+    lower.contains("out of memory")
+        || lower.contains("virtual memory exhausted")
+        || lower.contains("memory limit exceeded")
+        || lower.contains("signal: 9")
+        || lower.contains("killed: 9")
+}
+
 #[derive(Debug, Clone)]
 pub struct Scheduler {
     workers: usize,
@@ -317,11 +331,9 @@ pub struct Scheduler {
     ram_threshold: Option<u8>,
     ram_floor: usize,
     jobserver: Option<JobserverPool>,
+    oom_retry: usize,
 }
 
-/// Returns the number of workers that may run concurrently once the system's
-/// free memory falls below `threshold_percent` of the total: the build is
-/// throttled down to `floor` workers so compilers do not get OOM-killed.
 pub fn ram_capped_workers(
     available: u64,
     total: u64,
@@ -346,7 +358,13 @@ impl Scheduler {
             ram_threshold: None,
             ram_floor: 1,
             jobserver: None,
+            oom_retry: 1,
         }
+    }
+
+    pub fn with_oom_retry(mut self, max_retries: usize) -> Self {
+        self.oom_retry = max_retries;
+        self
     }
 
     pub fn with_jobserver(mut self, pool: JobserverPool) -> Self {
@@ -399,6 +417,8 @@ impl Scheduler {
         let mut ram_limited = false;
         let mut sys = sysinfo::System::new();
         sys.refresh_memory();
+        let mut oom_retried: std::collections::HashMap<NodeId, usize> =
+            std::collections::HashMap::new();
 
         let result = thread::scope(|scope| -> Result<(), SchedulerError> {
             let (task_tx, task_rx) =
@@ -502,6 +522,22 @@ impl Scheduler {
                     worker_id,
                     "Task completed"
                 );
+
+                if outcome.status == TaskStatus::Failed && is_oom_failure(&outcome) {
+                    let retries = oom_retried.entry(id).or_insert(0);
+                    if *retries < self.oom_retry {
+                        *retries += 1;
+                        in_flight -= 1;
+                        let _ = graph.set_state(id, TaskState::Pending);
+                        if let Some(node) = graph.node_mut(id) {
+                            node.payload.resources.exclusive = true;
+                            node.payload.resources.permits =
+                                (node.payload.resources.permits * 2).max(2);
+                        }
+                        ready.push(id);
+                        continue;
+                    }
+                }
 
                 let was_success = outcome.status != TaskStatus::Failed;
                 process_completion(
@@ -1022,5 +1058,59 @@ mod tests {
         );
         assert!(events.iter().any(|e| e["name"] == "task1"));
         assert!(events.iter().any(|e| e["name"] == "task2"));
+    }
+
+    #[test]
+    fn test_is_oom_failure() {
+        let mut outcome = TaskOutcome::executed(&Task::new(
+            "t",
+            "d",
+            fish_executor::CommandSpec::new("echo"),
+        ));
+        assert!(!is_oom_failure(&outcome));
+
+        outcome.status = TaskStatus::Failed;
+        outcome.exit_code = Some(137);
+        assert!(is_oom_failure(&outcome));
+
+        outcome.exit_code = Some(1);
+        outcome.stderr = "error: out of memory allocating 4GB".to_string();
+        assert!(is_oom_failure(&outcome));
+
+        outcome.stderr = "compilation error: undefined reference".to_string();
+        assert!(!is_oom_failure(&outcome));
+    }
+
+    #[test]
+    fn test_oom_retry_recovers() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
+        struct OomOnceExecutor {
+            attempts: AtomicUsize,
+        }
+
+        impl TaskExecutor for OomOnceExecutor {
+            fn execute(&self, task: &Task) -> Result<TaskOutcome, fish_executor::ExecutorError> {
+                let prev = self.attempts.fetch_add(1, Ordering::SeqCst);
+                if prev == 0 {
+                    let mut outcome = TaskOutcome::failed(task, "fatal error: out of memory");
+                    outcome.exit_code = Some(137);
+                    Ok(outcome)
+                } else {
+                    Ok(TaskOutcome::executed(task))
+                }
+            }
+        }
+
+        let mut graph = chain_graph(&["heavy_task"]);
+        let executor = OomOnceExecutor {
+            attempts: AtomicUsize::new(0),
+        };
+        let scheduler = Scheduler::new(2).with_oom_retry(1);
+        let summary = scheduler.run(&mut graph, &executor, |_, _| {}).unwrap();
+
+        assert!(summary.succeeded());
+        assert_eq!(summary.executed, 1);
+        assert_eq!(executor.attempts.load(Ordering::SeqCst), 2);
     }
 }

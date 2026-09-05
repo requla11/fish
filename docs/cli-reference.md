@@ -90,6 +90,7 @@ Usage: fish build [OPTIONS] [PATH]
 | `--explain` |  | `false` |
 | `--summary` |  | `false` |
 | `--summary-file` `<SUMMARY_FILE>` |  |  |
+| `--execution-log` `<EXECUTION_LOG>` |  |  |
 | `--slsa` |  | `false` |
 | `--telemetry` |  | `false` |
 | `--otel-endpoint` `<OTEL_ENDPOINT>` |  |  |
@@ -138,6 +139,7 @@ Usage: fish check [OPTIONS] [PATH]
 | `--explain` |  | `false` |
 | `--summary` |  | `false` |
 | `--summary-file` `<SUMMARY_FILE>` |  |  |
+| `--execution-log` `<EXECUTION_LOG>` |  |  |
 | `--slsa` |  | `false` |
 | `--telemetry` |  | `false` |
 | `--otel-endpoint` `<OTEL_ENDPOINT>` |  |  |
@@ -187,6 +189,7 @@ Usage: fish test [OPTIONS] [PATH]
 | `--explain` |  | `false` |
 | `--summary` |  | `false` |
 | `--summary-file` `<SUMMARY_FILE>` |  |  |
+| `--execution-log` `<EXECUTION_LOG>` |  |  |
 | `--slsa` |  | `false` |
 | `--telemetry` |  | `false` |
 | `--otel-endpoint` `<OTEL_ENDPOINT>` |  |  |
@@ -277,6 +280,7 @@ Usage: fish watch [OPTIONS] [PATH]
 | `--explain` |  | `false` |
 | `--summary` |  | `false` |
 | `--summary-file` `<SUMMARY_FILE>` |  |  |
+| `--execution-log` `<EXECUTION_LOG>` |  |  |
 | `--slsa` |  | `false` |
 | `--telemetry` |  | `false` |
 | `--otel-endpoint` `<OTEL_ENDPOINT>` |  |  |
@@ -358,6 +362,7 @@ Usage: fish affected [OPTIONS] [PATH]
 | `--explain` |  | `false` |
 | `--summary` |  | `false` |
 | `--summary-file` `<SUMMARY_FILE>` |  |  |
+| `--execution-log` `<EXECUTION_LOG>` |  |  |
 | `--slsa` |  | `false` |
 | `--telemetry` |  | `false` |
 | `--otel-endpoint` `<OTEL_ENDPOINT>` |  |  |

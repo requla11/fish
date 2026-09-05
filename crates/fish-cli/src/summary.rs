@@ -120,7 +120,7 @@ impl RunSummary {
 
             tasks.push(TaskRunReport {
                 label: task.label.clone(),
-                command: task.description.clone(),
+                command: task.spec.command_line(),
                 status,
                 duration_ms,
                 cache_key,
@@ -195,6 +195,19 @@ impl RunSummary {
         let _ = self.save_to_file(&id_file);
 
         Ok(latest_file)
+    }
+
+    pub fn save_execution_log(&self, path: &Path) -> io::Result<()> {
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        let mut buffer = Vec::new();
+        for task in &self.tasks {
+            serde_json::to_writer(&mut buffer, task)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))?;
+            buffer.push(b'\n');
+        }
+        fs::write(path, buffer)
     }
 }
 
@@ -317,5 +330,37 @@ mod tests {
         assert_eq!(cp.duration_ms, 300);
         assert_eq!(cp.task_labels, vec!["step1", "step2"]);
         assert!((cp.speedup_ratio - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_save_execution_log() {
+        let mut graph = BuildGraph::new();
+        let t1 = Task::new("t1", "desc1", CommandSpec::new("echo").arg("hello"));
+        let id1 = graph.add_node(t1);
+
+        let summary = BuildSummary {
+            total: 1,
+            executed: 1,
+            cached: 0,
+            failed: 0,
+            cancelled: 0,
+            duration: std::time::Duration::from_millis(50),
+            workers: 1,
+            failures: Vec::new(),
+            timings: vec![fish_scheduler::TaskTiming::new(
+                "t1",
+                std::time::Duration::from_millis(50),
+                id1,
+            )],
+        };
+
+        let run_summary = RunSummary::from_build(&summary, &graph);
+        let tmp = tempfile::tempdir().unwrap();
+        let log_file = tmp.path().join("exec.log");
+        run_summary.save_execution_log(&log_file).unwrap();
+
+        let content = fs::read_to_string(&log_file).unwrap();
+        assert!(content.contains("\"label\":\"t1\""));
+        assert!(content.contains("\"command\":\"echo hello\""));
     }
 }

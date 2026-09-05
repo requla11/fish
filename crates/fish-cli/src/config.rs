@@ -106,6 +106,8 @@ pub struct FishConfig {
     pub no_infer_deps: bool,
     #[serde(default)]
     pub boundaries: Vec<fish_core::BoundaryTagRule>,
+    #[serde(default)]
+    pub execution_log: Option<String>,
 }
 
 impl FishConfig {

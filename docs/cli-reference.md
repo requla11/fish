@@ -88,6 +88,10 @@ Usage: fish build [OPTIONS] [PATH]
 | `--wasm-sandbox` |  | `false` |
 | `--super-opt` |  | `false` |
 | `--explain` |  | `false` |
+| `--summary` |  | `false` |
+| `--summary-file` `<SUMMARY_FILE>` |  |  |
+| `--slsa` |  | `false` |
+| `--telemetry` |  | `false` |
 | `--otel-endpoint` `<OTEL_ENDPOINT>` |  |  |
 | `--no-infer-deps` | Disable automatic cross-language dependency inference between detected projects (see `cross_deps`); references are then ignored and each ecosystem builds independently | `false` |
 
@@ -132,6 +136,10 @@ Usage: fish check [OPTIONS] [PATH]
 | `--wasm-sandbox` |  | `false` |
 | `--super-opt` |  | `false` |
 | `--explain` |  | `false` |
+| `--summary` |  | `false` |
+| `--summary-file` `<SUMMARY_FILE>` |  |  |
+| `--slsa` |  | `false` |
+| `--telemetry` |  | `false` |
 | `--otel-endpoint` `<OTEL_ENDPOINT>` |  |  |
 | `--no-infer-deps` | Disable automatic cross-language dependency inference between detected projects (see `cross_deps`); references are then ignored and each ecosystem builds independently | `false` |
 
@@ -176,6 +184,10 @@ Usage: fish test [OPTIONS] [PATH]
 | `--wasm-sandbox` |  | `false` |
 | `--super-opt` |  | `false` |
 | `--explain` |  | `false` |
+| `--summary` |  | `false` |
+| `--summary-file` `<SUMMARY_FILE>` |  |  |
+| `--slsa` |  | `false` |
+| `--telemetry` |  | `false` |
 | `--otel-endpoint` `<OTEL_ENDPOINT>` |  |  |
 | `--no-infer-deps` | Disable automatic cross-language dependency inference between detected projects (see `cross_deps`); references are then ignored and each ecosystem builds independently | `false` |
 
@@ -262,6 +274,10 @@ Usage: fish watch [OPTIONS] [PATH]
 | `--wasm-sandbox` |  | `false` |
 | `--super-opt` |  | `false` |
 | `--explain` |  | `false` |
+| `--summary` |  | `false` |
+| `--summary-file` `<SUMMARY_FILE>` |  |  |
+| `--slsa` |  | `false` |
+| `--telemetry` |  | `false` |
 | `--otel-endpoint` `<OTEL_ENDPOINT>` |  |  |
 | `--no-infer-deps` | Disable automatic cross-language dependency inference between detected projects (see `cross_deps`); references are then ignored and each ecosystem builds independently | `false` |
 | `--mode` `<MODE>` |  | `build` |
@@ -339,6 +355,10 @@ Usage: fish affected [OPTIONS] [PATH]
 | `--wasm-sandbox` |  | `false` |
 | `--super-opt` |  | `false` |
 | `--explain` |  | `false` |
+| `--summary` |  | `false` |
+| `--summary-file` `<SUMMARY_FILE>` |  |  |
+| `--slsa` |  | `false` |
+| `--telemetry` |  | `false` |
 | `--otel-endpoint` `<OTEL_ENDPOINT>` |  |  |
 | `--no-infer-deps` | Disable automatic cross-language dependency inference between detected projects (see `cross_deps`); references are then ignored and each ecosystem builds independently | `false` |
 | `--since` `<SINCE>` | The git revision (commit/tag/branch) to diff against. `HEAD` compares the working tree, an explicit revision compares the tree of that revision against the working tree | `HEAD` |

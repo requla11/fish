@@ -53,7 +53,6 @@ impl AppleBridge {
         let profile = SandboxProfile {
             level: level.unwrap_or(apple::protocol::IsolationLevel::StrictFilesystem),
             declared_inputs: task.inputs.clone(),
-            declared_outputs: task.artifacts.clone(),
             ..SandboxProfile::default()
         };
 

@@ -18,12 +18,11 @@ jobs:
   changes:
     name: Detect Changed Paths
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       rust: ${{ steps.filter.outputs.rust }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - uses: dorny/paths-filter@v3
         id: filter
         with:

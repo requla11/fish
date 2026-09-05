@@ -15,6 +15,7 @@ env:
 jobs:
   pr-analysis:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
@@ -30,6 +31,10 @@ jobs:
           private-key: ${{ secrets.BOT_PRIVATE_KEY }}
 
       - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ai-pr-bot
 
       - name: Bootstrap Fish
         run: cargo build --release -p fish-cli

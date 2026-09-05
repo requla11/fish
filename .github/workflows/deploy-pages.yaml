@@ -18,6 +18,7 @@ jobs:
   build:
     name: Build VitePress Site
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -49,6 +50,7 @@ jobs:
     needs: build
     if: contains(fromJSON('["refs/heads/main", "refs/heads/dev"]'), github.ref)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Deploy static site
         id: deployment

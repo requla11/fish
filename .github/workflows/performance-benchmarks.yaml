@@ -15,12 +15,12 @@ jobs:
   cache-benchmarks:
     name: Cache Performance Benchmarks
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
       - name: Run cache benchmarks
         run: cargo bench -p fish-cache
       - name: Upload benchmark results
@@ -33,30 +33,31 @@ jobs:
   scheduler-benchmarks:
     name: Scheduler Performance Benchmarks
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
       - name: Run scheduler benchmarks
         run: cargo test -p fish-scheduler --release -- --nocapture
 
   concurrent-performance:
     name: Concurrent Performance Testing
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
       - name: Run concurrent executor benchmarks
         run: cargo test -p fish-executor --release -- --nocapture
 
   benchmark-summary:
     name: Benchmark Summary
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     needs: [cache-benchmarks, scheduler-benchmarks, concurrent-performance]
     if: always()
     steps:

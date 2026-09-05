@@ -18,12 +18,11 @@ jobs:
   changes:
     name: Detect Changed Paths
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       rust: ${{ steps.filter.outputs.rust }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -38,12 +37,16 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.rust == 'true' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: essential-crates
       - name: Run Core Tests
         run: cargo test -p fish-core -p fish-scheduler -p fish-cache -p fish-cas -p fish-executor --lib
 
@@ -52,6 +55,7 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.rust == 'true' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
@@ -60,6 +64,9 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: essential-quality
       - name: Check format
         run: cargo fmt --all -- --check
       - name: Check clippy

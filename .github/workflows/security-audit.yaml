@@ -26,10 +26,9 @@ jobs:
   dependency-audit:
     name: Dependency Audit
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
       - name: Install cargo tools
@@ -44,12 +43,16 @@ jobs:
   security-features:
     name: Security Features Testing
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: security-features
       - name: Test security modules
         run: cargo test -p fish-security --lib
 
@@ -73,25 +76,31 @@ jobs:
   secret-scan:
     name: Secret Scanning
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          submodules: recursive
+      - name: Cache Gitleaks Binary
+        id: cache-gitleaks
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/bin/gitleaks
+          key: gitleaks-8.18.4-linux-x64
       - name: Download and Install Gitleaks
+        if: steps.cache-gitleaks.outputs.cache-hit != 'true'
         run: |
           curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.18.4/gitleaks_8.18.4_linux_x64.tar.gz | sudo tar -xz -C /usr/local/bin gitleaks
-          gitleaks version
+          sudo chmod +x /usr/local/bin/gitleaks
       - name: Run Gitleaks
         run: gitleaks detect --verbose --redact --no-banner
 
   security-docs:
     name: Security Documentation
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - name: Check for security documentation
         run: |
           if [ ! -f "SECURITY.md" ]; then
@@ -103,14 +112,9 @@ jobs:
   memory-safety:
     name: Memory Safety Check
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-      - name: Install Nightly Rust toolchain with Miri
-        uses: dtolnay/rust-toolchain@nightly
-        with:
-          components: miri
       - name: Check for unsafe code blocks
         run: |
           echo "Checking for unsafe code blocks"

@@ -14,12 +14,11 @@ jobs:
   changes:
     name: Detect Changed Paths
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       rust: ${{ steps.filter.outputs.rust }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -34,11 +33,15 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.rust == 'true' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
       - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: multiplatform-linux
       - name: Run Core Tests
         run: cargo test -p fish-core -p fish-cache -p fish-scheduler -p fish-executor --lib
 
@@ -47,12 +50,16 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.rust == 'true' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' }}
     runs-on: macos-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: multiplatform-macos
       - name: Run Core Tests
         run: cargo test -p fish-core -p fish-cache -p fish-remote-cache --lib
 
@@ -61,12 +68,16 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.rust == 'true' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' }}
     runs-on: windows-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: multiplatform-windows
       - name: Run Core Tests
         run: cargo test -p fish-core -p fish-cache -p fish-scheduler --lib
 

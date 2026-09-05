@@ -14,6 +14,7 @@ jobs:
   address-sanitizer:
     name: Address & Leak Sanitizer (ASan/LSan)
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
@@ -23,6 +24,10 @@ jobs:
         uses: dtolnay/rust-toolchain@nightly
         with:
           components: rust-src
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: asan
 
       - name: Run ASan Tests on Core Crates
         env:
@@ -35,6 +40,7 @@ jobs:
   thread-sanitizer:
     name: Thread Sanitizer (TSan)
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
@@ -44,6 +50,10 @@ jobs:
         uses: dtolnay/rust-toolchain@nightly
         with:
           components: rust-src
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: tsan
 
       - name: Run TSan Tests on Concurrency Crates
         env:

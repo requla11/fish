@@ -1,7 +1,7 @@
 name: Backend-Specific Testing
 
 on:
-  workflow_dispatch
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -14,6 +14,7 @@ jobs:
   changes:
     name: Detect Changed Languages
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       rust: ${{ steps.filter.outputs.rust }}
       go: ${{ steps.filter.outputs.go }}
@@ -21,8 +22,6 @@ jobs:
       vscode: ${{ steps.filter.outputs.vscode }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -43,12 +42,16 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.rust == 'true' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: core-backends
       - name: Test Rust, CC, Go, TS, Python backends
         run: cargo test -p fish-backend-rust -p fish-backend-cc -p fish-backend-go -p fish-backend-ts -p fish-backend-py --lib
 
@@ -57,12 +60,16 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.rust == 'true' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: extended-backends
       - name: Test Java, Dotnet, Swift, Dart, Zig, Docker backends
         run: cargo test -p fish-backend-java -p fish-backend-dotnet -p fish-backend-swift -p fish-backend-dart -p fish-backend-zig -p fish-backend-docker --lib
 
@@ -71,12 +78,14 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.go == 'true' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.22'
+          cache-dependency-path: go/go.sum
       - name: Run Go tests
         working-directory: go
         run: go test -v ./...
@@ -86,6 +95,7 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.python == 'true' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - name: Setup Python
@@ -101,12 +111,15 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.vscode == 'true' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: npm
+          cache-dependency-path: vscode-extension/package-lock.json
       - name: Install dependencies and test
         working-directory: vscode-extension
         run: |

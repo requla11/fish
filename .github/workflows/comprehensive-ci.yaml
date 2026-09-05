@@ -22,13 +22,10 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
-      - name: Check formatting
         run: cargo fmt --all -- --check
 
   docs-drift:
@@ -88,8 +85,6 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
       - name: Restore cargo cache
         uses: Swatinem/rust-cache@v2
-      - name: Build workspace
-        run: cargo build --workspace --locked
       - name: Run all workspace tests
         run: cargo test --workspace --locked
 
@@ -116,8 +111,6 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -134,8 +127,6 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
@@ -154,8 +145,6 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - name: Validate dependencies against deny.toml
         uses: EmbarkStudios/cargo-deny-action@v2
 

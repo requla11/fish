@@ -2,7 +2,7 @@ name: SemVer Compatibility Checks
 
 on:
   pull_request:
-    branches: [ main ]
+    branches: [ main, dev ]
     paths:
       - 'crates/fish-core/**'
       - 'crates/fish-cache/**'
@@ -21,14 +21,16 @@ jobs:
   semver-checks:
     name: Public API SemVer Check
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          submodules: recursive
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
 
       - name: Install cargo-semver-checks
         uses: taiki-e/install-action@cargo-semver-checks

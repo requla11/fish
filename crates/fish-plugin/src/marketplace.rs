@@ -245,11 +245,28 @@ pub fn download_plugin_with_offline(
     Ok(bytes)
 }
 
+pub fn validate_plugin_name(name: &str) -> Result<(), String> {
+    if name.is_empty() {
+        return Err("plugin name cannot be empty".to_string());
+    }
+    if name == "." || name == ".." || name.contains("..") {
+        return Err(format!("invalid plugin name `{name}`"));
+    }
+    if !name
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-' || c == '.')
+    {
+        return Err(format!("invalid characters in plugin name `{name}`"));
+    }
+    Ok(())
+}
+
 pub fn install_plugin(
     name: &str,
     wasm_bytes: &[u8],
     plugins_dir: &Path,
 ) -> Result<PathBuf, String> {
+    validate_plugin_name(name)?;
     let plugin_dir = plugins_dir.join(name);
     std::fs::create_dir_all(&plugin_dir)
         .map_err(|e| format!("cannot create plugin dir {}: {e}", plugin_dir.display()))?;
@@ -274,6 +291,7 @@ pub fn install_plugin(
 }
 
 pub fn uninstall_plugin(name: &str, plugins_dir: &Path) -> Result<bool, String> {
+    validate_plugin_name(name)?;
     let plugin_dir = plugins_dir.join(name);
     if !plugin_dir.exists() {
         return Ok(false);
@@ -468,5 +486,17 @@ mod tests {
         let stub = make_stub("demo");
         let dl_err = download_plugin_with_offline(&stub, true).unwrap_err();
         assert!(dl_err.contains("offline mode"));
+    }
+
+    #[test]
+    fn test_plugin_path_traversal_rejected() {
+        let dir = tempdir().unwrap();
+        let plugins_dir = dir.path().join(".fish/plugins");
+        assert!(install_plugin("../escape", b"wasm", &plugins_dir).is_err());
+        assert!(install_plugin("..", b"wasm", &plugins_dir).is_err());
+        assert!(install_plugin("foo/bar", b"wasm", &plugins_dir).is_err());
+        assert!(install_plugin("foo\\bar", b"wasm", &plugins_dir).is_err());
+        assert!(install_plugin("", b"wasm", &plugins_dir).is_err());
+        assert!(uninstall_plugin("../escape", &plugins_dir).is_err());
     }
 }

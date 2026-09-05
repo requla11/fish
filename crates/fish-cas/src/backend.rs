@@ -7,6 +7,9 @@ use crate::mmap::MmapArtifact;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
+use std::sync::atomic::{AtomicU64, Ordering};
+
+static TEMP_FILE_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 #[async_trait]
 pub trait CasBackend: Send + Sync {
@@ -171,7 +174,8 @@ impl CasBackend for LocalCasBackend {
                 (artifact.data().to_vec(), None)
             };
 
-        let tmp_data = data_path.with_extension(format!("tmp.{}", std::process::id()));
+        let counter = TEMP_FILE_COUNTER.fetch_add(1, Ordering::Relaxed);
+        let tmp_data = data_path.with_extension(format!("tmp.{}.{}", std::process::id(), counter));
         crate::uring::write_file_uring(&tmp_data, &data_to_store).await?;
         tokio::fs::rename(&tmp_data, &data_path)
             .await
@@ -185,7 +189,8 @@ impl CasBackend for LocalCasBackend {
         let metadata_json =
             serde_json::to_string(&metadata).map_err(|e| CasError::Serialization(e.to_string()))?;
 
-        let tmp_meta = metadata_path.with_extension(format!("meta.tmp.{}", std::process::id()));
+        let tmp_meta =
+            metadata_path.with_extension(format!("meta.tmp.{}.{}", std::process::id(), counter));
         tokio::fs::write(&tmp_meta, metadata_json)
             .await
             .map_err(CasError::Io)?;

@@ -263,7 +263,19 @@ impl P2PArtifactReassembler {
 
         let chunk = &self.manifest.chunks[chunk_index];
         let start = chunk.offset as usize;
-        let end = start + chunk.size;
+        let end = start
+            .checked_add(chunk.size)
+            .ok_or_else(|| "Chunk range calculation overflow".to_string())?;
+
+        if end > self.buffer.len() {
+            return Err(format!(
+                "Chunk range {}..{} exceeds buffer capacity {}",
+                start,
+                end,
+                self.buffer.len()
+            ));
+        }
+
         self.buffer[start..end].copy_from_slice(chunk_data);
         self.bitfield.set(chunk_index, true);
 
@@ -375,5 +387,23 @@ mod tests {
 
         let p3 = registry.locate_chunk_providers("art_xyz", 3);
         assert_eq!(p3, vec![addr2]);
+    }
+
+    #[test]
+    fn test_out_of_bounds_chunk_rejected() {
+        let manifest = ChunkManifest {
+            artifact_hash: "hash".to_string(),
+            total_bytes: 10,
+            chunk_size: 10,
+            chunks: vec![ArtifactChunk {
+                index: 0,
+                offset: 20,
+                size: 10,
+                checksum: blake3::hash(b"0123456789").to_hex().to_string(),
+            }],
+        };
+        let mut reassembler = P2PArtifactReassembler::new(manifest);
+        let err = reassembler.receive_chunk(0, b"0123456789");
+        assert!(err.is_err());
     }
 }

@@ -95,28 +95,26 @@ impl VulnerabilityScanner {
             .filter(|v| v.severity >= options.min_severity)
             .collect();
 
+        let total_vulnerabilities = vulnerabilities.len();
+        let mut by_severity = HashMap::new();
+        for vuln in &vulnerabilities {
+            *by_severity.entry(vuln.severity).or_insert(0) += 1;
+        }
+
+        let should_block = options.block_on_vulnerabilities && total_vulnerabilities > 0;
+
         let vulnerabilities = if let Some(max) = options.max_results {
             vulnerabilities.into_iter().take(max).collect()
         } else {
             vulnerabilities
         };
 
-        let mut by_severity = HashMap::new();
-        for vuln in &vulnerabilities {
-            *by_severity.entry(vuln.severity).or_insert(0) += 1;
-        }
-
-        let should_block = options.block_on_vulnerabilities
-            && vulnerabilities
-                .iter()
-                .any(|v| v.severity >= options.min_severity);
-
         let scan_duration = start_time.elapsed().as_secs_f64();
 
         Ok(ScanReport {
             project_path: project_path.display().to_string(),
             scan_timestamp: Utc::now(),
-            total_vulnerabilities: vulnerabilities.len(),
+            total_vulnerabilities,
             by_severity,
             vulnerabilities,
             scan_duration_secs: scan_duration,

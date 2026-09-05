@@ -76,8 +76,12 @@ impl TestSelector {
 
 /// Extract the stem of an integration test under `tests/`.
 fn integration_test_name(path: &str) -> Option<&str> {
-    let idx = path.find("/tests/")?;
-    let rest = &path[idx + "/tests/".len()..];
+    let rest = if let Some(stripped) = path.strip_prefix("tests/") {
+        stripped
+    } else {
+        let idx = path.find("/tests/")?;
+        &path[idx + "/tests/".len()..]
+    };
     let stem = rest.split('/').next()?;
     if stem.ends_with(".rs") && stem != "mod.rs" {
         Some(stem.trim_end_matches(".rs"))
@@ -125,6 +129,13 @@ mod tests {
         let sel = TestSelector::new();
         let out = sel.select(&[], &["crates/fish-executor/tests/pipeline.rs".to_string()]);
         assert_eq!(out, vec!["test:pipeline"]);
+    }
+
+    #[test]
+    fn integration_test_file_at_root_maps_to_named_target() {
+        let sel = TestSelector::new();
+        let out = sel.select(&[], &["tests/cli_tests.rs".to_string()]);
+        assert_eq!(out, vec!["test:cli_tests"]);
     }
 
     #[test]

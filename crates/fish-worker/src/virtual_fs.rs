@@ -181,6 +181,13 @@ impl VirtualFileSystem {
     ) -> Result<(), VfsError> {
         let mut root = self.root.write().unwrap();
         self.write_to_node(&mut root, path, content, metadata)?;
+        drop(root);
+
+        let mut cache = self.cache.write().unwrap();
+        if let Some(old) = cache.entries.remove(path) {
+            cache.total_bytes = cache.total_bytes.saturating_sub(old.len());
+        }
+
         Ok(())
     }
 
@@ -526,5 +533,25 @@ mod tests {
         assert_eq!(stats.entries, 1, "only the small file fits the byte budget");
         assert_eq!(stats.total_size, 10);
         assert_eq!(stats.max_size, 20);
+    }
+
+    #[test]
+    fn test_write_invalidates_stale_cache() {
+        let vfs = VirtualFileSystem::new(100);
+        let path = Path::new("/mutable.txt");
+        let metadata = FileMetadata {
+            size: 4,
+            modified: 0,
+            is_executable: false,
+        };
+
+        vfs.write_file(path, b"init".to_vec(), metadata.clone())
+            .unwrap();
+        let read1 = vfs.read_file(path).unwrap();
+        assert_eq!(read1, b"init");
+
+        vfs.write_file(path, b"updated".to_vec(), metadata).unwrap();
+        let read2 = vfs.read_file(path).unwrap();
+        assert_eq!(read2, b"updated");
     }
 }

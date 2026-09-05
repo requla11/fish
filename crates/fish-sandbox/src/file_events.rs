@@ -132,6 +132,25 @@ impl FileEventRecorder {
         }
         deps
     }
+
+    pub fn load_from_shim_log(&mut self, log_path: &std::path::Path) -> std::io::Result<usize> {
+        let content = std::fs::read_to_string(log_path)?;
+        let mut count = 0;
+        for line in content.lines() {
+            let mut parts = line.split('\t');
+            if let (Some(op), Some(path_str)) = (parts.next(), parts.next()) {
+                let access_type = match op {
+                    "READ" => FileAccessType::Read,
+                    "WRITE" => FileAccessType::Write,
+                    "EXEC" => FileAccessType::Execute,
+                    _ => continue,
+                };
+                self.record_access(0, PathBuf::from(path_str), access_type);
+                count += 1;
+            }
+        }
+        Ok(count)
+    }
 }
 
 impl Default for FileEventRecorder {
@@ -181,5 +200,22 @@ mod tests {
         let filtered = tracer.filter_system_paths(&all_paths);
         assert_eq!(filtered.len(), 1);
         assert!(filtered.contains(&project_file));
+    }
+
+    #[test]
+    fn test_load_from_shim_log() {
+        let temp = tempfile::tempdir().unwrap();
+        let log_file = temp.path().join("shim.log");
+        let content = "READ\t/workspace/a.h\nWRITE\t/workspace/out.o\nEXEC\t/bin/clang\n";
+        std::fs::write(&log_file, content).unwrap();
+
+        let mut tracer = FileEventRecorder::new();
+        let loaded = tracer.load_from_shim_log(&log_file).unwrap();
+        assert_eq!(loaded, 3);
+        assert_eq!(tracer.events.len(), 3);
+        assert_eq!(tracer.events[0].path, PathBuf::from("/workspace/a.h"));
+        assert_eq!(tracer.events[0].access_type, FileAccessType::Read);
+        assert_eq!(tracer.events[1].path, PathBuf::from("/workspace/out.o"));
+        assert_eq!(tracer.events[1].access_type, FileAccessType::Write);
     }
 }

@@ -11,6 +11,23 @@ pub struct CacheEntry {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ResourceRequirements {
+    pub permits: usize,
+    pub tokens: Vec<String>,
+    pub exclusive: bool,
+}
+
+impl Default for ResourceRequirements {
+    fn default() -> Self {
+        Self {
+            permits: 1,
+            tokens: Vec::new(),
+            exclusive: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Task {
     pub label: String,
 
@@ -20,11 +37,11 @@ pub struct Task {
 
     pub cache: Option<CacheEntry>,
 
-    /// Paths (relative to `spec.cwd`) of the build outputs produced by this
-    /// task; they are packed, content-addressed and restored from cache.
     pub artifacts: Vec<PathBuf>,
 
     pub inputs: Vec<PathBuf>,
+
+    pub resources: ResourceRequirements,
 }
 
 impl Task {
@@ -40,6 +57,7 @@ impl Task {
             cache: None,
             artifacts: Vec::new(),
             inputs: Vec::new(),
+            resources: ResourceRequirements::default(),
         }
     }
 
@@ -55,6 +73,26 @@ impl Task {
 
     pub fn with_inputs(mut self, inputs: Vec<PathBuf>) -> Self {
         self.inputs = inputs;
+        self
+    }
+
+    pub fn with_resources(mut self, resources: ResourceRequirements) -> Self {
+        self.resources = resources;
+        self
+    }
+
+    pub fn with_permits(mut self, permits: usize) -> Self {
+        self.resources.permits = permits;
+        self
+    }
+
+    pub fn with_token(mut self, token: impl Into<String>) -> Self {
+        self.resources.tokens.push(token.into());
+        self
+    }
+
+    pub fn with_exclusive(mut self, exclusive: bool) -> Self {
+        self.resources.exclusive = exclusive;
         self
     }
 }

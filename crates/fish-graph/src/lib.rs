@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 
+pub mod critical_path;
 pub mod dynamic;
 pub mod error;
 pub mod graph;
@@ -8,6 +9,7 @@ pub mod pash;
 pub mod query;
 pub mod state;
 
+pub use critical_path::{CriticalPathAnalyzer, CriticalPathReport};
 pub use dynamic::{DynamicGraphExpander, DynamicTaskSpec};
 pub use error::GraphError;
 pub use graph::{BuildGraph, Node, NodeId};

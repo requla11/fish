@@ -4,6 +4,7 @@ pub mod async_io;
 pub mod file_level;
 pub mod file_level_adapter;
 pub mod gc;
+pub mod lockfile_hash;
 pub mod manifest;
 pub mod morphic;
 pub mod pool;
@@ -14,6 +15,7 @@ pub mod uring;
 pub use async_io::{AsyncCache, AsyncFileReader, AsyncFileWriter, AsyncIoError};
 pub use file_level_adapter::{FileLevelCacheAdapter, HybridCachingExecutor};
 pub use gc::{BackgroundCacheGc, EvictionPolicy, GcConfig};
+pub use lockfile_hash::{LockfileHasher, LockfileKind};
 pub use manifest::{
     DepDiff, EnvDiff, FileDiff, FileDigest, ManifestDiff, ManifestVerdict, TaskManifest,
 };

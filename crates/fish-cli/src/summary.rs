@@ -36,6 +36,14 @@ pub struct EnergyTelemetrySummary {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct CriticalPathSummary {
+    pub duration_ms: u64,
+    pub total_tasks_duration_ms: u64,
+    pub speedup_ratio: f64,
+    pub task_labels: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RunSummary {
     pub fish_version: String,
     pub run_id: String,
@@ -53,6 +61,8 @@ pub struct RunSummary {
     pub supply_chain: Option<SupplyChainSummary>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub energy_telemetry: Option<EnergyTelemetrySummary>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub critical_path: Option<CriticalPathSummary>,
 }
 
 impl RunSummary {
@@ -63,6 +73,11 @@ impl RunSummary {
 
     pub fn with_energy_telemetry(mut self, energy: EnergyTelemetrySummary) -> Self {
         self.energy_telemetry = Some(energy);
+        self
+    }
+
+    pub fn with_critical_path(mut self, critical_path: CriticalPathSummary) -> Self {
+        self.critical_path = Some(critical_path);
         self
     }
     pub fn from_build(summary: &BuildSummary, graph: &BuildGraph<Task>) -> Self {
@@ -118,6 +133,20 @@ impl RunSummary {
 
         tasks.sort_by(|a, b| a.label.cmp(&b.label));
 
+        let critical_path = summary.critical_path_report(graph).map(|report| {
+            let task_labels = report
+                .nodes
+                .iter()
+                .filter_map(|&id| graph.node(id).map(|n| n.payload.label.clone()))
+                .collect();
+            CriticalPathSummary {
+                duration_ms: report.critical_path_duration_ms,
+                total_tasks_duration_ms: report.total_duration_ms,
+                speedup_ratio: report.speedup_ratio,
+                task_labels,
+            }
+        });
+
         Self {
             fish_version: env!("CARGO_PKG_VERSION").to_string(),
             run_id,
@@ -133,6 +162,7 @@ impl RunSummary {
             tasks,
             supply_chain: None,
             energy_telemetry: None,
+            critical_path,
         }
     }
 
@@ -247,5 +277,45 @@ mod tests {
         assert!(serialized.contains("blake3:abc123merkle"));
         assert!(serialized.contains("1250.5"));
         assert!(serialized.contains("carbon_grams_co2"));
+    }
+
+    #[test]
+    fn test_run_summary_critical_path_integration() {
+        let mut graph = BuildGraph::<Task>::new();
+        let t1 = Task::new("step1", "compile", CommandSpec::new("echo"));
+        let t2 = Task::new("step2", "link", CommandSpec::new("echo"));
+        let id1 = graph.add_node(t1);
+        let id2 = graph.add_node(t2);
+        graph.add_dependency(id1, id2).unwrap();
+
+        let summary = BuildSummary {
+            total: 2,
+            executed: 2,
+            cached: 0,
+            failed: 0,
+            cancelled: 0,
+            duration: std::time::Duration::from_millis(300),
+            workers: 2,
+            failures: Vec::new(),
+            timings: vec![
+                fish_scheduler::TaskTiming::new(
+                    "step1",
+                    std::time::Duration::from_millis(100),
+                    id1,
+                ),
+                fish_scheduler::TaskTiming::new(
+                    "step2",
+                    std::time::Duration::from_millis(200),
+                    id2,
+                ),
+            ],
+        };
+
+        let run_summary = RunSummary::from_build(&summary, &graph);
+        assert!(run_summary.critical_path.is_some());
+        let cp = run_summary.critical_path.unwrap();
+        assert_eq!(cp.duration_ms, 300);
+        assert_eq!(cp.task_labels, vec!["step1", "step2"]);
+        assert!((cp.speedup_ratio - 1.0).abs() < 1e-6);
     }
 }

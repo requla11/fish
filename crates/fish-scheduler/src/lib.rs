@@ -7,6 +7,7 @@ pub mod jobserver_pool;
 pub mod pipelining;
 pub mod preemption;
 pub mod racing;
+pub mod resource_broker;
 pub mod resource_governor;
 pub mod resource_predictor;
 pub mod watcher;
@@ -19,6 +20,7 @@ pub use bin_packing::{AgentBucket, DteBinPacker, TaskTimingEstimate};
 pub use jobserver_pool::JobserverPool;
 pub use pipelining::{PipelineStage, PipelinedCompilationCoordinator};
 pub use racing::DynamicRacingExecutor;
+pub use resource_broker::{HostResourceBroker, HostResourceGuard};
 pub use resource_governor::{KernelResourceGovernor, MemoryPressureLevel};
 pub use watcher::FsWatcherDaemon;
 pub use work_stealing::{ExecutionHeuristics, WorkStealingScheduler};
@@ -124,6 +126,17 @@ impl BuildSummary {
 
     pub fn succeeded(&self) -> bool {
         self.failed == 0
+    }
+
+    pub fn critical_path_report(
+        &self,
+        graph: &BuildGraph<Task>,
+    ) -> Option<fish_graph::CriticalPathReport> {
+        let mut durations = std::collections::HashMap::new();
+        for timing in &self.timings {
+            durations.insert(timing.node_id, timing.duration.as_millis() as u64);
+        }
+        fish_graph::CriticalPathAnalyzer::analyze(graph, &durations).ok()
     }
 
     pub fn to_chrome_trace(&self) -> serde_json::Value {

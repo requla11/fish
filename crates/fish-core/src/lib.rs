@@ -7,6 +7,7 @@ pub use banana_ast::FishAstService;
 
 pub mod backend;
 pub mod backend_utils;
+pub mod boundary;
 pub mod compile_commands;
 pub mod config;
 pub mod diagnostics;
@@ -33,6 +34,10 @@ pub mod windows_compat;
 pub use backend::BuildBackend;
 pub use backend_utils::{
     BinaryUtils, DEFAULT_EXCLUDED_DIRS, FingerprintUtils, TaskDagBuilder, ToolchainUtils,
+};
+pub use boundary::{
+    BoundaryEnforcer, BoundaryTagRule, BoundaryViolation, BoundaryViolationKind,
+    PackageBoundaryMeta,
 };
 pub use compile_commands::{CompilationDatabase, CompileCommand};
 pub use config::{

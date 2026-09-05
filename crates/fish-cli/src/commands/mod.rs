@@ -49,3 +49,9 @@ pub use qpc::run_qpc;
 
 pub mod why;
 pub use why::run_why;
+
+pub mod boundaries;
+pub use boundaries::{check_boundaries, run_boundaries};
+
+pub mod prune;
+pub use prune::run_prune;

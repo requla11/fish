@@ -77,6 +77,8 @@ pub enum Command {
     #[command(hide = true)]
     Lsp(LspArgs),
     Why(WhyArgs),
+    Boundaries(BoundariesArgs),
+    Prune(PruneArgs),
     #[command(hide = true)]
     Pash(PashArgs),
     #[command(hide = true)]
@@ -378,6 +380,28 @@ pub struct BuildArgs {
 pub struct CheckArgs {
     #[command(flatten)]
     pub common: CommonArgs,
+    #[arg(long)]
+    pub boundaries: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct BoundariesArgs {
+    #[arg(long, short)]
+    pub path: Option<PathBuf>,
+    #[arg(long)]
+    pub json: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct PruneArgs {
+    #[arg(long)]
+    pub scope: String,
+    #[arg(long, default_value = "out")]
+    pub out_dir: PathBuf,
+    #[arg(long)]
+    pub docker: bool,
+    #[arg(long, short)]
+    pub path: Option<PathBuf>,
 }
 
 /// Arguments for test command

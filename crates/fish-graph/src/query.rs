@@ -10,6 +10,8 @@ pub enum QueryExpr {
     AllPaths(Box<QueryExpr>, Box<QueryExpr>),
     SomePath(Box<QueryExpr>, Box<QueryExpr>),
     Filter(String, Box<QueryExpr>),
+    Kind(String, Box<QueryExpr>),
+    Attr(String, String, Box<QueryExpr>),
     Union(Box<QueryExpr>, Box<QueryExpr>),
     Intersect(Box<QueryExpr>, Box<QueryExpr>),
     Except(Box<QueryExpr>, Box<QueryExpr>),
@@ -70,9 +72,15 @@ where
     Ok(None)
 }
 
+pub type NameResolver<'a, T> = Box<dyn Fn(&T) -> String + 'a>;
+pub type KindResolver<'a, T> = Box<dyn Fn(&T) -> String + 'a>;
+pub type AttrResolver<'a, T> = Box<dyn Fn(&T, &str) -> Option<String> + 'a>;
+
 pub struct GraphQueryEngine<'a, T> {
     graph: &'a BuildGraph<T>,
-    name_resolver: Box<dyn Fn(&T) -> String + 'a>,
+    name_resolver: NameResolver<'a, T>,
+    kind_resolver: Option<KindResolver<'a, T>>,
+    attr_resolver: Option<AttrResolver<'a, T>>,
 }
 
 impl<'a, T> GraphQueryEngine<'a, T> {
@@ -83,7 +91,25 @@ impl<'a, T> GraphQueryEngine<'a, T> {
         Self {
             graph,
             name_resolver: Box::new(name_resolver),
+            kind_resolver: None,
+            attr_resolver: None,
         }
+    }
+
+    pub fn with_kind_resolver<F>(mut self, kind_resolver: F) -> Self
+    where
+        F: Fn(&T) -> String + 'a,
+    {
+        self.kind_resolver = Some(Box::new(kind_resolver));
+        self
+    }
+
+    pub fn with_attr_resolver<F>(mut self, attr_resolver: F) -> Self
+    where
+        F: Fn(&T, &str) -> Option<String> + 'a,
+    {
+        self.attr_resolver = Some(Box::new(attr_resolver));
+        self
     }
 
     pub fn eval(&self, expr: &QueryExpr) -> HashSet<NodeId> {
@@ -142,6 +168,40 @@ impl<'a, T> GraphQueryEngine<'a, T> {
                         if let Some(node) = self.graph.node(*id) {
                             let name = (self.name_resolver)(&node.payload);
                             name.contains(pattern)
+                        } else {
+                            false
+                        }
+                    })
+                    .collect()
+            }
+            QueryExpr::Kind(pattern, inner) => {
+                let set = self.eval(inner);
+                set.into_iter()
+                    .filter(|id| {
+                        if let Some(node) = self.graph.node(*id) {
+                            if let Some(ref kr) = self.kind_resolver {
+                                kr(&node.payload).contains(pattern)
+                            } else {
+                                false
+                            }
+                        } else {
+                            false
+                        }
+                    })
+                    .collect()
+            }
+            QueryExpr::Attr(key, pattern, inner) => {
+                let set = self.eval(inner);
+                set.into_iter()
+                    .filter(|id| {
+                        if let Some(node) = self.graph.node(*id) {
+                            if let Some(ref ar) = self.attr_resolver {
+                                ar(&node.payload, key)
+                                    .map(|v| v.contains(pattern))
+                                    .unwrap_or(false)
+                            } else {
+                                false
+                            }
                         } else {
                             false
                         }
@@ -318,6 +378,37 @@ pub fn parse_query(input: &str) -> Result<QueryExpr, String> {
         let inner = parse_query(parts[1])?;
         return Ok(QueryExpr::Filter(pattern, Box::new(inner)));
     }
+    if let Some(args) = trimmed
+        .strip_prefix("kind(")
+        .and_then(|s| s.strip_suffix(')'))
+    {
+        let parts: Vec<&str> = split_top_level_commas(args)
+            .into_iter()
+            .map(|s| s.trim())
+            .collect();
+        if parts.len() != 2 {
+            return Err("kind() expects exactly 2 arguments".to_string());
+        }
+        let pattern = parts[0].trim_matches('"').trim_matches('\'').to_string();
+        let inner = parse_query(parts[1])?;
+        return Ok(QueryExpr::Kind(pattern, Box::new(inner)));
+    }
+    if let Some(args) = trimmed
+        .strip_prefix("attr(")
+        .and_then(|s| s.strip_suffix(')'))
+    {
+        let parts: Vec<&str> = split_top_level_commas(args)
+            .into_iter()
+            .map(|s| s.trim())
+            .collect();
+        if parts.len() != 3 {
+            return Err("attr() expects exactly 3 arguments".to_string());
+        }
+        let key = parts[0].trim_matches('"').trim_matches('\'').to_string();
+        let pattern = parts[1].trim_matches('"').trim_matches('\'').to_string();
+        let inner = parse_query(parts[2])?;
+        return Ok(QueryExpr::Attr(key, pattern, Box::new(inner)));
+    }
 
     let target_name = trimmed.trim_start_matches("//").to_string();
     Ok(QueryExpr::Target(target_name))
@@ -422,5 +513,50 @@ mod tests {
         assert!(parse_query("union(app)").is_err());
         assert!(parse_query("allpaths(app)").is_err());
         assert!(parse_query("filter(app)").is_err());
+        assert!(parse_query("kind(app)").is_err());
+        assert!(parse_query("attr(app)").is_err());
+    }
+
+    #[test]
+    fn test_graph_query_kind_and_attr() {
+        struct MockTarget {
+            name: &'static str,
+            kind: &'static str,
+            tag: &'static str,
+        }
+
+        let mut graph = BuildGraph::new();
+        let lib = graph.add_node(MockTarget {
+            name: "core_lib",
+            kind: "library",
+            tag: "platform",
+        });
+        let bin = graph.add_node(MockTarget {
+            name: "app_cli",
+            kind: "binary",
+            tag: "frontend",
+        });
+
+        graph.add_dependency(lib, bin).unwrap();
+
+        let engine = GraphQueryEngine::new(&graph, |t| t.name.to_string())
+            .with_kind_resolver(|t| t.kind.to_string())
+            .with_attr_resolver(|t, k| {
+                if k == "tag" {
+                    Some(t.tag.to_string())
+                } else {
+                    None
+                }
+            });
+
+        let kind_query = parse_query("kind('lib', //...)").unwrap();
+        let kind_res = engine.eval(&kind_query);
+        assert_eq!(kind_res.len(), 1);
+        assert!(kind_res.contains(&lib));
+
+        let attr_query = parse_query("attr('tag', 'front', //...)").unwrap();
+        let attr_res = engine.eval(&attr_query);
+        assert_eq!(attr_res.len(), 1);
+        assert!(attr_res.contains(&bin));
     }
 }

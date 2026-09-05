@@ -18,6 +18,7 @@ pub mod input_filter;
 pub mod profiling;
 pub mod project;
 pub mod proto;
+pub mod prune;
 pub mod remediation;
 pub mod sandbox_profiles;
 pub mod security;
@@ -57,6 +58,7 @@ pub use input_filter::MicroInputFilter;
 pub use profiling::{
     MemoryTracker, PerformanceMetrics, Profiler, ResourceMonitor, ResourceUsage, TaskProfile,
 };
+pub use prune::{PruneResult, prune_workspace};
 pub use security::{
     InputValidator, SecurityError, SecurityLevel, SecurityPolicy, SecurityValidator,
 };

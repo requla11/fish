@@ -98,11 +98,36 @@ fn main() -> ExitCode {
         }
         Command::Ai(args) => commands::run_ai(args),
         Command::Why(args) => commands::run_why(args),
+        Command::Boundaries(args) => commands::run_boundaries(args),
+        Command::Prune(args) => commands::run_prune(args),
         Command::Lsp(_args) => commands::run_lsp(),
         Command::Init(args) => commands::run_init(args.path, args.force, args.describe),
         Command::New(args) => commands::run_new(&args.name, args.template.as_deref(), args.path),
         Command::Build(args) => run_build_mode(args.common, BuildMode::Build),
-        Command::Check(args) => run_build_mode(args.common, BuildMode::Check),
+        Command::Check(args) => {
+            if args.boundaries {
+                let start_dir = match resolve_start_dir(args.common.path.as_deref()) {
+                    Ok(dir) => dir,
+                    Err(message) => {
+                        eprintln!("error: {message}");
+                        return ExitCode::FAILURE;
+                    }
+                };
+                let config = match config::FishConfig::load(&start_dir) {
+                    Ok(Some(cfg)) => cfg,
+                    Ok(None) => config::FishConfig::default(),
+                    Err(message) => {
+                        eprintln!("error: {message}");
+                        return ExitCode::FAILURE;
+                    }
+                };
+                let boundary_exit = commands::check_boundaries(&start_dir, &config, false);
+                if boundary_exit != ExitCode::SUCCESS {
+                    return boundary_exit;
+                }
+            }
+            run_build_mode(args.common, BuildMode::Check)
+        }
         Command::Test(args) => run_build_mode(args.common, BuildMode::Test),
         Command::Clean(args) => commands::run_clean(args.path.as_deref(), args.all),
         Command::Run(args) => commands::run_run(args),
@@ -210,6 +235,37 @@ fn main() -> ExitCode {
                                 .package(pkg_id)
                                 .map(|p| p.name.to_string())
                                 .unwrap_or_else(|| pkg_id.to_string())
+                        })
+                        .with_kind_resolver(|pkg_id| {
+                            project
+                                .package(pkg_id)
+                                .map(|p| {
+                                    let path = p.manifest_path.as_str();
+                                    if path.ends_with("Cargo.toml") {
+                                        "rust"
+                                    } else if path.ends_with("package.json") {
+                                        "typescript"
+                                    } else if path.ends_with("CMakeLists.txt") {
+                                        "cc"
+                                    } else if path.ends_with("go.mod") {
+                                        "go"
+                                    } else {
+                                        "package"
+                                    }
+                                    .to_string()
+                                })
+                                .unwrap_or_else(|| "unknown".to_string())
+                        })
+                        .with_attr_resolver(|pkg_id, attr| {
+                            project.package(pkg_id).and_then(|p| {
+                                if attr == "version" {
+                                    Some(p.version.to_string())
+                                } else if attr == "path" {
+                                    Some(p.manifest_path.to_string())
+                                } else {
+                                    None
+                                }
+                            })
                         });
                         let matches = engine.eval(&parsed);
                         for id in matches {

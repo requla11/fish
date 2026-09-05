@@ -15,7 +15,7 @@ Usage: fish [OPTIONS] <COMMAND>
 | `--experimental` | Enable experimental features (use at your own risk) | `false` |
 | `--offline` | Disallow network access and fail-fast on remote operations | `false` |
 
-**Subcommands:** [`version`](#fish-version), [`init`](#fish-init), [`new`](#fish-new), [`build`](#fish-build), [`check`](#fish-check), [`test`](#fish-test), [`clean`](#fish-clean), [`run`](#fish-run), [`graph`](#fish-graph), [`watch`](#fish-watch), [`cache-server`](#fish-cache-server), [`worker`](#fish-worker), [`affected`](#fish-affected), [`doctor`](#fish-doctor), [`cache`](#fish-cache), [`ci`](#fish-ci), [`history`](#fish-history), [`rewind`](#fish-rewind), [`attest`](#fish-attest), [`verify`](#fish-verify), [`plugin`](#fish-plugin), [`fix`](#fish-fix), [`signing-key`](#fish-signing-key), [`heal`](#fish-heal), [`cost-estimate`](#fish-cost-estimate), [`ui`](#fish-ui), [`query`](#fish-query), [`daemon`](#fish-daemon), [`why`](#fish-why)
+**Subcommands:** [`version`](#fish-version), [`init`](#fish-init), [`new`](#fish-new), [`build`](#fish-build), [`check`](#fish-check), [`test`](#fish-test), [`clean`](#fish-clean), [`run`](#fish-run), [`graph`](#fish-graph), [`watch`](#fish-watch), [`cache-server`](#fish-cache-server), [`worker`](#fish-worker), [`affected`](#fish-affected), [`doctor`](#fish-doctor), [`cache`](#fish-cache), [`ci`](#fish-ci), [`history`](#fish-history), [`rewind`](#fish-rewind), [`attest`](#fish-attest), [`verify`](#fish-verify), [`plugin`](#fish-plugin), [`fix`](#fish-fix), [`signing-key`](#fish-signing-key), [`heal`](#fish-heal), [`cost-estimate`](#fish-cost-estimate), [`ui`](#fish-ui), [`query`](#fish-query), [`daemon`](#fish-daemon), [`why`](#fish-why), [`boundaries`](#fish-boundaries), [`prune`](#fish-prune)
 
 ### fish-version
 
@@ -142,6 +142,7 @@ Usage: fish check [OPTIONS] [PATH]
 | `--telemetry` |  | `false` |
 | `--otel-endpoint` `<OTEL_ENDPOINT>` |  |  |
 | `--no-infer-deps` | Disable automatic cross-language dependency inference between detected projects (see `cross_deps`); references are then ignored and each ecosystem builds independently | `false` |
+| `--boundaries` |  | `false` |
 
 ### fish-test
 
@@ -1099,6 +1100,30 @@ Usage: fish why [OPTIONS] <TARGET>
 | target `<TARGET>` |  |  |
 | `--path`, `-p` `<PATH>` |  |  |
 
+### fish-boundaries
+
+```
+Usage: fish boundaries [OPTIONS]
+```
+
+| Flag | Description | Default |
+|---|---|---|
+| `--path`, `-p` `<PATH>` |  |  |
+| `--json` |  | `false` |
+
+### fish-prune
+
+```
+Usage: fish prune [OPTIONS] --scope <SCOPE>
+```
+
+| Flag | Description | Default |
+|---|---|---|
+| `--scope` `<SCOPE>` |  |  |
+| `--out-dir` `<OUT_DIR>` |  | `out` |
+| `--docker` |  | `false` |
+| `--path`, `-p` `<PATH>` |  |  |
+
 ### fish-help
 
 Print this message or the help of the given subcommand(s)
@@ -1107,7 +1132,7 @@ Print this message or the help of the given subcommand(s)
 Usage: fish help [COMMAND]
 ```
 
-**Subcommands:** [`version`](#fish-help-version), [`init`](#fish-help-init), [`new`](#fish-help-new), [`build`](#fish-help-build), [`check`](#fish-help-check), [`test`](#fish-help-test), [`clean`](#fish-help-clean), [`run`](#fish-help-run), [`graph`](#fish-help-graph), [`watch`](#fish-help-watch), [`cache-server`](#fish-help-cache-server), [`worker`](#fish-help-worker), [`affected`](#fish-help-affected), [`doctor`](#fish-help-doctor), [`cache`](#fish-help-cache), [`ci`](#fish-help-ci), [`history`](#fish-help-history), [`rewind`](#fish-help-rewind), [`attest`](#fish-help-attest), [`verify`](#fish-help-verify), [`plugin`](#fish-help-plugin), [`fix`](#fish-help-fix), [`signing-key`](#fish-help-signing-key), [`heal`](#fish-help-heal), [`cost-estimate`](#fish-help-cost-estimate), [`ui`](#fish-help-ui), [`query`](#fish-help-query), [`daemon`](#fish-help-daemon), [`why`](#fish-help-why)
+**Subcommands:** [`version`](#fish-help-version), [`init`](#fish-help-init), [`new`](#fish-help-new), [`build`](#fish-help-build), [`check`](#fish-help-check), [`test`](#fish-help-test), [`clean`](#fish-help-clean), [`run`](#fish-help-run), [`graph`](#fish-help-graph), [`watch`](#fish-help-watch), [`cache-server`](#fish-help-cache-server), [`worker`](#fish-help-worker), [`affected`](#fish-help-affected), [`doctor`](#fish-help-doctor), [`cache`](#fish-help-cache), [`ci`](#fish-help-ci), [`history`](#fish-help-history), [`rewind`](#fish-help-rewind), [`attest`](#fish-help-attest), [`verify`](#fish-help-verify), [`plugin`](#fish-help-plugin), [`fix`](#fish-help-fix), [`signing-key`](#fish-help-signing-key), [`heal`](#fish-help-heal), [`cost-estimate`](#fish-help-cost-estimate), [`ui`](#fish-help-ui), [`query`](#fish-help-query), [`daemon`](#fish-help-daemon), [`why`](#fish-help-why), [`boundaries`](#fish-help-boundaries), [`prune`](#fish-help-prune)
 
 #### fish-help-version
 
@@ -1475,6 +1500,18 @@ Usage: fish help daemon stop
 
 ```
 Usage: fish help why
+```
+
+#### fish-help-boundaries
+
+```
+Usage: fish help boundaries
+```
+
+#### fish-help-prune
+
+```
+Usage: fish help prune
 ```
 
 #### fish-help-help

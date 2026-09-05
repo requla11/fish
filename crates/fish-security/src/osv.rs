@@ -374,16 +374,11 @@ mod tests {
         "database_specific": {"severity": "HIGH"}
     }"#;
 
-    /// Minimal HTTP/1.1 server answering one querybatch POST and any number
-    /// of /vulns/{id} GETs with canned documents.
     async fn spawn_mock_collector() -> (String, tokio::task::JoinHandle<()>) {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
         let handle = tokio::spawn(async move {
-            for _ in 0..2 {
-                let Ok((mut socket, _)) = listener.accept().await else {
-                    return;
-                };
+            while let Ok((mut socket, _)) = listener.accept().await {
                 tokio::spawn(async move {
                     let mut buf = vec![0u8; 16 * 1024];
                     let read = socket.read(&mut buf).await.unwrap_or(0);
@@ -408,6 +403,24 @@ mod tests {
                             .write_all(b"HTTP/1.1 404 Not Found\r\ncontent-length: 0\r\n\r\n")
                             .await;
                     }
+                });
+            }
+        });
+        (format!("http://{addr}/v1"), handle)
+    }
+
+    async fn spawn_failing_mock_collector(status: u16) -> (String, tokio::task::JoinHandle<()>) {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let handle = tokio::spawn(async move {
+            while let Ok((mut socket, _)) = listener.accept().await {
+                tokio::spawn(async move {
+                    let mut buf = vec![0u8; 1024];
+                    let _ = socket.read(&mut buf).await;
+                    let body = format!(
+                        "HTTP/1.1 {status} Internal Server Error\r\ncontent-length: 0\r\nconnection: close\r\n\r\n"
+                    );
+                    let _ = socket.write_all(body.as_bytes()).await;
                 });
             }
         });
@@ -439,7 +452,6 @@ mod tests {
         let results = client.query_packages(&packages).await.unwrap();
 
         assert_eq!(results.len(), 2);
-        // h2 has the advisory; serde is clean.
         assert_eq!(results[0].len(), 1);
         assert_eq!(results[1].len(), 0);
 
@@ -460,7 +472,32 @@ mod tests {
         assert!(vuln.references.iter().any(|u| u.contains("rustsec.org")));
         assert!(vuln.published_date.is_some());
 
-        server.await.unwrap();
+        server.abort();
+    }
+
+    #[tokio::test]
+    async fn test_osv_querybatch_server_error_surfaces_api_error() {
+        let (base, server) = spawn_failing_mock_collector(500).await;
+        let client = OsvClient::new(OsvConfig {
+            base_url: base,
+            timeout: Duration::from_secs(5),
+            offline: false,
+        })
+        .unwrap();
+
+        let packages = vec![(
+            "crates.io".to_string(),
+            "h2".to_string(),
+            "0.3.24".to_string(),
+        )];
+        let err = client.query_packages(&packages).await.unwrap_err();
+        match err {
+            SecurityError::ApiError(msg) => {
+                assert!(msg.contains("HTTP 500"));
+            }
+            other => panic!("expected ApiError, got {other:?}"),
+        }
+        server.abort();
     }
 
     #[test]

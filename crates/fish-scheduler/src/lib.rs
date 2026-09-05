@@ -722,6 +722,7 @@ mod tests {
         delays: HashMap<String, Duration>,
         fail: Vec<String>,
         cached: Vec<String>,
+        spawn_errors: Vec<String>,
     }
 
     impl FakeExecutor {
@@ -734,12 +735,28 @@ mod tests {
             self.fail = labels.iter().map(|s| s.to_string()).collect();
             self
         }
+
+        fn with_cached(mut self, labels: &[&str]) -> Self {
+            self.cached = labels.iter().map(|s| s.to_string()).collect();
+            self
+        }
+
+        fn with_spawn_error(mut self, labels: &[&str]) -> Self {
+            self.spawn_errors = labels.iter().map(|s| s.to_string()).collect();
+            self
+        }
     }
 
     impl TaskExecutor for FakeExecutor {
         fn execute(&self, task: &Task) -> Result<TaskOutcome, ExecutorError> {
             if self.cached.contains(&task.label) {
                 return Ok(TaskOutcome::cached(task));
+            }
+            if self.spawn_errors.contains(&task.label) {
+                return Err(ExecutorError::Spawn {
+                    command: task.label.clone(),
+                    source: std::io::Error::other("simulated spawn failure"),
+                });
             }
             let current = self.concurrent.fetch_add(1, Ordering::SeqCst) + 1;
             self.max_concurrent.fetch_max(current, Ordering::SeqCst);
@@ -816,16 +833,29 @@ mod tests {
     #[test]
     fn cached_tasks_are_counted() {
         let mut graph = chain_graph(&["a", "b"]);
-        let executor = FakeExecutor {
-            cached: vec!["b".to_string()],
-            ..FakeExecutor::default()
-        };
+        let executor = FakeExecutor::default().with_cached(&["b"]);
         let scheduler = Scheduler::new(2);
         let summary = scheduler.run(&mut graph, &executor, |_, _| {}).unwrap();
         assert_eq!(summary.cached, 1);
         assert_eq!(summary.executed, 1);
         assert!(summary.succeeded());
         assert_eq!(executor.order.lock().unwrap().as_slice(), ["a"]);
+    }
+
+    #[test]
+    fn reports_hermetic_spawn_errors_as_failures() {
+        let mut graph = chain_graph(&["a", "b"]);
+        let executor = FakeExecutor::default().with_spawn_error(&["a"]);
+        let scheduler = Scheduler::new(1);
+        let summary = scheduler.run(&mut graph, &executor, |_, _| {}).unwrap();
+        assert_eq!(summary.failed, 1);
+        assert_eq!(summary.cancelled, 1);
+        assert!(!summary.succeeded());
+        assert!(
+            summary.failures[0]
+                .stderr
+                .contains("simulated spawn failure")
+        );
     }
 
     #[test]

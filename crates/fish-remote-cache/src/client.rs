@@ -256,11 +256,21 @@ impl RemoteCacheClient for TcpRemoteCacheClient {
             )),
         }
     }
+
+    fn get_artifact(&self, key: &str) -> Result<Option<Vec<u8>>, RemoteCacheError> {
+        self.get_artifact(key)
+    }
+
+    fn put_artifact(&self, key: &str, data: &[u8]) -> Result<(), RemoteCacheError> {
+        self.put_artifact(key, data)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::RemoteCacheServer;
+    use tempfile::tempdir;
 
     #[test]
     fn test_offline_client_fail_fast() {
@@ -272,5 +282,28 @@ mod tests {
             }
             other => panic!("expected RemoteCacheError::Offline, got {:?}", other),
         }
+    }
+
+    #[test]
+    fn test_tcp_client_trait_artifact_roundtrip() {
+        let temp = tempdir().unwrap();
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap().to_string();
+        drop(listener);
+
+        let server = RemoteCacheServer::new(&addr, None, Some(temp.path().to_path_buf()));
+        let _handle = server.start_background().unwrap();
+        std::thread::sleep(Duration::from_millis(50));
+
+        let client: Box<dyn RemoteCacheClient> = Box::new(TcpRemoteCacheClient::new(&addr, None));
+        assert_eq!(client.get_artifact("test/artifact").unwrap(), None);
+
+        let payload = b"artifact-binary-payload-data";
+        client.put_artifact("test/artifact", payload).unwrap();
+
+        let retrieved = client.get_artifact("test/artifact").unwrap();
+        assert_eq!(retrieved, Some(payload.to_vec()));
+
+        server.stop();
     }
 }

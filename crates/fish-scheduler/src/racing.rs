@@ -93,38 +93,54 @@ mod tests {
     use fish_executor::{CommandSpec, TaskStatus};
     use std::time::Instant;
 
-    struct FastMockExecutor;
-    impl TaskExecutor for FastMockExecutor {
-        fn execute(&self, _task: &Task) -> Result<TaskOutcome, ExecutorError> {
-            Ok(TaskOutcome {
-                status: TaskStatus::Executed,
-                exit_code: Some(0),
-                duration: Duration::from_millis(5),
-                stdout: String::new(),
-                stderr: String::new(),
-            })
+    struct MockRacingExecutor {
+        delay: Duration,
+        tag: String,
+        fail: bool,
+    }
+
+    impl MockRacingExecutor {
+        fn success(delay: Duration, tag: &str) -> Self {
+            Self {
+                delay,
+                tag: tag.to_string(),
+                fail: false,
+            }
+        }
+
+        fn failure(delay: Duration, tag: &str) -> Self {
+            Self {
+                delay,
+                tag: tag.to_string(),
+                fail: true,
+            }
         }
     }
 
-    struct SlowMockExecutor;
-    impl TaskExecutor for SlowMockExecutor {
-        fn execute(&self, _task: &Task) -> Result<TaskOutcome, ExecutorError> {
-            std::thread::sleep(Duration::from_millis(200));
-            Ok(TaskOutcome {
-                status: TaskStatus::Executed,
-                exit_code: Some(0),
-                duration: Duration::from_millis(200),
-                stdout: String::new(),
-                stderr: String::new(),
-            })
+    impl TaskExecutor for MockRacingExecutor {
+        fn execute(&self, task: &Task) -> Result<TaskOutcome, ExecutorError> {
+            if !self.delay.is_zero() {
+                std::thread::sleep(self.delay);
+            }
+            if self.fail {
+                Ok(TaskOutcome::failed(task, &self.tag))
+            } else {
+                Ok(TaskOutcome {
+                    status: TaskStatus::Executed,
+                    exit_code: Some(0),
+                    duration: self.delay,
+                    stdout: self.tag.clone(),
+                    stderr: String::new(),
+                })
+            }
         }
     }
 
     #[test]
     fn test_dynamic_racing_fast_local_wins() {
         let racer = DynamicRacingExecutor::new(
-            FastMockExecutor,
-            SlowMockExecutor,
+            MockRacingExecutor::success(Duration::from_millis(5), "local"),
+            MockRacingExecutor::success(Duration::from_millis(150), "remote"),
             Duration::from_millis(10),
         );
         let spec = CommandSpec::new("echo");
@@ -132,6 +148,37 @@ mod tests {
         let start = Instant::now();
         let outcome = racer.execute_race(&task).unwrap();
         assert_eq!(outcome.status, TaskStatus::Executed);
-        assert!(start.elapsed() < Duration::from_millis(150));
+        assert_eq!(outcome.stdout, "local");
+        assert!(start.elapsed() < Duration::from_millis(120));
+    }
+
+    #[test]
+    fn test_dynamic_racing_fast_remote_wins() {
+        let racer = DynamicRacingExecutor::new(
+            MockRacingExecutor::success(Duration::from_millis(150), "local"),
+            MockRacingExecutor::success(Duration::from_millis(5), "remote"),
+            Duration::ZERO,
+        );
+        let spec = CommandSpec::new("echo");
+        let task = Task::new("test", "echo", spec);
+        let start = Instant::now();
+        let outcome = racer.execute_race(&task).unwrap();
+        assert_eq!(outcome.status, TaskStatus::Executed);
+        assert_eq!(outcome.stdout, "remote");
+        assert!(start.elapsed() < Duration::from_millis(120));
+    }
+
+    #[test]
+    fn test_dynamic_racing_winner_failure_propagated() {
+        let racer = DynamicRacingExecutor::new(
+            MockRacingExecutor::failure(Duration::from_millis(5), "local-error"),
+            MockRacingExecutor::success(Duration::from_millis(150), "remote"),
+            Duration::from_millis(10),
+        );
+        let spec = CommandSpec::new("echo");
+        let task = Task::new("test", "echo", spec);
+        let outcome = racer.execute_race(&task).unwrap();
+        assert_eq!(outcome.status, TaskStatus::Failed);
+        assert_eq!(outcome.stderr, "local-error");
     }
 }

@@ -252,15 +252,16 @@ mod tests {
         };
         let exporter = OtlpExporter::new(cfg).unwrap();
         let tracer = OtelTracer::new("fish-build");
+        tracer.record_span(tracer.start_span("compile_core").finish(true, None));
+        assert_eq!(tracer.span_count(), 1);
 
-        match exporter.export_tracer(&tracer).await {
+        match exporter.export_and_clear(&tracer).await {
             Err(OtelExportError::HttpStatus(503)) => {}
             other => panic!("expected HTTP 503 error, got {other:?}"),
         }
         collector.await.unwrap();
 
-        // Failed exports must not clear recorded spans.
-        assert_eq!(tracer.span_count(), 0);
+        assert_eq!(tracer.span_count(), 1);
     }
 
     #[tokio::test]

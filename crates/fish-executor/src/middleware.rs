@@ -114,4 +114,91 @@ mod tests {
         assert!(pre_flag.load(Ordering::SeqCst));
         assert!(post_flag.load(Ordering::SeqCst));
     }
+
+    struct LoggingMiddleware {
+        name: &'static str,
+        log: Arc<std::sync::Mutex<Vec<String>>>,
+        fail_pre: bool,
+    }
+
+    impl TaskMiddleware for LoggingMiddleware {
+        fn pre_execute(&self, _task: &mut Task) -> Result<(), ExecutorError> {
+            self.log.lock().unwrap().push(format!("{}:pre", self.name));
+            if self.fail_pre {
+                return Err(ExecutorError::Record {
+                    command: self.name.to_string(),
+                    source: std::io::Error::other("pre-execution failed"),
+                });
+            }
+            Ok(())
+        }
+
+        fn post_execute(
+            &self,
+            _task: &Task,
+            _outcome: &mut TaskOutcome,
+        ) -> Result<(), ExecutorError> {
+            self.log.lock().unwrap().push(format!("{}:post", self.name));
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn test_middleware_onion_ordering() {
+        let log = Arc::new(std::sync::Mutex::new(Vec::new()));
+        let mw_a = LoggingMiddleware {
+            name: "A",
+            log: Arc::clone(&log),
+            fail_pre: false,
+        };
+        let mw_b = LoggingMiddleware {
+            name: "B",
+            log: Arc::clone(&log),
+            fail_pre: false,
+        };
+
+        let executor = MiddlewareChainExecutor::new(DummyExecutor)
+            .with_middleware(Box::new(mw_a))
+            .with_middleware(Box::new(mw_b));
+
+        let spec = CommandSpec::new("echo");
+        let task = Task::new("onion_test", "onion", spec);
+        let outcome = executor.execute(&task).unwrap();
+        assert_eq!(outcome.status, TaskStatus::Executed);
+
+        let entries = log.lock().unwrap().clone();
+        assert_eq!(entries, vec!["A:pre", "B:pre", "B:post", "A:post"]);
+    }
+
+    #[test]
+    fn test_middleware_pre_execute_failure_aborts_chain() {
+        let log = Arc::new(std::sync::Mutex::new(Vec::new()));
+        let mw_a = LoggingMiddleware {
+            name: "A",
+            log: Arc::clone(&log),
+            fail_pre: true,
+        };
+        let mw_b = LoggingMiddleware {
+            name: "B",
+            log: Arc::clone(&log),
+            fail_pre: false,
+        };
+
+        let executor = MiddlewareChainExecutor::new(DummyExecutor)
+            .with_middleware(Box::new(mw_a))
+            .with_middleware(Box::new(mw_b));
+
+        let spec = CommandSpec::new("echo");
+        let task = Task::new("fail_test", "fail", spec);
+        let err = executor.execute(&task).unwrap_err();
+        match err {
+            ExecutorError::Record { command, .. } => {
+                assert_eq!(command, "A");
+            }
+            other => panic!("expected ExecutorError::Record, got {other:?}"),
+        }
+
+        let entries = log.lock().unwrap().clone();
+        assert_eq!(entries, vec!["A:pre"]);
+    }
 }

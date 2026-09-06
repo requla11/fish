@@ -3,6 +3,10 @@ module github.com/requla11/fish/go
 go 1.26.0
 
 require (
+	github.com/moby/spdystream v0.5.0
+	github.com/sirupsen/logrus v1.10.2
+	golang.org/x/crypto v0.55.0
+	golang.org/x/oauth2 v0.36.0
 	k8s.io/api v0.30.3
 	k8s.io/apimachinery v0.30.3
 	k8s.io/client-go v0.30.1
@@ -44,19 +48,16 @@ require (
 	github.com/prometheus/common v0.44.0 // indirect
 	github.com/prometheus/procfs v0.12.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/stretchr/testify v1.12.1 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect
 	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e // indirect
 	golang.org/x/net v0.58.0 // indirect
-	golang.org/x/oauth2 v0.12.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/term v0.45.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.49.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
-	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
@@ -72,3 +73,5 @@ require (
 replace golang.org/x/crypto => golang.org/x/crypto v0.55.0
 
 replace github.com/yuin/goldmark => github.com/yuin/goldmark v1.7.17
+
+replace github.com/moby/spdystream => github.com/moby/spdystream v0.5.0

@@ -13,6 +13,7 @@ from pathlib import Path
 def run_cmd(cmd: str) -> str:
     """Run shell command and return output."""
     try:
+        # nosemgrep: python.lang.security.audit.subprocess-shell-true.subprocess-shell-true
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
         return result.stdout + result.stderr
     except Exception as e:

@@ -172,9 +172,19 @@ impl<T> BuildGraph<T> {
 
     pub fn ready_nodes(&self) -> Vec<NodeId> {
         let mut ready = Vec::with_capacity(self.nodes.len().min(32));
-        for node in &self.nodes {
-            if node.state == TaskState::Pending && self.is_ready(node.id).unwrap_or(false) {
-                ready.push(node.id);
+        for (index, node) in self.nodes.iter().enumerate() {
+            if node.state == TaskState::Pending {
+                let deps = &self.deps[index];
+                if deps.is_empty()
+                    || deps.iter().all(|dep| {
+                        self.nodes
+                            .get(dep.0)
+                            .map(|n| n.state.is_successful())
+                            .unwrap_or(false)
+                    })
+                {
+                    ready.push(node.id);
+                }
             }
         }
         ready
@@ -218,10 +228,15 @@ impl<T> BuildGraph<T> {
 
     pub fn topological_order(&self) -> Vec<NodeId> {
         let n = self.nodes.len();
-        let mut indegree: Vec<usize> = self.deps.iter().map(Vec::len).collect();
+        if n == 0 {
+            return Vec::new();
+        }
+        let mut indegree = Vec::with_capacity(n);
         let mut order = Vec::with_capacity(n);
         for (index, deps) in self.deps.iter().enumerate() {
-            if deps.is_empty() {
+            let deg = deps.len() as u32;
+            indegree.push(deg);
+            if deg == 0 {
                 order.push(NodeId(index));
             }
         }
@@ -232,8 +247,9 @@ impl<T> BuildGraph<T> {
             i += 1;
             if let Some(dependents) = self.dependents.get(id.0) {
                 for &dependent in dependents {
-                    indegree[dependent.0] -= 1;
-                    if indegree[dependent.0] == 0 {
+                    let deg = &mut indegree[dependent.0];
+                    *deg -= 1;
+                    if *deg == 0 {
                         order.push(dependent);
                     }
                 }
@@ -365,20 +381,73 @@ impl<T> BuildGraph<T> {
             return true;
         }
         let n = self.nodes.len();
-        let mut seen = vec![false; n];
-        if from.0 < n {
-            seen[from.0] = true;
+        if from.0 >= n || to.0 >= n {
+            return false;
         }
-        let mut queue = VecDeque::from([from]);
+        let from_dependents = match self.dependents.get(from.0) {
+            Some(deps) => deps,
+            None => return false,
+        };
+        if from_dependents.is_empty() {
+            return false;
+        }
+        if self.deps.get(to.0).is_none_or(Vec::is_empty) {
+            return false;
+        }
+        if from_dependents.contains(&to) {
+            return true;
+        }
+
+        if n <= 64 {
+            let mut seen: u64 = 1u64 << from.0;
+            let mut queue = [NodeId(0); 64];
+            let mut head = 0;
+            let mut tail = 0;
+            queue[tail] = from;
+            tail += 1;
+
+            while head < tail {
+                let id = queue[head];
+                head += 1;
+                if let Some(dependents) = self.dependents.get(id.0) {
+                    for &next in dependents {
+                        if next == to {
+                            return true;
+                        }
+                        if next.0 < n {
+                            let mask = 1u64 << next.0;
+                            if (seen & mask) == 0 {
+                                seen |= mask;
+                                if tail < 64 {
+                                    queue[tail] = next;
+                                    tail += 1;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        let words = n.div_ceil(64);
+        let mut seen = vec![0u64; words];
+        seen[from.0 / 64] |= 1u64 << (from.0 % 64);
+        let mut queue = VecDeque::with_capacity(32);
+        queue.push_back(from);
         while let Some(id) = queue.pop_front() {
             if let Some(dependents) = self.dependents.get(id.0) {
                 for &next in dependents {
                     if next == to {
                         return true;
                     }
-                    if next.0 < n && !seen[next.0] {
-                        seen[next.0] = true;
-                        queue.push_back(next);
+                    if next.0 < n {
+                        let word = next.0 / 64;
+                        let bit = 1u64 << (next.0 % 64);
+                        if (seen[word] & bit) == 0 {
+                            seen[word] |= bit;
+                            queue.push_back(next);
+                        }
                     }
                 }
             }

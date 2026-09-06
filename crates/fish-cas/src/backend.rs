@@ -159,6 +159,10 @@ impl CasBackend for LocalCasBackend {
         let data_path = self.hash_path(hash)?;
         let metadata_path = self.metadata_path(hash)?;
 
+        if data_path.is_file() && metadata_path.is_file() {
+            return Ok(());
+        }
+
         if let Some(parent) = data_path.parent() {
             tokio::fs::create_dir_all(parent)
                 .await
@@ -846,6 +850,27 @@ mod tests {
 
         backend.delete(artifact.hash()).await.unwrap();
         assert!(!backend.exists(artifact.hash()).await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_local_cas_store_is_idempotent() {
+        let temp_dir = tempdir().unwrap();
+        let backend = LocalCasBackend::new(
+            temp_dir.path().to_path_buf(),
+            crate::compression::CompressionAlgorithm::None,
+        )
+        .unwrap();
+        let artifact = Artifact::from_bytes(
+            b"idempotent data".to_vec(),
+            "binary".to_string(),
+            "test".to_string(),
+        )
+        .unwrap();
+        backend.store(&artifact).await.unwrap();
+        backend.store(&artifact).await.unwrap();
+        assert!(backend.exists(artifact.hash()).await.unwrap());
+        let retrieved = backend.retrieve(artifact.hash()).await.unwrap();
+        assert_eq!(retrieved.data(), artifact.data());
     }
 
     #[tokio::test]

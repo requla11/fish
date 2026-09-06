@@ -209,6 +209,9 @@ impl BuildSummary {
 
     pub fn critical_path(&self, graph: &BuildGraph<Task>) -> (Duration, Vec<String>) {
         let n = graph.len();
+        if n == 0 {
+            return (Duration::ZERO, Vec::new());
+        }
         let mut timing_vec = vec![Duration::ZERO; n];
         for t in &self.timings {
             if t.node_id.index() < n {
@@ -223,13 +226,17 @@ impl BuildSummary {
         for &id in &topo {
             let idx = id.index();
             let own = timing_vec[idx];
-            let (best_pred, best_cost) = graph
-                .deps(id)
-                .unwrap_or_default()
-                .iter()
-                .map(|dep| (Some(*dep), longest_to[dep.index()]))
-                .max_by_key(|(_, cost)| *cost)
-                .unwrap_or((None, Duration::ZERO));
+            let mut best_pred = None;
+            let mut best_cost = Duration::ZERO;
+            if let Ok(deps) = graph.deps(id) {
+                for &dep in deps {
+                    let cost = longest_to[dep.index()];
+                    if cost >= best_cost {
+                        best_cost = cost;
+                        best_pred = Some(dep);
+                    }
+                }
+            }
             longest_to[idx] = best_cost + own;
             predecessor[idx] = best_pred;
         }
@@ -761,6 +768,15 @@ mod tests {
             assert_eq!(summary.critical_path(&graph).1, expected);
         }
         assert_eq!(expected, vec!["a"]);
+    }
+
+    #[test]
+    fn critical_path_empty_graph_returns_zero() {
+        let graph: BuildGraph<Task> = BuildGraph::new();
+        let summary = BuildSummary::from_graph(&graph, Duration::ZERO, 2, vec![], vec![]);
+        let (total, path) = summary.critical_path(&graph);
+        assert_eq!(total, Duration::ZERO);
+        assert!(path.is_empty());
     }
 
     #[derive(Default)]

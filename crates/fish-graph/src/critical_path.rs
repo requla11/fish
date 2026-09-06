@@ -29,32 +29,33 @@ impl CriticalPathAnalyzer {
             });
         }
 
+        let n = graph.len();
         let topo_order = graph.topological_order();
-        let mut dist: HashMap<NodeId, u64> = HashMap::with_capacity(graph.len());
-        let mut pred: HashMap<NodeId, Option<NodeId>> = HashMap::with_capacity(graph.len());
+        let mut dist = vec![0u64; n];
+        let mut pred = vec![None; n];
 
         for &node_id in &topo_order {
-            let self_cost = *node_durations_ms.get(&node_id).unwrap_or(&0);
+            let self_cost = node_durations_ms.get(&node_id).copied().unwrap_or(0);
             let mut max_dep_dist = 0u64;
             let mut best_pred = None;
 
             for &dep_id in graph.deps(node_id)? {
-                let dep_dist = *dist.get(&dep_id).unwrap_or(&0);
+                let dep_dist = dist[dep_id.index()];
                 if dep_dist >= max_dep_dist {
                     max_dep_dist = dep_dist;
                     best_pred = Some(dep_id);
                 }
             }
 
-            dist.insert(node_id, max_dep_dist + self_cost);
-            pred.insert(node_id, best_pred);
+            dist[node_id.index()] = max_dep_dist + self_cost;
+            pred[node_id.index()] = best_pred;
         }
 
         let mut max_total_dist = 0u64;
         let mut sink_node = None;
 
         for &node_id in &topo_order {
-            let node_dist = *dist.get(&node_id).unwrap_or(&0);
+            let node_dist = dist[node_id.index()];
             if node_dist >= max_total_dist {
                 max_total_dist = node_dist;
                 sink_node = Some(node_id);
@@ -65,7 +66,7 @@ impl CriticalPathAnalyzer {
         let mut current = sink_node;
         while let Some(curr_id) = current {
             path.push(curr_id);
-            current = pred.get(&curr_id).copied().flatten();
+            current = pred[curr_id.index()];
         }
         path.reverse();
 

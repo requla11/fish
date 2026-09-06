@@ -236,57 +236,131 @@ impl TaskManifest {
     }
 
     pub fn diff(&self, current: &TaskManifest) -> ManifestDiff {
-        let mut old_inputs: BTreeMap<String, &FileDigest> = BTreeMap::new();
-        for f in &self.inputs {
-            old_inputs.insert(f.path.clone(), f);
-        }
-
-        let mut new_inputs: BTreeMap<String, &FileDigest> = BTreeMap::new();
-        for f in &current.inputs {
-            new_inputs.insert(f.path.clone(), f);
-        }
-
         let mut modified_files = Vec::new();
         let mut removed_files = Vec::new();
-        for (path, old_dig) in &old_inputs {
-            match new_inputs.get(path) {
-                Some(new_dig) => {
-                    if old_dig.hash != new_dig.hash {
-                        modified_files.push(FileDiff {
-                            path: path.clone(),
-                            old_hash: old_dig.hash.clone(),
-                            new_hash: new_dig.hash.clone(),
-                        });
+        let mut added_files = Vec::new();
+
+        let both_sorted = self.inputs.windows(2).all(|w| w[0].path < w[1].path)
+            && current.inputs.windows(2).all(|w| w[0].path < w[1].path);
+
+        if both_sorted {
+            let mut i = 0;
+            let mut j = 0;
+            let n = self.inputs.len();
+            let m = current.inputs.len();
+            while i < n && j < m {
+                match self.inputs[i].path.cmp(&current.inputs[j].path) {
+                    std::cmp::Ordering::Less => {
+                        removed_files.push(self.inputs[i].path.clone());
+                        i += 1;
+                    }
+                    std::cmp::Ordering::Greater => {
+                        added_files.push(current.inputs[j].path.clone());
+                        j += 1;
+                    }
+                    std::cmp::Ordering::Equal => {
+                        if self.inputs[i].hash != current.inputs[j].hash {
+                            modified_files.push(FileDiff {
+                                path: self.inputs[i].path.clone(),
+                                old_hash: self.inputs[i].hash.clone(),
+                                new_hash: current.inputs[j].hash.clone(),
+                            });
+                        }
+                        i += 1;
+                        j += 1;
                     }
                 }
-                None => {
-                    removed_files.push(path.clone());
+            }
+            while i < n {
+                removed_files.push(self.inputs[i].path.clone());
+                i += 1;
+            }
+            while j < m {
+                added_files.push(current.inputs[j].path.clone());
+                j += 1;
+            }
+        } else {
+            let mut old_inputs: BTreeMap<&str, &FileDigest> = BTreeMap::new();
+            for f in &self.inputs {
+                old_inputs.insert(&f.path, f);
+            }
+            let mut new_inputs: BTreeMap<&str, &FileDigest> = BTreeMap::new();
+            for f in &current.inputs {
+                new_inputs.insert(&f.path, f);
+            }
+            for (path, old_dig) in &old_inputs {
+                match new_inputs.get(path) {
+                    Some(new_dig) => {
+                        if old_dig.hash != new_dig.hash {
+                            modified_files.push(FileDiff {
+                                path: (*path).to_string(),
+                                old_hash: old_dig.hash.clone(),
+                                new_hash: new_dig.hash.clone(),
+                            });
+                        }
+                    }
+                    None => {
+                        removed_files.push((*path).to_string());
+                    }
+                }
+            }
+            for path in new_inputs.keys() {
+                if !old_inputs.contains_key(path) {
+                    added_files.push((*path).to_string());
                 }
             }
         }
 
-        let mut added_files = Vec::new();
-        for path in new_inputs.keys() {
-            if !old_inputs.contains_key(path) {
-                added_files.push(path.clone());
+        let mut changed_envs = Vec::new();
+        let mut it_old_env = self.env.iter().peekable();
+        let mut it_new_env = current.env.iter().peekable();
+
+        while let (Some(&(k_old, v_old)), Some(&(k_new, v_new))) =
+            (it_old_env.peek(), it_new_env.peek())
+        {
+            match k_old.cmp(k_new) {
+                std::cmp::Ordering::Less => {
+                    changed_envs.push(EnvDiff {
+                        key: k_old.clone(),
+                        old_value: Some(v_old.clone()),
+                        new_value: None,
+                    });
+                    it_old_env.next();
+                }
+                std::cmp::Ordering::Greater => {
+                    changed_envs.push(EnvDiff {
+                        key: k_new.clone(),
+                        old_value: None,
+                        new_value: Some(v_new.clone()),
+                    });
+                    it_new_env.next();
+                }
+                std::cmp::Ordering::Equal => {
+                    if v_old != v_new {
+                        changed_envs.push(EnvDiff {
+                            key: k_old.clone(),
+                            old_value: Some(v_old.clone()),
+                            new_value: Some(v_new.clone()),
+                        });
+                    }
+                    it_old_env.next();
+                    it_new_env.next();
+                }
             }
         }
-
-        let mut all_env_keys: BTreeSet<String> = BTreeSet::new();
-        all_env_keys.extend(self.env.keys().cloned());
-        all_env_keys.extend(current.env.keys().cloned());
-
-        let mut changed_envs = Vec::new();
-        for k in all_env_keys {
-            let old_val = self.env.get(&k).cloned();
-            let new_val = current.env.get(&k).cloned();
-            if old_val != new_val {
-                changed_envs.push(EnvDiff {
-                    key: k,
-                    old_value: old_val,
-                    new_value: new_val,
-                });
-            }
+        for (k_old, v_old) in it_old_env {
+            changed_envs.push(EnvDiff {
+                key: k_old.clone(),
+                old_value: Some(v_old.clone()),
+                new_value: None,
+            });
+        }
+        for (k_new, v_new) in it_new_env {
+            changed_envs.push(EnvDiff {
+                key: k_new.clone(),
+                old_value: None,
+                new_value: Some(v_new.clone()),
+            });
         }
 
         let changed_args = if self.args != current.args {
@@ -295,21 +369,56 @@ impl TaskManifest {
             None
         };
 
-        let mut all_deps: BTreeSet<String> = BTreeSet::new();
-        all_deps.extend(self.upstream_deps.keys().cloned());
-        all_deps.extend(current.upstream_deps.keys().cloned());
-
         let mut changed_deps = Vec::new();
-        for d in all_deps {
-            let old_fp = self.upstream_deps.get(&d).cloned();
-            let new_fp = current.upstream_deps.get(&d).cloned();
-            if old_fp != new_fp {
-                changed_deps.push(DepDiff {
-                    label: d,
-                    old_fingerprint: old_fp,
-                    new_fingerprint: new_fp,
-                });
+        let mut it_old_deps = self.upstream_deps.iter().peekable();
+        let mut it_new_deps = current.upstream_deps.iter().peekable();
+
+        while let (Some(&(d_old, fp_old)), Some(&(d_new, fp_new))) =
+            (it_old_deps.peek(), it_new_deps.peek())
+        {
+            match d_old.cmp(d_new) {
+                std::cmp::Ordering::Less => {
+                    changed_deps.push(DepDiff {
+                        label: d_old.clone(),
+                        old_fingerprint: Some(fp_old.clone()),
+                        new_fingerprint: None,
+                    });
+                    it_old_deps.next();
+                }
+                std::cmp::Ordering::Greater => {
+                    changed_deps.push(DepDiff {
+                        label: d_new.clone(),
+                        old_fingerprint: None,
+                        new_fingerprint: Some(fp_new.clone()),
+                    });
+                    it_new_deps.next();
+                }
+                std::cmp::Ordering::Equal => {
+                    if fp_old != fp_new {
+                        changed_deps.push(DepDiff {
+                            label: d_old.clone(),
+                            old_fingerprint: Some(fp_old.clone()),
+                            new_fingerprint: Some(fp_new.clone()),
+                        });
+                    }
+                    it_old_deps.next();
+                    it_new_deps.next();
+                }
             }
+        }
+        for (d_old, fp_old) in it_old_deps {
+            changed_deps.push(DepDiff {
+                label: d_old.clone(),
+                old_fingerprint: Some(fp_old.clone()),
+                new_fingerprint: None,
+            });
+        }
+        for (d_new, fp_new) in it_new_deps {
+            changed_deps.push(DepDiff {
+                label: d_new.clone(),
+                old_fingerprint: None,
+                new_fingerprint: Some(fp_new.clone()),
+            });
         }
 
         let is_exact = modified_files.is_empty()
@@ -651,6 +760,77 @@ mod tests {
         let explanation = diff.format_explanation();
         assert!(explanation.contains("Environment variables changed (1):"));
         assert!(explanation.contains("Command arguments changed:"));
+    }
+
+    #[test]
+    fn test_task_manifest_diff_unsorted_inputs() {
+        let digest = |path: &str, hash: &str| FileDigest {
+            path: path.to_string(),
+            hash: hash.to_string(),
+            size: 1,
+        };
+        let base = TaskManifest {
+            key: "k".to_string(),
+            label: "l".to_string(),
+            command: "cmd".to_string(),
+            args: Vec::new(),
+            env: BTreeMap::new(),
+            inputs: vec![digest("b", "1"), digest("a", "1")],
+            upstream_deps: BTreeMap::new(),
+            total_fingerprint: "fp1".to_string(),
+            stored_at: 0,
+        };
+        let mut next = base.clone();
+        next.inputs = vec![digest("a", "2"), digest("c", "1")];
+        next.total_fingerprint = "fp2".to_string();
+        let diff = base.diff(&next);
+        assert_eq!(diff.verdict, ManifestVerdict::Drifted);
+        assert_eq!(diff.modified_files.len(), 1);
+        assert_eq!(diff.modified_files[0].path, "a");
+        assert_eq!(diff.added_files, vec!["c".to_string()]);
+        assert_eq!(diff.removed_files, vec!["b".to_string()]);
+    }
+
+    #[test]
+    fn test_task_manifest_diff_sorted_merge_and_deps() {
+        let digest = |path: &str, hash: &str| FileDigest {
+            path: path.to_string(),
+            hash: hash.to_string(),
+            size: 1,
+        };
+        let mut deps_old = BTreeMap::new();
+        deps_old.insert("dep-a".to_string(), "fp-a1".to_string());
+        let mut deps_new = BTreeMap::new();
+        deps_new.insert("dep-a".to_string(), "fp-a2".to_string());
+        deps_new.insert("dep-b".to_string(), "fp-b1".to_string());
+        let old = TaskManifest {
+            key: "k".to_string(),
+            label: "l".to_string(),
+            command: "cmd".to_string(),
+            args: Vec::new(),
+            env: BTreeMap::new(),
+            inputs: vec![digest("a", "1"), digest("b", "1"), digest("c", "1")],
+            upstream_deps: deps_old,
+            total_fingerprint: "fp1".to_string(),
+            stored_at: 0,
+        };
+        let new = TaskManifest {
+            key: "k".to_string(),
+            label: "l".to_string(),
+            command: "cmd".to_string(),
+            args: Vec::new(),
+            env: BTreeMap::new(),
+            inputs: vec![digest("a", "1"), digest("b", "2"), digest("d", "1")],
+            upstream_deps: deps_new,
+            total_fingerprint: "fp2".to_string(),
+            stored_at: 0,
+        };
+        let diff = old.diff(&new);
+        assert_eq!(diff.modified_files.len(), 1);
+        assert_eq!(diff.modified_files[0].path, "b");
+        assert_eq!(diff.added_files, vec!["d".to_string()]);
+        assert_eq!(diff.removed_files, vec!["c".to_string()]);
+        assert_eq!(diff.changed_deps.len(), 2);
     }
 
     #[test]

@@ -322,6 +322,7 @@ Usage: fish worker [OPTIONS]
 | `--auth-token` `<AUTH_TOKEN>` |  |  |
 | `--name` `<NAME>` |  | `fish-worker-node` |
 | `--max-concurrency` `<MAX_CONCURRENCY>` |  | `8` |
+| `--ping` `<PING>` |  |  |
 
 ### fish-affected
 

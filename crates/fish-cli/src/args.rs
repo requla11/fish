@@ -668,6 +668,8 @@ pub struct WorkerArgs {
     pub name: String,
     #[arg(long, default_value = "8")]
     pub max_concurrency: usize,
+    #[arg(long)]
+    pub ping: Option<String>,
 }
 
 /// Arguments for plugin command

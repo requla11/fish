@@ -1,11 +1,12 @@
 #![forbid(unsafe_code)]
 
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use crate::client::RemoteWorkerClient;
+use crate::protocol::WorkerHealthInfo;
 use fish_executor::{ExecutorError, ProcessExecutor, Task, TaskExecutor, TaskOutcome};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -133,6 +134,9 @@ pub struct ClusterExecutor {
     failover_to_local: bool,
     strategy: LoadBalancingStrategy,
     circuit_breaker: WorkerCircuitBreaker,
+    health_cache: Arc<Mutex<HashMap<String, (WorkerHealthInfo, Instant)>>>,
+    speculative_race: bool,
+    racing_threshold: Duration,
 }
 
 impl ClusterExecutor {
@@ -145,6 +149,9 @@ impl ClusterExecutor {
             failover_to_local: true,
             strategy: LoadBalancingStrategy::RoundRobin,
             circuit_breaker: WorkerCircuitBreaker::default(),
+            health_cache: Arc::new(Mutex::new(HashMap::new())),
+            speculative_race: false,
+            racing_threshold: Duration::from_millis(500),
         }
     }
 
@@ -160,6 +167,9 @@ impl ClusterExecutor {
             failover_to_local: true,
             strategy: LoadBalancingStrategy::RoundRobin,
             circuit_breaker: WorkerCircuitBreaker::default(),
+            health_cache: Arc::new(Mutex::new(HashMap::new())),
+            speculative_race: false,
+            racing_threshold: Duration::from_millis(500),
         }
     }
 
@@ -172,6 +182,9 @@ impl ClusterExecutor {
             failover_to_local: false,
             strategy: LoadBalancingStrategy::RoundRobin,
             circuit_breaker: WorkerCircuitBreaker::default(),
+            health_cache: Arc::new(Mutex::new(HashMap::new())),
+            speculative_race: false,
+            racing_threshold: Duration::from_millis(500),
         }
     }
 
@@ -211,8 +224,28 @@ impl ClusterExecutor {
         self
     }
 
+    pub fn with_speculative_racing(mut self, enabled: bool) -> Self {
+        self.speculative_race = enabled;
+        self
+    }
+
+    pub fn with_racing_threshold(mut self, threshold: Duration) -> Self {
+        self.racing_threshold = threshold;
+        self
+    }
+
     pub fn worker_count(&self) -> usize {
         self.workers.len()
+    }
+
+    pub fn refresh_health_cache(&self) {
+        for w in &self.workers {
+            if let Ok(resp) = w.ping()
+                && let Ok(mut m) = self.health_cache.lock()
+            {
+                m.insert(w.server_addr.clone(), (resp.health, Instant::now()));
+            }
+        }
     }
 
     pub fn healthy_workers(&self) -> Vec<RemoteWorkerClient> {
@@ -256,9 +289,31 @@ impl ClusterExecutor {
                     .enumerate()
                     .map(|(idx, w)| {
                         let failure_cnt = self.circuit_breaker.failure_count(&w.server_addr);
-                        let load = match w.ping() {
-                            Ok(resp) => resp.health.active_jobs,
-                            Err(_) => usize::MAX / 2,
+                        let load = {
+                            let cached = self.health_cache.lock().ok().and_then(|m| {
+                                m.get(&w.server_addr).and_then(|(h, t)| {
+                                    if t.elapsed() < Duration::from_secs(3) {
+                                        Some(h.active_jobs)
+                                    } else {
+                                        None
+                                    }
+                                })
+                            });
+                            match cached {
+                                Some(jobs) => jobs,
+                                None => match w.ping() {
+                                    Ok(resp) => {
+                                        if let Ok(mut m) = self.health_cache.lock() {
+                                            m.insert(
+                                                w.server_addr.clone(),
+                                                (resp.health.clone(), Instant::now()),
+                                            );
+                                        }
+                                        resp.health.active_jobs
+                                    }
+                                    Err(_) => usize::MAX / 2,
+                                },
+                            }
                         };
                         (idx, load, failure_cnt)
                     })
@@ -284,6 +339,65 @@ impl ClusterExecutor {
 
         indices
     }
+
+    fn execute_speculative(
+        &self,
+        task: &Task,
+        worker: &RemoteWorkerClient,
+        local: Arc<dyn TaskExecutor>,
+    ) -> Result<TaskOutcome, ExecutorError> {
+        let (tx, rx) = std::sync::mpsc::channel();
+        let finished = Arc::new(AtomicBool::new(false));
+
+        let tx_remote = tx.clone();
+        let finished_remote = Arc::clone(&finished);
+        let task_remote = task.clone();
+        let worker_remote = worker.clone();
+        std::thread::spawn(move || {
+            let res = worker_remote.execute(&task_remote);
+            if !finished_remote.swap(true, Ordering::SeqCst) {
+                let _ = tx_remote.send((true, res));
+            }
+        });
+
+        let tx_local = tx;
+        let finished_local = Arc::clone(&finished);
+        let task_local = task.clone();
+        let grace = self
+            .circuit_breaker
+            .p95_latency(&worker.server_addr)
+            .unwrap_or(self.racing_threshold)
+            .max(Duration::from_millis(50));
+
+        std::thread::spawn(move || {
+            std::thread::sleep(grace);
+            if !finished_local.load(Ordering::SeqCst) {
+                let res = local.execute(&task_local);
+                if !finished_local.swap(true, Ordering::SeqCst) {
+                    let _ = tx_local.send((false, res));
+                }
+            }
+        });
+
+        match rx.recv() {
+            Ok((is_remote, res)) => {
+                if is_remote {
+                    match &res {
+                        Ok(_) => self.circuit_breaker.record_success(&worker.server_addr),
+                        Err(_) => self.circuit_breaker.record_failure(&worker.server_addr),
+                    }
+                }
+                res
+            }
+            Err(_) => Err(ExecutorError::Spawn {
+                command: task.label.clone(),
+                source: std::io::Error::new(
+                    std::io::ErrorKind::Interrupted,
+                    "speculative racing execution terminated without outcome",
+                ),
+            }),
+        }
+    }
 }
 
 impl TaskExecutor for ClusterExecutor {
@@ -304,6 +418,17 @@ impl TaskExecutor for ClusterExecutor {
 
         let candidates = self.select_candidate_indices();
         let total_candidates = candidates.len();
+
+        if self.speculative_race
+            && let Some(local) = &self.local_executor
+            && !candidates.is_empty()
+        {
+            let best_idx = candidates[0];
+            let worker = &self.workers[best_idx];
+            if !self.circuit_breaker.is_degraded(&worker.server_addr) {
+                return self.execute_speculative(task, worker, Arc::clone(local));
+            }
+        }
 
         for (attempt, &idx) in candidates.iter().enumerate() {
             let worker = &self.workers[idx];

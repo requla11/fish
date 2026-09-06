@@ -9,8 +9,8 @@ pub mod virtual_fs;
 pub use client::RemoteWorkerClient;
 pub use cluster::{ClusterExecutor, LoadBalancingStrategy, WorkerCircuitBreaker};
 pub use protocol::{
-    RemoteTaskRequest, RemoteTaskResponse, VfsFileMetadata, VfsFileRequest, VfsFileResponse,
-    WorkerHealthInfo, WorkerPingRequest, WorkerPingResponse,
+    OutputArtifacts, RemoteTaskRequest, RemoteTaskResponse, VfsFileMetadata, VfsFileRequest,
+    VfsFileResponse, WorkerHealthInfo, WorkerPingRequest, WorkerPingResponse,
 };
 pub use server::WorkerServer;
 pub use virtual_fs::{CacheStats, FileMetadata, VfsError, VfsNode, VirtualFileSystem};

@@ -14,6 +14,10 @@ pub struct RemoteTaskRequest {
     pub timeout_secs: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source: Option<SourceContext>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub expected_outputs: Vec<String>,
+    #[serde(default)]
+    pub capture_all_outputs: bool,
 }
 
 /// A tar.zst snapshot of the task's working tree, base64-encoded on the wire.
@@ -31,6 +35,16 @@ pub struct SourceContext {
     /// VFS mount point for streaming
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub vfs_mount: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct OutputArtifacts {
+    pub count: usize,
+    pub total_bytes: u64,
+    pub data_base64: String,
+    pub digest: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub file_paths: Vec<String>,
 }
 
 /// Request to stream a specific file from VFS
@@ -64,6 +78,8 @@ pub struct RemoteTaskResponse {
     pub stderr: String,
     pub duration_ms: u64,
     pub error: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub artifacts: Option<OutputArtifacts>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -195,3 +195,73 @@ fn vfs_mode_worker_request() {
 
     server.stop();
 }
+
+#[test]
+fn remote_worker_artifact_synchronization_roundtrip() {
+    let (server, addr, _handle) = start_worker_server(None, "artifact-node", 4);
+    let client = RemoteWorkerClient::new(&addr, None);
+
+    let client_workspace = tempfile::tempdir().unwrap();
+    let py_script = "import os; os.makedirs('dist', exist_ok=True); open('dist/bundle.txt', 'w').write('distributed artifact 12345'); open('dist/meta.json', 'w').write('{\"ok\": true}')";
+    let spec = CommandSpec::new("python")
+        .args(["-c", py_script])
+        .cwd(client_workspace.path());
+    let mut task = Task::new("artifact_test", spec.command_line(), spec);
+    task.artifacts = vec![
+        std::path::PathBuf::from("dist/bundle.txt"),
+        std::path::PathBuf::from("dist/meta.json"),
+    ];
+
+    let outcome = client.execute(&task).unwrap();
+    assert_eq!(outcome.status, TaskStatus::Executed);
+
+    let bundle_path = client_workspace.path().join("dist/bundle.txt");
+    let meta_path = client_workspace.path().join("dist/meta.json");
+    assert!(bundle_path.exists());
+    assert!(meta_path.exists());
+    assert_eq!(
+        std::fs::read_to_string(bundle_path).unwrap(),
+        "distributed artifact 12345"
+    );
+    assert_eq!(
+        std::fs::read_to_string(meta_path).unwrap(),
+        "{\"ok\": true}"
+    );
+
+    server.stop();
+}
+
+#[test]
+fn cluster_speculative_racing_picks_fastest() {
+    let (server, addr, _handle) = start_worker_server(None, "slow-node", 2);
+    let client = RemoteWorkerClient::new(&addr, None);
+
+    let local = Arc::new(ProcessExecutor::default());
+    let cluster = ClusterExecutor::with_local_fallback(vec![client], local)
+        .with_speculative_racing(true)
+        .with_racing_threshold(Duration::from_millis(50));
+
+    let spec = CommandSpec::new("python")
+        .args(["-c", "import time; time.sleep(1.2); print('remote slow')"]);
+    let task = Task::new("race_task", spec.command_line(), spec);
+
+    let outcome = cluster.execute(&task).unwrap();
+    assert_eq!(outcome.status, TaskStatus::Executed);
+
+    server.stop();
+}
+
+#[test]
+fn cluster_health_cache_avoids_redundant_pings() {
+    let (server, addr, _handle) = start_worker_server(None, "health-node", 4);
+    let client = RemoteWorkerClient::new(&addr, None);
+
+    let cluster = ClusterExecutor::new(vec![client])
+        .with_strategy(fish_worker::LoadBalancingStrategy::LeastLoaded);
+
+    cluster.refresh_health_cache();
+    let candidates = cluster.select_candidate_indices();
+    assert_eq!(candidates.len(), 1);
+
+    server.stop();
+}

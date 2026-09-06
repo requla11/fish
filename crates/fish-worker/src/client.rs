@@ -10,8 +10,9 @@ use crate::protocol::{
     RemoteTaskRequest, RemoteTaskResponse, SourceContext, VfsFileRequest, VfsFileResponse,
     WorkerHealthInfo, WorkerPingRequest, WorkerPingResponse,
 };
+use base64::Engine;
 use fish_executor::{ExecutorError, Task, TaskExecutor, TaskOutcome, TaskStatus};
-use fish_remote_cache::artifact::pack_tree;
+use fish_remote_cache::artifact::{pack_tree, unpack_artifacts};
 
 /// Directories skipped when snapshotting the working tree for remote
 /// execution. Most of these are build output or VCS state that the remote
@@ -233,6 +234,13 @@ impl RemoteWorkerClient {
             None
         };
 
+        let expected_outputs: Vec<String> = task
+            .artifacts
+            .iter()
+            .map(|p| p.to_string_lossy().replace('\\', "/"))
+            .collect();
+        let capture_all_outputs = self.pack_source || expected_outputs.is_empty();
+
         let req = RemoteTaskRequest {
             task_id: task.label.clone(),
             command: task.spec.program.clone(),
@@ -242,6 +250,8 @@ impl RemoteWorkerClient {
             auth_token: self.auth_token.clone(),
             timeout_secs: Some(self.timeout.as_secs()),
             source,
+            expected_outputs,
+            capture_all_outputs,
         };
 
         let req_json = serde_json::to_string(&req).map_err(|e| ExecutorError::Spawn {
@@ -288,6 +298,21 @@ impl RemoteWorkerClient {
                 command: task.label.clone(),
                 source: std::io::Error::new(std::io::ErrorKind::InvalidData, e),
             })?;
+
+        if let Some(artifacts) = &resp.artifacts
+            && let Ok(blob) =
+                base64::engine::general_purpose::STANDARD.decode(&artifacts.data_base64)
+        {
+            let actual_digest = blake3::hash(&blob).to_hex().to_string();
+            if actual_digest == artifacts.digest {
+                let dest_dir = task
+                    .spec
+                    .cwd
+                    .as_deref()
+                    .unwrap_or_else(|| std::path::Path::new("."));
+                let _ = unpack_artifacts(&blob, dest_dir);
+            }
+        }
 
         let status = if resp.exit_code == Some(0) && resp.error.is_none() {
             TaskStatus::Executed

@@ -4,6 +4,29 @@ use crate::args::WorkerArgs;
 use fish_worker::WorkerServer;
 
 pub fn run_worker(args: WorkerArgs) -> ExitCode {
+    if let Some(target) = &args.ping {
+        let client = fish_worker::RemoteWorkerClient::new(target, args.auth_token);
+        let start = std::time::Instant::now();
+        match client.ping() {
+            Ok(resp) => {
+                let latency = start.elapsed();
+                println!("✓ Worker node `{target}` is healthy");
+                println!("  Node Name:        {}", resp.health.worker_name);
+                println!(
+                    "  Active Jobs:       {}/{}",
+                    resp.health.active_jobs, resp.health.max_concurrency
+                );
+                println!("  Uptime:            {}s", resp.health.uptime_secs);
+                println!("  Roundtrip Latency: {:?}", latency);
+                return ExitCode::SUCCESS;
+            }
+            Err(e) => {
+                eprintln!("error: failed to ping worker node `{target}`: {e}");
+                return ExitCode::FAILURE;
+            }
+        }
+    }
+
     println!("🦀 Fish Distributed Worker Node");
     println!("Worker name:  {}", args.name);
     println!("Listening on: {}", args.listen);

@@ -9,8 +9,8 @@ use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
 use crate::protocol::{
-    RemoteTaskRequest, RemoteTaskResponse, SourceContext, VfsFileRequest, VfsFileResponse,
-    WorkerHealthInfo, WorkerPingRequest, WorkerPingResponse,
+    OutputArtifacts, RemoteTaskRequest, RemoteTaskResponse, SourceContext, VfsFileRequest,
+    VfsFileResponse, WorkerHealthInfo, WorkerPingRequest, WorkerPingResponse,
 };
 use crate::virtual_fs::VirtualFileSystem;
 use base64::Engine;
@@ -207,6 +207,7 @@ impl WorkerServer {
                     stderr: "unauthorized: invalid auth token".to_string(),
                     duration_ms: 0,
                     error: Some("unauthorized".to_string()),
+                    artifacts: None,
                 };
                 let out = serde_json::to_string(&err_res)?;
                 stream.write_all(out.as_bytes())?;
@@ -247,10 +248,38 @@ impl WorkerServer {
                 spec.cwd = Some(std::path::PathBuf::from(cwd));
             }
 
+            let effective_work_dir = if let Some(ref root) = source_dir {
+                spec.cwd.clone().unwrap_or_else(|| root.clone())
+            } else if let Some(ref cwd) = spec.cwd {
+                cwd.clone()
+            } else {
+                PathBuf::from(".")
+            };
+
+            let mut initial_files = std::collections::HashSet::new();
+            if effective_work_dir.exists() {
+                scan_directory_files(&effective_work_dir, &mut initial_files);
+            }
+
             let task = Task::new(&req.task_id, spec.command_line(), spec);
             let timeout = req.timeout_secs.map(Duration::from_secs);
             let executor = ProcessExecutor::with_timeout(false, timeout);
             let outcome = executor.execute(&task);
+
+            let artifacts = match &outcome {
+                Ok(out)
+                    if out.exit_code.unwrap_or(0) == 0
+                        && out.status != fish_executor::TaskStatus::Failed =>
+                {
+                    collect_output_artifacts(
+                        &effective_work_dir,
+                        &req.expected_outputs,
+                        req.capture_all_outputs || source_dir.is_some(),
+                        &initial_files,
+                    )
+                }
+                _ => None,
+            };
 
             if let Some(dir) = source_dir {
                 let _ = std::fs::remove_dir_all(dir);
@@ -274,6 +303,7 @@ impl WorkerServer {
                     stderr: out.stderr,
                     duration_ms,
                     error: None,
+                    artifacts,
                 },
                 Err(e) => RemoteTaskResponse {
                     task_id: req.task_id,
@@ -282,6 +312,7 @@ impl WorkerServer {
                     stderr: e.to_string(),
                     duration_ms,
                     error: Some(e.to_string()),
+                    artifacts: None,
                 },
             };
 
@@ -414,6 +445,7 @@ impl WorkerServer {
             stderr: "invalid request wire format".to_string(),
             duration_ms: 0,
             error: Some("invalid_request".to_string()),
+            artifacts: None,
         };
         let out = serde_json::to_string(&err_res)?;
         stream.write_all(out.as_bytes())?;
@@ -467,4 +499,74 @@ fn unpack_source_to_vfs(ctx: &SourceContext, vfs: &VirtualFileSystem) -> anyhow:
         .map_err(|e| anyhow::anyhow!(e.to_string()))?;
 
     Ok(temp_root)
+}
+
+fn scan_directory_files(dir: &Path, out: &mut std::collections::HashSet<PathBuf>) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            scan_directory_files(&path, out);
+        } else if path.is_file() {
+            out.insert(path);
+        }
+    }
+}
+
+fn collect_output_artifacts(
+    work_dir: &Path,
+    expected_outputs: &[String],
+    capture_all: bool,
+    initial_files: &std::collections::HashSet<PathBuf>,
+) -> Option<OutputArtifacts> {
+    let mut files_to_pack = Vec::new();
+    if !expected_outputs.is_empty() {
+        for rel in expected_outputs {
+            let full = work_dir.join(rel);
+            if full.exists() {
+                if full.is_dir() {
+                    let mut dir_files = std::collections::HashSet::new();
+                    scan_directory_files(&full, &mut dir_files);
+                    files_to_pack.extend(dir_files);
+                } else {
+                    files_to_pack.push(full);
+                }
+            }
+        }
+    }
+    if capture_all || (expected_outputs.is_empty() && files_to_pack.is_empty()) {
+        let mut current_files = std::collections::HashSet::new();
+        scan_directory_files(work_dir, &mut current_files);
+        for file in current_files {
+            if !initial_files.contains(&file) {
+                files_to_pack.push(file);
+            }
+        }
+    }
+    if files_to_pack.is_empty() {
+        return None;
+    }
+    files_to_pack.sort();
+    files_to_pack.dedup();
+
+    let packed = fish_remote_cache::artifact::pack_artifacts(work_dir, &files_to_pack).ok()?;
+    let digest = blake3::hash(&packed).to_hex().to_string();
+    let data_base64 = base64::engine::general_purpose::STANDARD.encode(&packed);
+    let mut file_paths = Vec::new();
+    for p in &files_to_pack {
+        if let Ok(rel) = p.strip_prefix(work_dir) {
+            file_paths.push(rel.to_string_lossy().replace('\\', "/"));
+        }
+    }
+    let count = file_paths.len();
+    let total_bytes = packed.len() as u64;
+    Some(OutputArtifacts {
+        count,
+        total_bytes,
+        data_base64,
+        digest,
+        file_paths,
+    })
 }

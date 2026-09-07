@@ -1,0 +1,67 @@
+﻿# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: "en-US"
+early_access: false
+tone_instructions: "Review as an assertive, rigorous Principal Systems & Security Engineer. Focus directly on correctness, concurrency safety, performance efficiency, security posture, and cross-platform compatibility (Windows, Linux, macOS). Keep feedback concise, actionable, and technically precise."
+
+reviews:
+  profile: "assertive"
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - "main"
+      - "dev"
+  tools:
+    shellcheck:
+      enabled: true
+    markdownlint:
+      enabled: true
+    github-checks:
+      enabled: true
+    ast-grep:
+      enabled: true
+
+  path_filters:
+    - "!target/**"
+    - "!submodules/**"
+    - "!vscode-extension/node_modules/**"
+    - "!vscode-extension/out/**"
+    - "!**/*.lock"
+    - "!**/*.min.js"
+    - "!**/dist/**"
+    - "!**/build/**"
+
+  path_instructions:
+    - path: "crates/**"
+      instructions: |
+        - Rust Edition: 2024 (MSRV 1.88+).
+        - Enforce clean, self-documenting code without unnecessary comments (adhere to the project's 'Do not add comments to code' rule).
+        - Error handling: Use `anyhow` for CLI/app layers and structured `thiserror` types in library crates.
+        - Unsafe policy: Forbid or deny `unsafe_code` unless strictly required for low-level OS/DMA interop.
+        - Fail-loud principle: Never write fake stubs or simulated successes. Implement actual logic or return typed errors.
+        - Cross-platform normalization: Always normalize cache keys and graph paths to forward slashes `/`.
+        - Child processes must guarantee deterministic termination via `kill_on_drop`.
+        - High concurrency: Optimize around BLAKE3 hashing, ZSTD CAS storage, and Chase-Lev work-stealing queues.
+    - path: "go/**"
+      instructions: |
+        - Go 1.22+ for auxiliary networking and remote worker gateway services.
+        - Ensure robust goroutine lifecycles, explicit context cancellation, and zero socket/connection leaks.
+    - path: "py/**"
+      instructions: |
+        - Python 3.11+ for predictive build intelligence and AST remediation models.
+        - Verify strict type annotations, boundary conditions, and exception safety.
+    - path: "vscode-extension/**"
+      instructions: |
+        - TypeScript client interfacing with `fish lsp`.
+        - Ensure resilient connection lifecycles, structured error diagnostics, and graceful recovery if the LSP daemon restarts.
+    - path: ".github/workflows/**"
+      instructions: |
+        - Audit CI/CD security: minimum necessary GITHUB_TOKEN permissions, immutable SHA-pinned third-party actions, and command injection prevention.
+
+chat:
+  auto_reply: true

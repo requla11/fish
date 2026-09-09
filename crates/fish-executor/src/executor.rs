@@ -129,7 +129,7 @@ fn run_with_timeout(
     }
 
     // Ensure we kill the process if this thread panics
-    let mut child_guard = KillOnDrop(&mut child);
+    let child_guard = KillOnDrop(&mut child);
 
     let mut stdout = child_guard
         .0

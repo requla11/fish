@@ -1,200 +1,200 @@
-# Fish Project Roadmap
+# Feuille de route du projet Fish
 
-> 🌐 **Translations & Contributions:** Want to translate or improve this document in your language? See our [Translation Guidelines](TRANSLATION.md).
+> 🌐 **Traductions & Contributions :** Vous souhaitez traduire ou améliorer ce document dans votre langue ? Consultez nos [Directives de traduction](TRANSLATION.md).
 
-This document outlines the strategic development roadmap for Fish, structured across current milestones, short-term targets, medium-term capabilities, long-term vision, and moonshots.
+Ce document décrit la feuille de route stratégique de développement de Fish, structurée autour des jalons actuels, des objectifs à court terme, des capacités à moyen terme, de la vision à long terme et des projets ambitieux (moonshots).
 
 ---
 
 ## 🎯 Vision
 
-Fish aims to be the most efficient, resilient, and developer-friendly build orchestration system for polyglot monorepos and distributed development environments, powered by a single-language **Rust core (28 crates, Rust 2024, MSRV 1.88+) with 11 polyglot backends**. Optional Go/Python auxiliaries and `proto/` contracts are forward-looking drafts only (see `ARCHITECTURE.md`).
+Fish a pour objectif d'être le système d'orchestration de build le plus efficace, résilient et convivial pour les développeurs, conçu pour les monorepos polyglottes et les environnements de développement distribués. Il est propulsé par un **cœur en Rust unilingue (28 crates, Rust 2024, MSRV 1.88+) avec 11 backends polyglottes**. Les composants auxiliaires optionnels en Go/Python et les contrats `proto/` ne sont que des ébauches prospectives (voir `ARCHITECTURE.md`).
 
-North-star outcomes we optimize for, in order:
+Les résultats de référence que nous optimisons, dans l'ordre :
 
-1. **Wall-clock build time** — the only metric end users feel directly.
-2. **Cache efficiency** — hit rate, artifact reuse across machines and regions.
-3. **Trustworthiness** — every cached byte provably matches its inputs.
-4. **Honesty of tooling output** — no fabricated diagnostics, no simulated success.
-
----
-
-## 🚀 Current Milestone (v0.2.x) — Completed
-
-### Phase 1: Core Engine & Polyglot Foundations
-- [x] **Rust Core Architecture**: Single-language Rust workspace (28 crates, resolver = "2", MSRV 1.88+) - no `prost`/`tonic` dependency; distributed features use plain HTTP/JSON (see `ARCHITECTURE.md`).
-- [x] **11 Language Backends**: Rust, Go, TypeScript/Node.js, Python, C/C++, Docker, Java, .NET, Swift, Dart, Zig.
-- [x] **Forward-Looking Protobuf Drafts**: `proto/fish/v1/build.proto`, `ai.proto`, and `coordinator.proto` checked in as interface drafts only - not compiled or referenced by any crate (see `ARCHITECTURE.md` Planned: cross-language contracts).
-- [x] **Blake3 CAS & Two-Phase Pruning**: High-throughput content-addressable artifact storage with Zstandard compression.
-- [x] **GNU Jobserver Pool**: Cross-compiler global thread token allocation and dynamic bin-packing.
-- [x] **CI/CD Generator**: Automated configuration generation for GitHub Actions, GitLab CI, CircleCI, Bitbucket.
-- [x] **5-Language Documentation**: Comprehensive VitePress documentation live on GitHub Pages (EN, VI, ZH-Hans, ZH-Hant, JA).
+1. **Temps de build réel (Wall-clock)** — la seule métrique que les utilisateurs finaux ressentent directement.
+2. **Efficacité du cache** — taux de réussite (hit rate), réutilisation des artefacts entre les machines et les régions.
+3. **Fiabilité** — chaque octet mis en cache correspond de manière prouvable à ses entrées.
+4. **Honnêteté des résultats de l'outillage** — pas de diagnostics fabriqués, pas de succès simulés.
 
 ---
 
-## ⚡ Short-term Goals (v0.3.x) — Completed: Developer Experience & Protocols
+## 🚀 Jalon actuel (v0.2.x) — Terminé
 
-### 1. IDE & Editor Integration
-- [x] **VS Code Extension**: Interactive DAG dependency graph viewer, one-click task execution, and inline failure diagnostics. *(Real LSP client that spawns `fish lsp`, task-based command execution that resolves on process exit, package-level build/test via the package directory, and `fish.toml`/Cargo workspace detection. Type-checks and compiles with `tsc`.)*
-- [x] **JetBrains Plugin Suite**: Native integration for CLion, IntelliJ IDEA, and Rider. *(Scaffolded Kotlin/Gradle plugin project in `jetbrains-plugin/` with DAG ToolWindow, task actions, and LSP support.)*
-- [x] **Language Server Protocol (LSP) Bridge**: Live workspace diagnostics and `fish.toml` autocompletion. *(Completion/hover are data-driven from the real `FishConfig` schema, unknown keys produce live diagnostics.)*
-
-### 2. High-Performance IPC & Service Bridges
-- [x] **Daemon IPC Stream**: Sub-millisecond JSON-RPC and Unix domain socket / named-pipe IPC between Rust CLI and Python AI services. *(JSON-RPC 2.0 over a Unix domain socket with a TCP fallback in the CLI daemon, plus an `AiBridge` that drives the Python AI server over stdio JSON-RPC.)*
-- [x] **gRPC Remote Execution API (REAPI)**: Native protocol compatibility for distributed worker clusters. *(Complete REAPI v2 client with `Execute`, `GetActionResult`, `UpdateActionResult`, `FindMissingBlobs`, and `BatchUpdateBlobs` in `fish-remote-cache/src/reapi.rs`.)*
-- [x] **eBPF File Tracing**: Kernel-level accurate input/output file capture on Linux. *(eBPF Syscall Tracer with hermeticity analysis, dynamic dependency discovery, and system path filtering in `fish-sandbox/src/ebpf.rs`.)*
-
-### 3. Smart Diagnostics & CLI Polish
-- [x] **AI-Powered Interactive Doctor**: Proactive diagnosis with automated fix command suggestions (`fish doctor --fix`). *(`--fix` performs real remediation — schema-correct `fish.toml`, cache dir with owner-only permissions, stale-temp sweep — and `--ai` queries the Python AI service for advice over the JSON-RPC bridge.)*
-- [x] **Terminal UI (TUI) Enhancements**: Live CPU/RAM utilization graphs and multi-task waterfall view in ratatui. *(Real-time CPU/RAM sparklines via `/proc` and a per-task waterfall timeline on build completion.)*
-
-> **v0.3.x milestone completed (2026-08-21):** All 8 short-term Developer Experience & Protocol items
-> are now fully implemented and verified with 100% test coverage across Rust, Go, Python, and TypeScript.
+### Phase 1 : Moteur principal et fondations polyglottes
+- [x] **Architecture principale en Rust** : Espace de travail Rust unilingue (28 crates, resolver = "2", MSRV 1.88+) - pas de dépendance `prost`/`tonic` ; les fonctionnalités distribuées utilisent du HTTP/JSON standard (voir `ARCHITECTURE.md`).
+- [x] **11 backends de langage** : Rust, Go, TypeScript/Node.js, Python, C/C++, Docker, Java, .NET, Swift, Dart, Zig.
+- [x] **Ébauches prospectives de Protobuf** : `proto/fish/v1/build.proto`, `ai.proto` et `coordinator.proto` intégrés en tant qu'ébauches d'interface uniquement - non compilés ni référencés par aucun crate (voir `ARCHITECTURE.md` Prévu : contrats inter-langages).
+- [x] **Blake3 CAS & Two-Phase Pruning** : Stockage d'artefacts adressable par contenu à haut débit avec compression Zstandard.
+- [x] **Pool GNU Jobserver** : Allocation globale de jetons de thread pour compilateurs croisés et bin-packing dynamique.
+- [x] **Générateur CI/CD** : Génération automatisée de configuration pour GitHub Actions, GitLab CI, CircleCI, Bitbucket.
+- [x] **Documentation en 5 langues** : Documentation complète VitePress en ligne sur GitHub Pages (EN, VI, ZH-Hans, ZH-Hant, JA).
 
 ---
 
-## 🌟 Medium-term Goals (v0.4.x - v0.5.x) — Focus: Distributed Infrastructure, AI & Cost Intelligence
+## ⚡ Objectifs à court terme (v0.3.x) — Terminés : Expérience développeur et protocoles
 
-### 1. Cloud-Native Distributed Infrastructure
-- [x] **Kubernetes Operator (Go)**: Custom Resource Definitions (CRDs) for auto-scaling elastic worker fleets. *(Reconciler loop, autoscaler, spot lifecycle manager in `go/pkg/k8s/`; full CRD YAML manifest with RBAC + ServiceAccount in `go/pkg/k8s/manifests/`. Real K8s client wired in via `sigs.k8s.io/controller-runtime` 0.18 + `client-go` 0.30: typed `FishCluster` API at `go/pkg/k8s/api/v1alpha1`, controller-runtime manager with leader election in `cmd/fish-k8s-operator`, each reconcile creates/updates a `Deployment` + `HorizontalPodAutoscaler` per pool with owner refs, status written back via the status subresource. Covered by 6 fake-client unit tests in `pkg/k8s/fishcluster_controller_test.go` (create, update, idempotency, missing cluster, missing coordinator, status reflection) plus an envtest integration test gated by `//go:build integration`.)*
-- [x] **Spot Instance Optimization**: Fault-tolerant task migration upon cloud node preemption. *(Task-granularity migration shipped: `PreemptionRetryExecutor` in `fish-scheduler/src/preemption.rs` retries infrastructure-shaped failures on surviving spot capacity with backoff, then migrates to an on-demand fallback — genuine task failures are never retried. Node-level checkpoint hand-off remains.)*
-- [x] **Cross-Region Cache Replication**: Peer-to-peer CAS artifact synchronization with geo-distributed L2 caches. *(Full replication topology in `fish-remote-cache/src/replication.rs`: `ReplicationTopology` tracking region nodes and artifact catalogs, `select_replication_targets()` for balanced fan-out capped by policy, `locate_artifact()` for nearest-healthy lookup, stale catalog eviction per TTL. Chunked CAS mesh foundation already shipped in p2p_lan.)*
+### 1. Intégration IDE et éditeurs
+- [x] **Extension VS Code** : Visionneur interactif de graphe de dépendances DAG, exécution de tâches en un clic et diagnostics d'échec intégrés. *(Véritable client LSP qui lance `fish lsp`, exécution de commande basée sur les tâches qui se résout à la sortie du processus, build/test au niveau du paquet via le répertoire du paquet et détection de `fish.toml`/workspace Cargo. Vérifie les types et compile avec `tsc`.)*
+- [x] **Suite de plugins JetBrains** : Intégration native pour CLion, IntelliJ IDEA et Rider. *(Projet de plugin Kotlin/Gradle échafaudé dans `jetbrains-plugin/` avec DAG ToolWindow, actions de tâches et support LSP.)*
+- [x] **Pont Language Server Protocol (LSP)** : Diagnostics d'espace de travail en direct et autocomplétion de `fish.toml`. *(L'autocomplétion/survol sont basés sur le schéma réel `FishConfig`, les clés inconnues produisent des diagnostics en direct.)*
 
-### 2. Machine Learning & Predictive Optimization
-- [x] **Deep Learning Build Time Predictor**: Pre-execution duration forecasting based on AST complexity and historical telemetry. *(EMA-based predictor implemented and tested in `py/fish_optimizer/build_time_predictor.py`.)*
-- [x] **Automated Flaky Test Quarantine**: AI-driven detection and statistical isolation of non-deterministic tests. *(Statistical flip detection in `py/fish_recommender/flaky_quarantine.py` plus the Rust `fish-flaky-detection` crate.)*
-- [x] **Speculative Pre-Warming**: Predicting likely changed packages and pre-compiling on background idle cores. *(Markov transition model in `fish-cli` plus `py/fish_recommender/speculative_prewarmer.py`, whose transitive impact propagation was fixed.)*
+### 2. IPC haute performance et ponts de services
+- [x] **Flux IPC du démon** : JSON-RPC inférieur à la milliseconde et sockets de domaine Unix / tubes nommés (named pipes) entre le CLI Rust et les services IA Python. *(JSON-RPC 2.0 sur un socket de domaine Unix avec solution de repli TCP dans le démon CLI, plus un `AiBridge` qui pilote le serveur IA Python via stdio JSON-RPC.)*
+- [x] **gRPC Remote Execution API (REAPI)** : Compatibilité native du protocole pour les clusters de workers distribués. *(Client complet REAPI v2 avec `Execute`, `GetActionResult`, `UpdateActionResult`, `FindMissingBlobs` et `BatchUpdateBlobs` dans `fish-remote-cache/src/reapi.rs`.)*
+- [x] **Traçage de fichiers eBPF** : Capture précise des fichiers d'entrée/sortie au niveau du noyau sous Linux. *(Traceur d'appels système eBPF avec analyse d'herméticité, découverte dynamique de dépendances et filtrage de chemins système dans `fish-sandbox/src/ebpf.rs`.)*
 
-### 3. Telemetry, Observability & Team Collaboration
-- [x] **OpenTelemetry Integration**: End-to-end distributed tracing across all build steps and network nodes. *(Span model with OTLP JSON serialization in `fish-analytics/src/otel.rs`; OTLP/HTTP + JSON exporter (`OtlpExporter`) honoring `OTEL_EXPORTER_OTLP_ENDPOINT`/`_TIMEOUT_MS`, automatic conversion of every `fish build` summary into a root span plus per-task child spans, and export at build completion verified end-to-end against a mock collector.)*
-- [x] **Web Team Analytics Dashboard**: Aggregated build speedups, cache hit efficiency, and team velocity metrics. *(Real HTTP server with JSON API in `fish-dashboard`: `/api/builds` GET/POST, `/api/traces`, `/api/team-stats` (median duration, cache hit rate, success/fail counts), `/api/builds/{id}/flamegraph`. `PersistentMetricsStore` backs the dashboard with JSONL persistence so metrics survive restarts; `ApiState` rehydrates on startup.)*
-- [x] **Cloud Cost Calculator**: Real-time cloud compute and storage savings estimates. *(Full implementation in `fish-analytics/src/cost.rs`: TOML pricing catalogs with version stamps and org overrides for AWS/GCP/Azure, greedy LPT bin-packing onto instance fleets, per-run compute/egress/storage pricing in on-demand vs spot modes, workload ingestion from inline specs or JSON task lists with cache-hit exclusion, ranked savings reports over CLI `fish cost-estimate` with human and `--json` output. 14 unit tests cover packing optimality bounds, exact cost math, catalog loading, and report serialization.)*
-- [x] **Distributed Trace Aggregation**: Merge spans from all workers into one coherent build trace keyed by trace ID. *(`merge_worker_traces` in `fish-analytics/src/trace_merge.rs`: deduplication on `(trace_id, span_id)`, adoption of the earliest worker's trace id, orphan re-parenting onto the earliest surviving root with synthetic-root fallback — nothing dropped silently, every adjustment reported in `MergeStats`.)*
-- [x] **Build Regression Alerts**: Automatic detection of wall-clock regressions between baseline and PR builds, surfaced in CI checks. *(Median-baseline evaluation over a rolling JSONL-persisted history in `fish-analytics/src/regression.rs` with dual relative+absolute thresholds to suppress noise; wired into `fish build`, printing alerts/improvements after every run.)*
+### 3. Diagnostics intelligents et finition du CLI
+- [x] **Docteur interactif propulsé par l'IA** : Diagnostic proactif avec suggestions automatisées de commandes correctives (`fish doctor --fix`). *(`--fix` effectue de vraies remédiations — `fish.toml` conforme au schéma, répertoire de cache avec permissions réservées au propriétaire, nettoyage des fichiers temporaires obsolètes — et `--ai` interroge le service IA Python pour obtenir des conseils via le pont JSON-RPC.)*
+- [x] **Améliorations de l'interface utilisateur terminal (TUI)** : Graphiques d'utilisation du CPU/RAM en direct et vue en cascade (waterfall) multi-tâches dans ratatui. *(Sparklines CPU/RAM en temps réel via `/proc` et une chronologie en cascade par tâche à la fin du build.)*
 
-### 4. Plugin Ecosystem
-- [x] **WebAssembly Plugin Engine**: Sandboxed Wasm plugins using Extism/WASI for custom toolchain adapters. *(Full implementation with embedded `wasmi` interpreter in `fish-plugin/src/wasm.rs` behind `wasm` feature flag: module compilation, instantiation without host imports, exported function lookup and invocation, trap handling, memory limits from capability policy. Undeclared hooks rejected at manifest level; missing exports produce `NotFound`.)*
-- [x] **Plugin Marketplace Registry**: Decentralized plugin discovery and signed artifact distribution. *(Full implementation in `crates/fish-plugin/src/marketplace.rs` with `PluginRegistry` index fetching, local cache persistence, search, Ed25519 signature verification against configurable trusted key sets, SHA-256 integrity verification on download, installation/uninstallation lifecycle, signing tool for plugin authors, and CLI subcommands in `fish plugin search|install|uninstall|publish`.)*
-- [x] **Plugin Capability Auditor**: Static analysis of plugin manifests flagging overly broad read/write/host permissions before install. *(`fish-plugin/src/audit.rs`: risk-ranked findings (Low→Critical) for wildcard/system-path reads, source- and git-mutating writes, absolute escape paths, secret-bearing environment grants, and oversized resource limits; `audit_registry` ranks a whole plugin directory worst-first with an accept/reject verdict.)*
-
-### 5. Performance Engineering (new)
-- [x] **Benchmark Suite vs Peers**: Repeatable harness comparing Fish against Ninja, Bazel, and Buck2 on synthetic polyglot monorepos, published per release. *(Full Criterion benchmark in `crates/fish-scheduler/benches/peer_comparison.rs` comparing Fish work-stealing/critical-path scheduling against simulated Ninja topological wavefronts and Bazel phased-barrier execution across multi-language diamond graphs.)*
-- [x] **Scheduler Overhead Budget**: Target < 100µs per task dispatch decision; measured by criterion benchmarks in CI with regression gates. *(Criterion benchmark suite in `crates/fish-scheduler/benches/scheduler_performance.rs` covering topological sorting, ready-node calculation, zero-overhead task dispatch latency on 50/200/1000 node graphs, and critical-path calculations.)*
-- [x] **Zero-Copy CAS Reads**: Serve hot artifacts through `memmap2` windows instead of buffer copies on Linux/macOS/Windows. *(Full implementation in `fish-cas/src/mmap.rs`: `MmapArtifact` providing zero-copy slice access over read-only memory maps, automatic fallback for compressed artifacts, BLAKE3 digest verification over mapped extents, wired into `LocalCasBackend` and `CasStorage`, with Criterion benchmark suite in `crates/fish-cas/benches/cas_performance.rs`.)*
-- [x] **io_uring Async Executor Backend**: Optional Linux backend for high-fanout I/O during cache fetch storms. *(Implemented as `io-uring` feature in `fish-cas` and `fish-cache`: `tokio-uring` 0.4 submission-queue fast path on Linux (`crates/fish-cas/src/uring.rs`, `crates/fish-cache/src/uring.rs`) with `spawn_blocking`+`tokio_uring::start` to avoid nesting inside `tokio`, wired into `LocalCasBackend::store`/`retrieve` via `crate::uring::write/read_file_uring` with transparent `tokio::fs` fallback on other platforms/without feature; verified `cargo check/test --features io-uring` 42 cas + 56 cache tests pass.)*
+> **Jalon v0.3.x terminé (21/08/2026) :** L'ensemble des 8 éléments concernant l'expérience développeur et les protocoles à court terme
+> sont maintenant entièrement implémentés et vérifiés avec une couverture de test de 100 % en Rust, Go, Python et TypeScript.
 
 ---
 
-## 🧭 v0.6.x — Focus: Reliability, Hermeticity & Supply Chain Trust (new)
+## 🌟 Objectifs à moyen terme (v0.4.x - v0.5.x) — Focus : Infrastructure distribuée, IA et intelligence des coûts
 
-### 1. Real Toolchain Provisioning
-- [x] **Hermetic Toolchain Downloader**: Fetch declared Zig/Go/Node/CMake toolchains into a versioned local store with checksum pinning. *(Full implementation in `fish-core/src/toolchain_downloader.rs`: `ureq`-based HTTP download, SHA-256 checksum verification against declared digest, tar.gz/zip/raw binary extraction to versioned local store, traversal-hardened path logic.)*
-- [x] **Toolchain Lock File**: Commit a `fish.lock` capturing exact toolchain versions per backend for reproducible CI. *(Full implementation in `fish-core/src/toolchain_lock.rs`: TOML serialization of `ToolchainRegistry` with kind/version/checksum/hermetic fields, `lock_version` for future migrations, `verify_against()` detecting mismatches.)*
-- [x] **Offline Mode Guarantees**: Every command must behave deterministically offline — explicit errors, never silent degradation. *(Full audit and enforcement across `fish-core` config/env, global `--offline` CLI flag, fail-fast rejection in `fish-remote-cache`, `fish-worker`, `fish-security` OSV scanner, `fish-plugin` marketplace, and `fish-scheduler` carbon grid queries with complete unit tests.)*
+### 1. Infrastructure distribuée Cloud-Native
+- [x] **Opérateur Kubernetes (Go)** : Custom Resource Definitions (CRDs) pour les flottes de workers élastiques à mise à l'échelle automatique. *(Boucle de réconciliation, auto-scaler, gestionnaire de cycle de vie des instances spot dans `go/pkg/k8s/` ; manifeste YAML CRD complet avec RBAC + ServiceAccount dans `go/pkg/k8s/manifests/`. Client K8s réel intégré via `sigs.k8s.io/controller-runtime` 0.18 + `client-go` 0.30 : API typée `FishCluster` dans `go/pkg/k8s/api/v1alpha1`, gestionnaire controller-runtime avec élection de leader dans `cmd/fish-k8s-operator`, chaque réconciliation crée/met à jour un `Deployment` + `HorizontalPodAutoscaler` par pool avec références de propriétaire (owner refs), statut renvoyé via la sous-ressource de statut. Couvert par 6 tests unitaires avec faux-client dans `pkg/k8s/fishcluster_controller_test.go` (création, mise à jour, idempotence, cluster manquant, coordinateur manquant, réflexion de statut) plus un test d'intégration envtest conditionné par `//go:build integration`.)*
+- [x] **Optimisation des instances Spot** : Migration des tâches tolérante aux pannes lors de la préemption de nœuds cloud. *(Migration au niveau de granularité des tâches livrée : `PreemptionRetryExecutor` dans `fish-scheduler/src/preemption.rs` retente les échecs liés à l'infrastructure sur la capacité spot survivante avec backoff, puis migre vers une solution de repli à la demande — les véritables échecs de tâches ne sont jamais retentés. Le transfert de point de contrôle (checkpoint) au niveau du nœud reste à faire.)*
+- [x] **Réplication de cache inter-régions** : Synchronisation des artefacts CAS peer-to-peer avec des caches L2 géo-distribués. *(Topologie de réplication complète dans `fish-remote-cache/src/replication.rs` : `ReplicationTopology` suivant les nœuds de région et les catalogues d'artefacts, `select_replication_targets()` pour un fan-out équilibré plafonné par politique, `locate_artifact()` pour la recherche de l'élément sain le plus proche, éviction des catalogues obsolètes par TTL. Fondation de maillage CAS fragmentée (chunked CAS mesh) déjà livrée dans p2p_lan.)*
 
-### 2. Build Reproducibility
-- [x] **Trace Replay**: Record every spawned process (argv, env subset, cwd, stdin) into the build trace and replay deterministically in CI to prove hermeticity. *(Full implementation in `fish-executor/src/trace_replay.rs`: `ProcessRecord` captures program/args/cwd/env-overrides/exit-code/output-hash; `ExecutionTrace` saves/loads as JSONL; `replay_and_verify()` re-executes successful commands sequentially with cleared env and compares BLAKE3 output hashes. Divergences reported per-record.)*
-- [x] **Bit-for-Bit Output Certification**: Per-backend reproducibility audits (Rust first: `-C metadata` normalization, source date epoch pinning). *(`fish-backend-rust/src/reproducibility.rs`: `certify_reproducible()` compares two output directories via BLAKE3 per-file digest with forward-slash normalized paths, `recommended_env_vars()` provides SOURCE_DATE_EPOCH + RUSTFLAGS remap-path-prefix, `CertificationResult` reports matching/mismatched/missing files.)*
-- [x] **Environment Drift Detector**: Diff the effective toolchain/env snapshot against the last successful build and warn on drift. *(Full implementation in `fish-core/src/drift.rs`: BLAKE3 hash over OS/architecture/libc/compiler versions, JSONL-persisted drift records, `FirstRun`/`Stable`/`Drifted` verdicts.)*
+### 2. Machine Learning et optimisation prédictive
+- [x] **Prédicteur de temps de build par Deep Learning** : Prévision de la durée avant exécution basée sur la complexité AST et la télémétrie historique. *(Prédicteur basé sur l'EMA implémenté et testé dans `py/fish_optimizer/build_time_predictor.py`.)*
+- [x] **Mise en quarantaine automatisée des tests instables (Flaky Tests)** : Détection pilotée par l'IA et isolation statistique des tests non déterministes. *(Détection de bascule (flip) statistique dans `py/fish_recommender/flaky_quarantine.py` en plus du crate Rust `fish-flaky-detection`.)*
+- [x] **Pré-chauffage spéculatif** : Prédiction des paquets susceptibles d'être modifiés et pré-compilation sur les cœurs inactifs en arrière-plan. *(Modèle de transition de Markov dans `fish-cli` plus `py/fish_recommender/speculative_prewarmer.py`, dont la propagation d'impact transitif a été corrigée.)*
 
-### 3. Security Hardening
-- [x] **Sandbox Policy Profiles**: Declarative allow-list profiles (`strict`, `default`, `trusted`) wired through the existing security policy engine into OS-level sandboxing. *(Full implementation in `fish-core/src/sandbox_profiles.rs`: named presets mapping to `SecurityLevel::Strict`/`Paranoid`/`AllowAll` with allow-list seeding; strict is fail-closed without explicit paths.)*
-- [x] **Signature Verification Gate for Remote Artifacts**: Refuse unsigned or untrusted remote CAS pulls unless explicitly overridden. *(Core landed in `fish-remote-cache/src/signature_gate.rs`: `SignedArtifactGate` wrapping any `RemoteCacheClient`, Ed25519 sign-on-write / verify-on-read with fixed-size trailer wire format, `Refuse`/`WarnOnly` policies, trusted-key set. CLI wired via `FISH_SIGNING_SEED`/`FISH_TRUSTED_KEYS` env vars in `build.rs`.)*
-- [x] **Dependency Audit Integration**: Replace the embedded advisory snapshot with live RustSec/OSV feed support behind a configurable endpoint. *(Full OSV client in `fish-security/src/osv.rs`: batched `/querybatch` lookups with per-id detail fetching and caching, ecosystem mapping (`crates.io`/`npm`) wired into `RustScanner`/`NpmScanner`, `FISH_OSV_ENDPOINT`/`FISH_OSV_TIMEOUT_MS` env configuration, GHSA severity label mapping, fixed-version extraction from SEMVER/ECOSYSTEM ranges, and loud failures instead of silently empty results. Maven stays on embedded rules pending a pom parser.)*
+### 3. Télémétrie, observabilité et collaboration d'équipe
+- [x] **Intégration OpenTelemetry** : Traçage distribué de bout en bout (end-to-end) sur toutes les étapes de build et les nœuds réseau. *(Modèle de span avec sérialisation JSON OTLP dans `fish-analytics/src/otel.rs` ; exportateur OTLP/HTTP + JSON (`OtlpExporter`) respectant `OTEL_EXPORTER_OTLP_ENDPOINT`/`_TIMEOUT_MS`, conversion automatique de chaque résumé de `fish build` en un span racine plus des spans enfants par tâche, et exportation à la fin du build vérifiée de bout en bout contre un collecteur simulé.)*
+- [x] **Tableau de bord d'analyses d'équipe Web** : Accélérations de build agrégées, efficacité du taux de réussite du cache et métriques de vélocité de l'équipe. *(Serveur HTTP réel avec API JSON dans `fish-dashboard` : `/api/builds` GET/POST, `/api/traces`, `/api/team-stats` (durée médiane, taux de hit du cache, comptes succès/échec), `/api/builds/{id}/flamegraph`. `PersistentMetricsStore` soutient le tableau de bord avec persistance JSONL pour que les métriques survivent aux redémarrages ; `ApiState` se réhydrate au démarrage.)*
+- [x] **Calculateur de coûts Cloud** : Estimations en temps réel des économies sur le calcul (compute) et le stockage cloud. *(Implémentation complète dans `fish-analytics/src/cost.rs` : catalogues de tarification TOML avec horodatages de version et remplacements (overrides) par organisation pour AWS/GCP/Azure, bin-packing gourmand LPT (Longest Processing Time) sur des flottes d'instances, tarification par exécution du calcul/trafic sortant/stockage en modes à la demande vs spot, ingestion de charges de travail à partir de spécifications en ligne ou de listes de tâches JSON avec exclusion de succès de cache, rapports d'économies classés sur la CLI `fish cost-estimate` avec format lisible par l'homme et sortie `--json`. 14 tests unitaires couvrent les limites d'optimalité de l'empaquetage, les mathématiques exactes des coûts, le chargement du catalogue et la sérialisation des rapports.)*
+- [x] **Agrégation de traces distribuées** : Fusion des spans de tous les workers en une seule trace de build cohérente indexée par l'ID de trace. *(`merge_worker_traces` dans `fish-analytics/src/trace_merge.rs` : déduplication sur `(trace_id, span_id)`, adoption de l'ID de trace du premier worker, rattachement des orphelins (re-parenting) sur la première racine survivante avec repli de racine synthétique — rien n'est abandonné silencieusement, chaque ajustement est rapporté dans `MergeStats`.)*
+- [x] **Alertes de régression de build** : Détection automatique des régressions de temps réel (wall-clock) entre les builds de base et les PR, signalées dans les vérifications CI. *(Évaluation par rapport à une base de référence médiane sur un historique glissant persistant en JSONL dans `fish-analytics/src/regression.rs` avec de doubles seuils relatifs+absolus pour supprimer le bruit ; intégré à `fish build`, imprimant des alertes/améliorations après chaque exécution.)*
 
----
+### 4. Écosystème de plugins
+- [x] **Moteur de plugins WebAssembly** : Plugins Wasm exécutés en bac à sable (sandboxed) utilisant Extism/WASI pour les adaptateurs de toolchains personnalisés. *(Implémentation complète avec interpréteur `wasmi` embarqué dans `fish-plugin/src/wasm.rs` derrière le feature flag `wasm` : compilation de module, instanciation sans imports hôte, recherche et invocation de fonction exportée, gestion des interruptions (trap), limites de mémoire basées sur la politique de capacité. Les hooks non déclarés sont rejetés au niveau du manifeste ; les exports manquants produisent un `NotFound`.)*
+- [x] **Registre Marketplace de plugins** : Découverte décentralisée de plugins et distribution d'artefacts signés. *(Implémentation complète dans `crates/fish-plugin/src/marketplace.rs` avec récupération d'index `PluginRegistry`, persistance de cache local, recherche, vérification de signature Ed25519 contre des ensembles de clés de confiance configurables, vérification d'intégrité SHA-256 au téléchargement, cycle de vie d'installation/désinstallation, outil de signature pour les auteurs de plugins, et sous-commandes CLI dans `fish plugin search|install|uninstall|publish`.)*
+- [x] **Auditeur de capacités de plugins** : Analyse statique des manifestes de plugins signalant des permissions de lecture/écriture/hôte trop larges avant l'installation. *(`fish-plugin/src/audit.rs` : constats classés par risque (Faible→Critique) pour les lectures avec caractères génériques/chemins système, les écritures modifiant les sources ou git, les chemins d'évasion absolus, les attributions d'environnement contenant des secrets, et les limites de ressources surdimensionnées ; `audit_registry` classe l'ensemble du répertoire de plugins du pire au premier avec un verdict accepter/rejeter.)*
 
-## 🤖 v0.7.x — Focus: AI-Native Builds (new)
-
-All AI features follow the house rule established in v0.4: **refuse loudly rather than simulate success**. A feature ships only when it performs real computation.
-
-- [x] **Compiler-Grounded Fix Suggestions**: Extend `fish fix` beyond real `cargo check` parsing to propose edits for the top recurring error classes, always showing diffs — never applying without confirmation. *(Full implementation in `fish-cli/src/commands/fix.rs`: JSON span suggestion extraction from compiler diagnostics, rule-based inference for missing `mut`, unused variables `_`, and missing `;`, unified diff generation in git format, safe byte-offset code edit application, and `--diff`/`--apply` CLI flags.)*
-- [x] **Natural-Language Build Queries**: `fish why --ask "why did core rebuild?"` answered from actual trace/fingerprint data, with citations to specific tasks. *(Rule-based NL parser in `fish-cli/src/nl_query.rs`: recognizes why-rebuilt/drift/stats question templates, consults the real LocalCache fingerprint records, reports cached fingerprint or cold-miss verdict. No LLM dependency.)*
-- [x] **Learned Resource Governor**: Predict per-task memory footprint from history to size job pools dynamically. *(Percentile-based predictor in `fish-scheduler/src/resource_predictor.rs`: P90 peak-RAM and median-duration per task key with a bounded ring buffer of samples; static governor remains for hard limits.)*
-- [x] **Test Selection Model**: Skip tests that cannot be affected by the changed file set, computed from the semantic impact graph plus historical coverage data — with an escape hatch to force full runs. *(Graph+path heuristic selector in `fish-incremental/src/test_selector.rs`: symbol-to-test mappings, crate-dir prefix rules, integration-test name extraction, deterministic ordering.)*
-- [x] **Build Time-Series Storage**: Persist per-run metrics locally (SQLite/Parquet) so every learning feature trains on your own data instead of baked-in constants. *(SQLite store in `fish-analytics/src/time_series.rs` via bundled rusqlite: WAL journaling, indexed inserts, stats/daily-rollup/slowest queries over project/branch/time windows.)*
-
----
-
-## 🏛️ Long-term Vision (v1.0+) — Focus: Enterprise & Zero-Trust
-
-### 1. Enterprise Security & Zero-Trust Execution
-- [x] **MicroVM Hardware Isolation**: Hermetic build execution inside ultra-lightweight Firecracker / Cloud-Hypervisor microVMs. *(Config generation and lifecycle state machine in `fish-sandbox/src/microvm_config.rs`: `MicroVmConfig` with vCPU/memory/rootfs/kernel/shared-dirs/network-mode, `generate_firecracker_config()` emitting compatible JSON, `VmState` lifecycle enum. Actual VM creation requires Linux + KVM.)*
-- [x] **Enterprise Identity (SSO / OIDC)**: Role-Based Access Control (RBAC) and audit logging for sensitive build targets. *(Core landed in `fish-security/src/rbac.rs`: role/permission model with OIDC-shaped identity claims, resource-scoped target rules (e.g. `prod/*` demanding higher clearance), and an append-only JSONL audit log. Remaining: real IdP token verification and CLI/config integration.)*
-- [x] **Cryptographic Supply Chain Provenance**: In-toto attestations and tamper-proof SLSA Level 3 compliance generation. *(In-toto Statement/v1 model with the SLSA provenance v1 predicate, Ed25519-signed statements, and subject-binding verification landed in `fish-security/src/slsa.rs`. Remaining: SLSA Level 3 audit (isolated builder attestation) and CLI flag wiring for signed statements.)*
-- [x] **HA Coordinator**: Fault-tolerant worker coordination with Raft-backed state replication in the Go control plane. *(Full Raft consensus implementation in `go/pkg/raft/raft.go`: leader election with randomised timeout, `RequestVote`/`AppendEntries` RPC handling, log replication with conflict truncation, committed-entry application via callback, term advancement and step-down on higher terms. 7 unit tests cover election, heartbeat, stale-term rejection, log replication, and conflicting-entry truncation.)*
-- [x] **Multi-Tenant Cache Isolation**: Namespaced CAS with per-team quotas, retention policies, and billing tags. *(Full implementation in `fish-cas/src/multi_tenant.rs`: tenant key namespacing, `TenantQuotas` with per-team and default byte limits, `TenantUsageTracker` enforcing quotas at write time.)*
-
-### 2. Universal Compilation & Caching
-- [x] **Cross-Language AST Sub-Tree Caching**: Fine-grained sub-function and semantic incremental compilation. *(Function-boundary detection and BLAKE3 sub-tree hashing in `fish-incremental/src/subtree_cache.rs`: `extract_rust_functions()` with brace-depth tracking and string/comment skipping, `compute_subtree_hashes()` diffing old vs new to identify changed vs unchanged functions, `reuse_ratio()` quantifying cache reuse potential.)*
-- [x] **Global P2P Mesh Distribution**: BitTorrent-inspired CAS artifact sharing for massive CI runner farms. *(Gossip-based artifact discovery in `fish-remote-cache/src/replication.rs` mesh module: `GossipAnnouncement` propagation, `GossipDedup` loop prevention, region-aware catalog tracking via `ReplicationTopology`.)*
-- [x] **Autonomous Continuous Optimizer**: AI agent that continuously refactors build configs and flags for maximum speed. *(Optimizer skeleton exists in `py/fish_optimizer`; requires closed-loop application with rollback.)*
-- [x] **Federated Build Grids**: Multiple sites sharing one logical build pool with policy-based routing and locality awareness. *(`BuildGrid` in `fish-remote-cache/src/replication.rs` federation module: `GridSite` registration with capacity/latency, `RoutingPolicy` (LocalityFirst/RoundRobin/LeastLoaded) job dispatching.)*
+### 5. Ingénierie des performances (nouveau)
+- [x] **Suite de benchmarks vs pairs** : Faisceau de tests répétable comparant Fish contre Ninja, Bazel et Buck2 sur des monorepos polyglottes synthétiques, publié à chaque version. *(Benchmark Criterion complet dans `crates/fish-scheduler/benches/peer_comparison.rs` comparant la planification (scheduling) avec vol de travail (work-stealing)/chemin critique de Fish contre les fronts d'onde topologiques simulés de Ninja et l'exécution en barrière par phases de Bazel à travers des graphes en losange multi-langages.)*
+- [x] **Budget de surcharge du planificateur** : Objectif < 100 µs par décision d'expédition (dispatch) de tâche ; mesuré par les benchmarks criterion dans l'IC avec des portes de régression. *(Suite de benchmarks Criterion dans `crates/fish-scheduler/benches/scheduler_performance.rs` couvrant le tri topologique, le calcul des nœuds prêts, la latence de distribution de tâches à zéro surcharge sur des graphes de 50/200/1000 nœuds, et les calculs de chemin critique.)*
+- [x] **Lectures CAS Zero-Copy** : Servir les artefacts chauds via des fenêtres `memmap2` au lieu de copies de buffer sur Linux/macOS/Windows. *(Implémentation complète dans `fish-cas/src/mmap.rs` : `MmapArtifact` fournissant un accès aux slices sans copie (zero-copy) sur des memory maps en lecture seule, repli automatique pour les artefacts compressés, vérification d'empreinte BLAKE3 sur les étendues mappées, intégré dans `LocalCasBackend` et `CasStorage`, avec suite de benchmarks Criterion dans `crates/fish-cas/benches/cas_performance.rs`.)*
+- [x] **Backend d'exécuteur asynchrone io_uring** : Backend Linux optionnel pour les E/S à haut fan-out pendant les tempêtes de récupération de cache. *(Implémenté en tant que feature `io-uring` dans `fish-cas` et `fish-cache` : voie rapide de file d'attente de soumission `tokio-uring` 0.4 sur Linux (`crates/fish-cas/src/uring.rs`, `crates/fish-cache/src/uring.rs`) avec `spawn_blocking`+`tokio_uring::start` pour éviter l'imbrication dans `tokio`, intégré dans `LocalCasBackend::store`/`retrieve` via `crate::uring::write/read_file_uring` avec solution de repli transparente `tokio::fs` sur d'autres plateformes/sans feature ; vérifié : `cargo check/test --features io-uring` réussit (42 tests cas + 56 tests cache).)*
 
 ---
 
-## 🚀 v2.0 Moonshots — Research Tracks (new)
+## 🧭 v0.6.x — Focus : Fiabilité, herméticité et confiance de la chaîne d'approvisionnement (nouveau)
 
-Explicitly experimental; each track must graduate through a design doc and a working prototype before entering a numbered release.
+### 1. Provisionnement réel de la chaîne d'outils (Toolchain)
+- [x] **Téléchargeur de toolchains hermétique** : Récupérer les toolchains Zig/Go/Node/CMake déclarées dans un magasin local versionné avec épinglage de checksum. *(Implémentation complète dans `fish-core/src/toolchain_downloader.rs` : téléchargement HTTP basé sur `ureq`, vérification de checksum SHA-256 contre l'empreinte déclarée, extraction d'archive tar.gz/zip/binaire brut vers un magasin local versionné, logique de chemin durcie contre les traversées de répertoires.)*
+- [x] **Fichier de verrouillage (Lock File) de toolchains** : Commiter un fichier `fish.lock` capturant les versions exactes de la chaîne d'outils par backend pour un CI reproductible. *(Implémentation complète dans `fish-core/src/toolchain_lock.rs` : sérialisation TOML de `ToolchainRegistry` avec champs kind/version/checksum/hermetic, `lock_version` pour les migrations futures, `verify_against()` détectant les asymétries.)*
+- [x] **Garanties du mode hors ligne (Offline Mode)** : Chaque commande doit se comporter de manière déterministe hors ligne — erreurs explicites, jamais de dégradation silencieuse. *(Audit et application complets dans `fish-core` config/env, flag CLI global `--offline`, rejet fail-fast dans `fish-remote-cache`, `fish-worker`, scanner OSV `fish-security`, marketplace `fish-plugin`, et requêtes de réseau carbone `fish-scheduler` avec tests unitaires complets.)*
 
-- [x] **Compiler Query Hooks** (Semantic AST hashing via rustc/tsc integration) exposing incremental compilation units directly to Fish's scheduler instead of file-level approximation.
-- [x] **Self-Healing Builds**: On failure, automatically bisect the offending change set from git history and open a prepared revert/fix PR — human-approved, never auto-merged. *(Stage 1 shipped: failure-output analyzer in `fish-cli/src/self_heal.rs` classifies linker/missing-dep/OOM/permission failures with concrete advice surfaced after failed builds; `fish fix --apply` now runs cargo fix for real. Git bisection + PR creation is stage 2.)*
-- [x] **Carbon-Aware Scheduling**: Schedule flexible workloads toward low-carbon grid windows and report estimated CO₂e per build alongside cost estimates. *(ElectricityMaps-compatible client + policy engine in `fish-scheduler/src/carbon.rs`: Green/Moderate/High intensity bands map to RunAll/DeferNonCritical/DeferAllOptional decisions gated by task priority; enabled via `FISH_CARBON_ENDPOINT`.)*
-- [x] **Global Build Mesh Federation**: Organizations opt in to share anonymized CAS chunks peer-to-peer, dramatically raising cold-cache hit rates for popular dependency graphs.
-- [x] **Natural-Language Build Authoring**: Describe a pipeline in plain language; Fish generates a typed, validated `fish.yaml` with dry-run proof of correctness. *(Implemented via `fish init --describe` in `crates/fish-cli/src/nl_authoring.rs` with multi-language parsing, archetype detection, and validated `fish.yaml` generation.)*
+### 2. Reproductibilité du build
+- [x] **Rejeu de trace (Trace Replay)** : Enregistrer chaque processus généré (argv, sous-ensemble d'env, cwd, stdin) dans la trace de build et rejouer de manière déterministe en CI pour prouver l'herméticité. *(Implémentation complète dans `fish-executor/src/trace_replay.rs` : `ProcessRecord` capture le programme/args/cwd/overrides-env/code-de-sortie/hachage-de-sortie ; `ExecutionTrace` sauvegarde/charge au format JSONL ; `replay_and_verify()` réexécute séquentiellement les commandes réussies avec un environnement nettoyé et compare les hachages de sortie BLAKE3. Divergences signalées par enregistrement.)*
+- [x] **Certification de sortie bit-à-bit** : Audits de reproductibilité par backend (Rust en premier : normalisation `-C metadata`, épinglage (pinning) source date epoch). *(`fish-backend-rust/src/reproducibility.rs` : `certify_reproducible()` compare deux répertoires de sortie via des empreintes par fichier BLAKE3 avec des chemins normalisés (barres obliques), `recommended_env_vars()` fournit SOURCE_DATE_EPOCH + RUSTFLAGS remap-path-prefix, `CertificationResult` rapporte les fichiers correspondants/incohérents/manquants.)*
+- [x] **Détecteur de dérive d'environnement** : Effectue un diff de l'instantané (snapshot) effectif de la toolchain/env par rapport au dernier build réussi et avertit en cas de dérive (drift). *(Implémentation complète dans `fish-core/src/drift.rs` : hachage BLAKE3 sur les versions de l'OS/architecture/libc/compilateur, enregistrements de dérive persistés en JSONL, verdicts `FirstRun`/`Stable`/`Drifted`.)*
 
----
-
-## 🖥️ Platform & Distribution (ongoing, cross-cutting) (new)
-
-- [x] **Windows ARM64 + macOS Universal Binaries** in every release channel.
-- [x] **Package Manager Presence**: crates.io, Scoop, Winget, Homebrew, and official Docker images for workers/coordinators. *(Official 1-line installer scripts in `scripts/install.ps1` and `scripts/install.sh`, Scoop manifest in `packaging/fish.json`, Winget manifest in `packaging/fish.winget.yaml`, Homebrew formula in `packaging/fish.rb`, and standalone multi-lingual installer CLI in `crates/fish-installer`.)*
-- [x] **Static musl Worker Binary**: Single-file deployable remote worker for minimal container images.
-- [x] **Release Engineering**: Signed artifacts plus automated changelog and provenance attestation per release. *(`.github/workflows/release.yaml`: 5-platform matrix, musl static build, SHA256 checksums, Ed25519-signed SLSA provenance, GitHub-generated release notes, bot auto-fill of Scoop/Homebrew/Winget hashes.)*
+### 3. Durcissement (Hardening) de la sécurité
+- [x] **Profils de politique de bac à sable (Sandbox)** : Profils déclaratifs sur liste blanche (allow-list) (`strict`, `default`, `trusted`) connectés via le moteur de politique de sécurité existant au bac à sable au niveau du système d'exploitation. *(Implémentation complète dans `fish-core/src/sandbox_profiles.rs` : préréglages nommés (presets) mappant vers `SecurityLevel::Strict`/`Paranoid`/`AllowAll` avec ensemencement (seeding) de liste blanche ; strict est un système fermé par défaut (fail-closed) sans chemins explicites.)*
+- [x] **Porte (Gate) de vérification des signatures pour les artefacts distants** : Refuser les téléchargements CAS distants non signés ou non fiables à moins qu'ils ne soient explicitement outrepassés. *(Le cœur a atterri dans `fish-remote-cache/src/signature_gate.rs` : `SignedArtifactGate` enveloppant n'importe quel `RemoteCacheClient`, signe à l'écriture/vérifie à la lecture via Ed25519 avec un format de transport trailer de taille fixe, politiques `Refuse`/`WarnOnly`, ensemble de clés fiables (trusted-key set). CLI connecté via les variables d'environnement `FISH_SIGNING_SEED`/`FISH_TRUSTED_KEYS` dans `build.rs`.)*
+- [x] **Intégration de l'audit des dépendances** : Remplacer le snapshot consultatif embarqué par un support de flux en direct RustSec/OSV derrière un point de terminaison configurable. *(Client OSV complet dans `fish-security/src/osv.rs` : recherches `/querybatch` par lots avec récupération et mise en cache des détails par identifiant, mappage de l'écosystème (`crates.io`/`npm`) connecté à `RustScanner`/`NpmScanner`, configuration de l'environnement `FISH_OSV_ENDPOINT`/`FISH_OSV_TIMEOUT_MS`, mappage de la gravité GHSA (GHSA severity label), extraction de version fixe des plages SEMVER/ECOSYSTEM, et des échecs bruyants au lieu de résultats silencieusement vides. Maven reste sur des règles embarquées en attendant un parseur pom.)*
 
 ---
 
-## 📅 Timeline Estimates
+## 🤖 v0.7.x — Focus : Builds natifs IA (nouveau)
 
-| Release | Focus Area | Target Horizon | Status |
+Toutes les fonctionnalités d'IA suivent la règle interne établie dans la v0.4 : **refuser bruyamment plutôt que simuler le succès**. Une fonctionnalité n'est livrée que lorsqu'elle effectue de vrais calculs.
+
+- [x] **Suggestions de correction ancrées sur le compilateur** : Étendre `fish fix` au-delà de la vraie analyse de `cargo check` pour proposer des modifications pour les classes d'erreurs récurrentes les plus fréquentes, montrant toujours des diffs — sans jamais appliquer sans confirmation. *(Implémentation complète dans `fish-cli/src/commands/fix.rs` : extraction de suggestions span JSON à partir des diagnostics du compilateur, inférence basée sur des règles pour les `mut` manquants, les variables inutilisées `_`, et les `;` manquants, génération de diff unifié au format git, application sûre des modifications de code par décalage d'octets, et flags CLI `--diff`/`--apply`.)*
+- [x] **Requêtes de build en langage naturel** : `fish why --ask "why did core rebuild?"` répondu à partir des vraies données de traces/empreintes (fingerprints), avec des citations vers des tâches spécifiques. *(Parseur NL basé sur des règles dans `fish-cli/src/nl_query.rs` : reconnaît les modèles de questions de type why-rebuilt/drift/stats, consulte les vrais enregistrements de LocalCache fingerprint, rapporte l'empreinte mise en cache ou le verdict de miss à froid (cold-miss). Aucune dépendance LLM.)*
+- [x] **Gouverneur de ressources appris (Learned Resource Governor)** : Prédire l'empreinte mémoire par tâche à partir de l'historique pour dimensionner dynamiquement les pools de tâches. *(Prédicteur basé sur les percentiles dans `fish-scheduler/src/resource_predictor.rs` : pic RAM P90 et durée médiane par clé de tâche avec un tampon circulaire borné d'échantillons ; le gouverneur statique demeure pour les limites strictes.)*
+- [x] **Modèle de sélection de tests** : Ignorer (skip) les tests qui ne peuvent pas être affectés par l'ensemble de fichiers modifiés, calculé à partir du graphe d'impact sémantique et des données historiques de couverture — avec une option de secours (escape hatch) pour forcer des exécutions complètes. *(Sélecteur heuristique de graphe+chemin dans `fish-incremental/src/test_selector.rs` : mappages de symbole-à-test, règles de préfixe de répertoire de crate, extraction de nom de test d'intégration, ordonnancement déterministe.)*
+- [x] **Stockage des séries chronologiques de build** : Persister les métriques par exécution localement (SQLite/Parquet) afin que chaque fonctionnalité d'apprentissage s'entraîne sur vos propres données au lieu de constantes intégrées. *(Magasin SQLite dans `fish-analytics/src/time_series.rs` via rusqlite intégré : journalisation WAL, insertions indexées, statistiques/regroupement quotidien (rollup)/requêtes les plus lentes sur des fenêtres de projet/branche/temps.)*
+
+---
+
+## 🏛️ Vision à long terme (v1.0+) — Focus : Entreprise et Zéro-Confiance (Zero-Trust)
+
+### 1. Sécurité d'entreprise et exécution Zéro-Confiance
+- [x] **Isolation matérielle MicroVM** : Exécution de build hermétique à l'intérieur de microVMs Firecracker / Cloud-Hypervisor ultra-légères. *(Génération de configuration et machine à états de cycle de vie dans `fish-sandbox/src/microvm_config.rs` : `MicroVmConfig` avec vCPU/mémoire/rootfs/noyau/répertoires-partagés/mode-réseau, `generate_firecracker_config()` émettant un JSON compatible, enum de cycle de vie `VmState`. La création réelle de la VM nécessite Linux + KVM.)*
+- [x] **Identité d'entreprise (SSO / OIDC)** : Contrôle d'accès basé sur les rôles (RBAC) et journalisation d'audit pour les cibles de build sensibles. *(Le cœur a atterri dans `fish-security/src/rbac.rs` : modèle de rôles/permissions avec des revendications (claims) d'identité de type OIDC, règles de cibles dont la portée est liée aux ressources (ex. `prod/*` exigeant une accréditation supérieure), et un journal d'audit JSONL en ajout seul. Reste à faire : vérification du jeton réel du fournisseur d'identité (IdP) et intégration CLI/config.)*
+- [x] **Provenance cryptographique de la chaîne d'approvisionnement** : Attestations In-toto et génération de conformité SLSA Niveau 3 inviolable. *(Modèle in-toto Statement/v1 avec le prédicat de provenance SLSA v1, déclarations signées par Ed25519, et vérification de la liaison au sujet (subject-binding) intégrés dans `fish-security/src/slsa.rs`. Reste à faire : audit SLSA Niveau 3 (attestation de constructeur isolé) et connexion par flag CLI pour les déclarations signées.)*
+- [x] **Coordinateur de haute disponibilité (HA)** : Coordination des workers tolérante aux pannes avec réplication d'état soutenue par Raft dans le plan de contrôle (control plane) Go. *(Implémentation complète du consensus Raft dans `go/pkg/raft/raft.go` : élection de leader avec délai aléatoire, gestion des RPC `RequestVote`/`AppendEntries`, réplication de journaux avec troncature de conflits, application des entrées validées via fonction de rappel (callback), avancement du mandat (term) et destitution (step-down) sur des mandats supérieurs. 7 tests unitaires couvrent l'élection, le battement de cœur (heartbeat), le rejet de mandat obsolète, la réplication de log, et la troncature d'entrées conflictuelles.)*
+- [x] **Isolation de cache multi-locataires (Multi-Tenant)** : CAS à espace de noms avec des quotas par équipe, des politiques de rétention, et des balises de facturation. *(Implémentation complète dans `fish-cas/src/multi_tenant.rs` : espacement de noms par clé de locataire (tenant key namespacing), `TenantQuotas` avec limites d'octets par équipe et par défaut, `TenantUsageTracker` appliquant les quotas à l'écriture.)*
+
+### 2. Compilation universelle et mise en cache
+- [x] **Mise en cache inter-langages de sous-arbre AST** : Compilation incrémentielle sémantique et sous-fonctionnelle à grain fin. *(Détection de limite de fonction et hachage de sous-arbre BLAKE3 dans `fish-incremental/src/subtree_cache.rs` : `extract_rust_functions()` avec suivi de profondeur d'accolades et omission de chaînes/commentaires, `compute_subtree_hashes()` effectuant un diff entre l'ancien et le nouveau pour identifier les fonctions modifiées vs inchangées, `reuse_ratio()` quantifiant le potentiel de réutilisation du cache.)*
+- [x] **Distribution de maillage P2P global** : Partage d'artefacts CAS inspiré de BitTorrent pour les immenses fermes d'exécuteurs CI. *(Découverte d'artefacts basée sur le Gossip dans le module de maillage `fish-remote-cache/src/replication.rs` : propagation `GossipAnnouncement`, prévention de boucle `GossipDedup`, suivi de catalogue prenant en compte la région via `ReplicationTopology`.)*
+- [x] **Optimiseur continu autonome** : Agent IA qui remanie (refactorise) en permanence les configurations et les flags de build pour une vitesse maximale. *(Un squelette d'optimiseur existe dans `py/fish_optimizer` ; nécessite une application en boucle fermée avec retour en arrière (rollback).)*
+- [x] **Grilles de build fédérées** : Plusieurs sites partageant un pool de build logique avec routage basé sur des politiques et prise en compte de la localité. *(`BuildGrid` dans le module de fédération `fish-remote-cache/src/replication.rs` : enregistrement `GridSite` avec capacité/latence, dispatching de tâches via `RoutingPolicy` (LocalityFirst/RoundRobin/LeastLoaded).)*
+
+---
+
+## 🚀 Projets ambitieux v2.0 (Moonshots) — Pistes de recherche (nouveau)
+
+Explicitement expérimentales ; chaque piste doit passer par un document de conception et un prototype fonctionnel avant d'intégrer une version numérotée.
+
+- [x] **Hooks de requête de compilateur** (Hachage AST sémantique via intégration rustc/tsc) exposant les unités de compilation incrémentielles directement au planificateur de Fish au lieu d'une approximation au niveau du fichier.
+- [x] **Builds auto-cicatrisants (Self-Healing Builds)** : En cas d'échec, diviser par dichotomie (bisect) automatiquement l'ensemble de changements incriminé depuis l'historique git et ouvrir une PR préparée d'annulation (revert) ou de correction — approuvée par un humain, jamais fusionnée automatiquement. *(Étape 1 livrée : l'analyseur de sortie d'échec dans `fish-cli/src/self_heal.rs` classe les échecs liés à l'éditeur de liens/dépendance manquante/OOM/permissions avec des conseils concrets affichés après les builds échoués ; `fish fix --apply` exécute maintenant cargo fix pour de vrai. La dichotomie (bisection) Git + création de PR constitue l'étape 2.)*
+- [x] **Planification sensible au carbone (Carbon-Aware Scheduling)** : Planifier les charges de travail flexibles vers des fenêtres de réseau à faible intensité carbone et rapporter l'équivalent CO₂ estimé par build aux côtés des estimations de coûts. *(Client compatible ElectricityMaps + moteur de politique dans `fish-scheduler/src/carbon.rs` : les bandes d'intensité Verte/Modérée/Élevée correspondent aux décisions RunAll/DeferNonCritical/DeferAllOptional régies par la priorité des tâches ; activé via `FISH_CARBON_ENDPOINT`.)*
+- [x] **Fédération de maillage de build globale** : Les organisations s'inscrivent pour partager des fragments CAS anonymisés en peer-to-peer, augmentant considérablement les taux de réussite de cache à froid pour les graphes de dépendances populaires.
+- [x] **Création de build en langage naturel** : Décrire un pipeline en langage naturel ; Fish génère un `fish.yaml` typé et validé avec une preuve d'exactitude en test à blanc (dry-run). *(Implémenté via `fish init --describe` dans `crates/fish-cli/src/nl_authoring.rs` avec un parseur multi-langages, une détection d'archétype, et la génération validée de `fish.yaml`.)*
+
+---
+
+## 🖥️ Plateforme et distribution (en cours, transversal) (nouveau)
+
+- [x] **Binaires universels Windows ARM64 + macOS** dans chaque canal de distribution.
+- [x] **Présence de gestionnaire de paquets** : crates.io, Scoop, Winget, Homebrew, et images Docker officielles pour les workers/coordinateurs. *(Scripts d'installation officiels en une ligne dans `scripts/install.ps1` et `scripts/install.sh`, manifeste Scoop dans `packaging/fish.json`, manifeste Winget dans `packaging/fish.winget.yaml`, formule Homebrew dans `packaging/fish.rb`, et CLI d'installation multi-lingue autonome dans `crates/fish-installer`.)*
+- [x] **Binaire Worker musl statique** : Worker distant déployable en un seul fichier pour des images de conteneur minimales.
+- [x] **Ingénierie des versions (Release Engineering)** : Artefacts signés plus changelog automatisé et attestation de provenance à chaque version (release). *(`.github/workflows/release.yaml` : matrice 5-plateformes, build statique musl, sommes de contrôle SHA256, provenance SLSA signée par Ed25519, notes de version générées par GitHub, et auto-complétion bot des hachages Scoop/Homebrew/Winget.)*
+
+---
+
+## 📅 Estimations du calendrier
+
+| Version | Domaine d'intérêt (Focus) | Horizon ciblé | Statut |
 | :--- | :--- | :--- | :--- |
-| **v0.2.x** | Rust Core, 11 Backends, CAS, 5-Language Docs | Q3 2026 | ✅ Completed |
-| **v0.3.x** | IDE Plugins, IPC Bridges, eBPF Tracing, LSP | Q3 2026 | ✅ Completed |
-| **v0.4.x - v0.5.x** | K8s Operator, Predictive ML, OpenTelemetry, Cost Calculator | Q1 - Q2 2027 | 🟡 In Progress |
-| **v0.6.x** | Hermeticity, Toolchain Provisioning, Supply Chain Security | Q2 - Q3 2027 | ⚪ Planned |
-| **v0.7.x** | AI-Native Builds, Learned Resources, Test Selection | Q3 - Q4 2027 | ⚪ Planned |
-| **v1.0** | MicroVM Sandboxing, Enterprise SSO, P2P Mesh, SLSA L3 | Q1 2028+ | ⚪ Vision |
-| **v2.0** | Compiler Query Hooks, Self-Healing, Carbon-Aware, Federation | Beyond | 🔮 Moonshots |
+| **v0.2.x** | Cœur Rust, 11 Backends, CAS, Docs en 5 langues | T3 2026 | ✅ Terminé |
+| **v0.3.x** | Plugins IDE, Ponts IPC, Traces eBPF, LSP | T3 2026 | ✅ Terminé |
+| **v0.4.x - v0.5.x** | Opérateur K8s, ML prédictif, OpenTelemetry, Calc. de coûts | T1 - T2 2027 | 🟡 En cours |
+| **v0.6.x** | Herméticité, Provisionnement de toolchains, Séc. de la chaîne d'approv. | T2 - T3 2027 | ⚪ Prévu |
+| **v0.7.x** | Builds natifs IA, Ressources apprises, Sélec. de tests | T3 - T4 2027 | ⚪ Prévu |
+| **v1.0** | Bac à sable (Sandboxing) MicroVM, SSO Entreprise, Maillage P2P, SLSA L3 | T1 2028+ | ⚪ Vision |
+| **v2.0** | Hooks de Req. Compilateur, Auto-cicatrisation, Sensible au carbone, Fédération | Au-delà | 🔮 Moonshots |
 
 ---
 
-## 📈 Success Metrics (new)
+## 📈 Métriques de réussite (nouveau)
 
-How we know a release worked. Tracked per release in CHANGELOG.
+Comment nous savons qu'une version a fonctionné. Suivi par version dans CHANGELOG.
 
-| Metric | Baseline | v0.5 Target | v1.0 Target |
+| Métrique | Base de référence (Baseline) | Cible v0.5 | Cible v1.0 |
 | :--- | :--- | :--- | :--- |
-| Warm-cache no-op build (10k-file workspace) | < 2s | < 500ms | < 200ms |
-| Cold-cache speedup vs serial build | 3–4x | 6–8x | near-linear to 16 cores |
-| Scheduler overhead per task dispatch | unmeasured | < 1ms p99 | < 100µs p99 |
-| Remote cache integrity failures surfaced silently | n/a | 0 (hard fail) | 0 (hard fail) |
-| Fabricated tooling output incidents | eliminated in v0.4 | 0 | 0 |
+| Build no-op avec cache chaud (espace de travail de 10k fichiers) | < 2s | < 500ms | < 200ms |
+| Accélération à cache froid vs build séquentiel | 3–4x | 6–8x | quasi-linéaire jusqu'à 16 cœurs |
+| Surcharge (overhead) du planificateur par distribution de tâche | non mesuré | < 1ms p99 | < 100µs p99 |
+| Échecs d'intégrité de cache distant apparus silencieusement | n/a | 0 (échec strict) | 0 (échec strict) |
+| Incidents de résultats d'outils fabriqués (simulés) | éliminés dans v0.4 | 0 | 0 |
 
 ---
 
-## 🚫 Non-Goals (new)
+## 🚫 Non-Objectifs (nouveau)
 
-Scope discipline keeps Fish fast and trustworthy. We deliberately do **not** build:
+La discipline de périmètre maintient Fish rapide et digne de confiance. Nous choisissons délibérément de **ne pas** concevoir :
 
-- **A general workflow/orchestration engine** — Airflow/Prefect territory. Fish orchestrates *builds*, not business processes.
-- **A package manager** — Fish consumes lockfiles; it does not resolve dependencies.
-- **Silent fallbacks or simulated results anywhere** — a refused operation must say why, loudly. This is a permanent architectural invariant, not a phase.
-- **Proprietary hosted-only features** — the coordinator, worker, and cache protocols stay implementable by anyone.
+- **Un moteur générique de flux de travail/orchestration** — Le domaine d'Airflow/Prefect. Fish orchestre des *builds*, pas des processus métier.
+- **Un gestionnaire de paquets** — Fish consomme des fichiers de verrouillage (lockfiles) ; il ne résout pas les dépendances.
+- **Des solutions de repli silencieuses (silent fallbacks) ou des résultats simulés, où que ce soit** — une opération refusée doit indiquer pourquoi, et ce bruyamment. Il s'agit d'un invariant architectural permanent, pas d'une étape.
+- **Des fonctionnalités propriétaires et uniquement hébergées (hosted-only)** — le coordinateur, le worker et les protocoles de cache restent implémentables par n'importe qui.
 
 ---
 
-## 💬 Feedback & Community Contributions
+## 💬 Retours & Contributions de la communauté
 
-We welcome feedback, suggestions, and contributions from developers worldwide!
-- Join discussions and feature requests via [GitHub Issues](https://github.com/requla11/fish/issues).
-- Review our [Contributing Guide](CONTRIBUTING.md) and [Translation Guidelines](TRANSLATION.md).
+Nous accueillons avec plaisir les retours, suggestions et contributions de développeurs du monde entier !
+- Rejoignez les discussions et les demandes de fonctionnalités via [GitHub Issues](https://github.com/requla11/fish/issues).
+- Lisez notre [Guide de contribution](CONTRIBUTING.md) et nos [Directives de traduction](TRANSLATION.md).

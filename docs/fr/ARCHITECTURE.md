@@ -1,202 +1,199 @@
-# Fish Architecture
+# Architecture de Fish
 
-> 🌐 **Translations & Contributions:** Want to translate or improve this document in your language? See our [Translation Guidelines](TRANSLATION.md).
+> 🌐 **Traductions & Contributions :** Vous souhaitez traduire ou améliorer ce document dans votre langue ? Consultez nos [Directives de Traduction](TRANSLATION.md).
 
-This document describes the high-level architecture of the fish build orchestration system.
+Ce document décrit l'architecture de haut niveau du système d'orchestration de build Fish.
 
-## Overview
+## Aperçu
 
-Fish is a cache-first, polyglot build orchestration system designed for monorepos and polyglot projects. It uses a dependency graph, parallel scheduler, executor, and CAS artifact cache to optimize build performance.
+Fish est un système d'orchestration de build polyglotte, axé sur le cache (cache-first), conçu pour les monorepos et les projets polyglottes. Il utilise un graphe de dépendances, un ordonnanceur (scheduler) parallèle, un exécuteur (executor) et un cache d'artefacts CAS pour optimiser les performances de build.
 
-## Core Components
+## Composants Principaux
 
-### 1. Workspace Discovery (`fish-core`)
+### 1. Découverte de l'Espace de Travail (`fish-core`)
 
-**Purpose**: Discover and model the project structure
+**Objectif** : Découvrir et modéliser la structure du projet
 
-**Responsibilities**:
-- Scan workspace for packages/projects
-- Detect project types based on manifest files
-- Filter input files by micro-globs (`MicroInputFilter`)
-- Build dependency graph between packages
-- Generate IDE compilation databases (`CompilationDatabase`, `compile_commands.json`)
-- Manage and isolate hermetic compiler toolchains (`ToolchainRegistry`, `ToolchainSpec`)
-- Manage package metadata
+**Responsabilités** :
+- Analyser l'espace de travail pour trouver les packages/projets
+- Détecter les types de projets basés sur les fichiers manifestes
+- Filtrer les fichiers d'entrée par micro-globs (`MicroInputFilter`)
+- Construire le graphe de dépendances entre les packages
+- Générer les bases de données de compilation IDE (`CompilationDatabase`, `compile_commands.json`)
+- Gérer et isoler les toolchains de compilateurs hermétiques (`ToolchainRegistry`, `ToolchainSpec`)
+- Gérer les métadonnées des packages
 
-**Key Types**:
-- `Package`: Represents a single package/project
-- `Workspace`: Collection of packages with dependencies
-- `Manifest`: Project configuration (Cargo.toml, package.json, etc.)
-- `MicroInputFilter`: Fine-grained glob matcher and file filter
-- `CompilationDatabase`: Standard compilation command database
-- `ToolchainRegistry`: Hermetic toolchain configuration manager
+**Types Clés** :
+- `Package` : Représente un seul package/projet
+- `Workspace` : Collection de packages avec leurs dépendances
+- `Manifest` : Configuration du projet (Cargo.toml, package.json, etc.)
+- `MicroInputFilter` : Matcher de glob à grain fin et filtre de fichiers
+- `CompilationDatabase` : Base de données standard des commandes de compilation
+- `ToolchainRegistry` : Gestionnaire de configuration de toolchain hermétique
 
-### 2. Build Graph (`fish-graph`)
+### 2. Graphe de Build (`fish-graph`)
 
-**Purpose**: Model build dependencies, execution order, and algebraic queries
+**Objectif** : Modéliser les dépendances de build, l'ordre d'exécution et les requêtes algébriques
 
-**Responsibilities**:
-- Create directed acyclic graph (DAG) of build tasks
-- Compute topological sort for execution order
-- Subgraph merging for polyglot monorepos (`merge_subgraph`)
-- Dynamic node expansion during runtime execution (`DynamicGraphExpander`)
-- Track task states (pending, running, completed, failed)
-- Algebraic query evaluation (`GraphQueryEngine` supporting `deps()`, `rdeps()`, `allpaths()`, `somepath()`, `filter()`, `union()`, `intersect()`, `except()`)
-- Detect circular dependencies
+**Responsabilités** :
+- Créer un graphe orienté acyclique (DAG) des tâches de build
+- Calculer le tri topologique pour l'ordre d'exécution
+- Fusion de sous-graphes pour les monorepos polyglottes (`merge_subgraph`)
+- Expansion dynamique des nœuds pendant l'exécution (`DynamicGraphExpander`)
+- Suivre les états des tâches (en attente, en cours, terminées, échouées)
+- Évaluation des requêtes algébriques (`GraphQueryEngine` supportant `deps()`, `rdeps()`, `allpaths()`, `somepath()`, `filter()`, `union()`, `intersect()`, `except()`)
+- Détecter les dépendances circulaires
 
-**Key Types**:
-- `BuildGraph`: Directed acyclic graph of tasks
-- `Node`: Individual build task
-- `NodeId`: Type-safe index into graph structures
-- `DynamicGraphExpander`: Dynamic sub-task generator
-- `GraphQueryEngine`: Evaluator for graph query expressions
-- `QueryExpr`: Algebraic query AST
+**Types Clés** :
+- `BuildGraph` : Graphe orienté acyclique des tâches
+- `Node` : Tâche de build individuelle
+- `NodeId` : Index type-safe dans les structures de graphe
+- `DynamicGraphExpander` : Générateur dynamique de sous-tâches
+- `GraphQueryEngine` : Évaluateur d'expressions de requêtes de graphe
+- `QueryExpr` : AST de requête algébrique
 
-### 3. Executor (`fish-executor`)
+### 3. Exécuteur (`fish-executor`)
 
-**Purpose**: Execute build commands, manage processes, and handle file system cloning
+**Objectif** : Exécuter les commandes de build, gérer les processus et gérer le clonage du système de fichiers
 
-**Responsibilities**:
-- Spawn and manage build processes
-- Capture stdout/stderr
-- Handle process timeouts and cancellation
-- Fast file system cloning using copy-on-write extents and hardlinks (`KernelCowCloner`)
-- Fast linker auto-detection and flag synthesis (`LinkerDispatcher` supporting `mold`, `lld`, and `msvc`)
-- Automatic response file synthesis (`@fish_args.rsp`) when arguments exceed OS limits
-- Extensible task middleware pipeline (`TaskMiddleware`, `TurboLinker`, `SuperOptimizer`)
-- Return execution results
+**Responsabilités** :
+- Lancer et gérer les processus de build
+- Capturer stdout/stderr
+- Gérer les timeouts et l'annulation des processus
+- Clonage rapide du système de fichiers en utilisant des extensions copy-on-write et des liens physiques (`KernelCowCloner`)
+- Auto-détection rapide de linker et synthèse de flags (`LinkerDispatcher` supportant `mold`, `lld` et `msvc`)
+- Synthèse automatique des fichiers de réponse (`@fish_args.rsp`) lorsque les arguments dépassent les limites de l'OS
+- Pipeline middleware extensible pour les tâches (`TaskMiddleware`, `TurboLinker`, `SuperOptimizer`)
+- Retourner les résultats d'exécution
 
-**Key Types**:
-- `CommandSpec`: Command specification with environment
-- `AsyncExecutor`: Non-blocking process execution engine
-- `KernelCowCloner`: Copy-on-write and fast cloner
-- `LinkerDispatcher`: Modern linker detector
-- `ResponseFileWriter`: Argument file synthesizer
-- `TaskMiddleware`: Middleware trait for task interception
-- `ExecutionResult`: Result of command execution
+**Types Clés** :
+- `CommandSpec` : Spécification de la commande avec son environnement
+- `AsyncExecutor` : Moteur d'exécution de processus non bloquant
+- `KernelCowCloner` : Cloneur rapide et copy-on-write
+- `LinkerDispatcher` : Détecteur de linker moderne
+- `ResponseFileWriter` : Synthétiseur de fichiers d'arguments
+- `TaskMiddleware` : Trait middleware pour l'interception des tâches
+- `ExecutionResult` : Résultat de l'exécution de la commande
 
-### 4. Scheduler (`fish-scheduler`)
+### 4. Ordonnanceur (`fish-scheduler`)
 
-**Purpose**: Schedule tasks for parallel, speculative, and distributed execution
+**Objectif** : Ordonnancer les tâches pour une exécution parallèle, spéculative et distribuée
 
-**Responsibilities**:
-- Maintain ready queue of available tasks
-- Distribute tasks across available workers
-- Kernel resource governor (`KernelResourceGovernor`) monitoring system memory pressure and throttling concurrency
-- Compiler pipelining coordination (`PipelinedCompilationCoordinator`) unblocking downstream compilation upon metadata readiness
-- GNU Jobserver pool integration (`JobserverPool`) for global thread token management across compilers
-- Dynamic remote racing (`DynamicRacingExecutor`): concurrent local vs remote execution
-- Distributed Task Execution (DTE) bin-packing (`DteBinPacker`) using Longest Processing Time (LPT) scheduling
-- Real-time filesystem watcher daemon (`FsWatcherDaemon`) with dirty node invalidation and hot graph cache pre-warming
-- Respect task dependencies
-- Handle task completion and failure
+**Responsabilités** :
+- Maintenir la file d'attente des tâches disponibles
+- Distribuer les tâches sur les workers disponibles
+- Gouverneur des ressources du noyau (`KernelResourceGovernor`) surveillant la pression mémoire du système et limitant la concurrence
+- Coordination du pipelining de compilation (`PipelinedCompilationCoordinator`) débloquant la compilation en aval dès que les métadonnées sont prêtes
+- Intégration du pool GNU Jobserver (`JobserverPool`) pour la gestion globale des jetons de threads entre les compilateurs
+- Course à distance dynamique (`DynamicRacingExecutor`) : exécution locale vs distante concurrente
+- Emballage bin-packing pour l'Exécution de Tâches Distribuée (DTE) (`DteBinPacker`) en utilisant l'ordonnancement Longest Processing Time (LPT)
+- Démon de surveillance du système de fichiers en temps réel (`FsWatcherDaemon`) avec invalidation des nœuds sales et préchauffage à chaud du cache du graphe
+- Respecter les dépendances des tâches
+- Gérer l'achèvement et l'échec des tâches
 
-**Key Types**:
-- `Scheduler`: Task scheduling engine
-- `KernelResourceGovernor`: Memory pressure monitor
-- `PipelinedCompilationCoordinator`: Pipelined stage manager
-- `JobserverPool`: Global token-based concurrency pool
-- `DynamicRacingExecutor`: Local vs remote racer
-- `DteBinPacker`: Balanced multi-agent CI partitioner
-- `FsWatcherDaemon`: Real-time change listener and dirty node tracker
-- `WorkStealingPool`: Lock-free task distributor
+**Types Clés** :
+- `Scheduler` : Moteur d'ordonnancement de tâches
+- `KernelResourceGovernor` : Moniteur de pression mémoire
+- `PipelinedCompilationCoordinator` : Gestionnaire d'étapes en pipeline
+- `JobserverPool` : Pool de concurrence global basé sur des jetons
+- `DynamicRacingExecutor` : Concurrence locale vs distante
+- `DteBinPacker` : Partitionneur CI multi-agents équilibré
+- `FsWatcherDaemon` : Écouteur de changements en temps réel et tracker de nœuds sales
+- `WorkStealingPool` : Distributeur de tâches sans verrou (lock-free)
 
 ### 5. Cache (`fish-cache`)
 
-**Purpose**: Fingerprint-based caching for incremental builds
+**Objectif** : Mise en cache basée sur les empreintes (fingerprints) pour les builds incrémentaux
 
-**Responsibilities**:
-- Compute file content fingerprints (Blake3)
-- Cache execution results
-- Determine cache validity
-- Support cache invalidation
+**Responsabilités** :
+- Calculer les empreintes du contenu des fichiers (Blake3)
+- Mettre en cache les résultats d'exécution
+- Déterminer la validité du cache
+- Supporter l'invalidation du cache
 
-**Key Types**:
-- `Fingerprint`: Content hash with metadata
-- `CacheEntry`: Cached execution result
-- `FileLevelCache`: File-level caching strategy
+**Types Clés** :
+- `Fingerprint` : Hash de contenu avec métadonnées
+- `CacheEntry` : Résultat d'exécution mis en cache
+- `FileLevelCache` : Stratégie de mise en cache au niveau du fichier
 
-### 6. CAS Engine (`fish-cas`)
+### 6. Moteur CAS (`fish-cas`)
 
-**Purpose**: Content-Addressable Storage for artifact caching
+**Objectif** : Stockage Adressable par le Contenu (Content-Addressable Storage) pour le cache d'artefacts
 
-**Responsibilities**:
-- Store artifacts by content hash
-- Support local and remote storage
-- Compress artifacts (Zstandard)
-- Provide deduplication
+**Responsabilités** :
+- Stocker les artefacts par hash de contenu
+- Supporter le stockage local et distant
+- Compresser les artefacts (Zstandard)
+- Fournir la déduplication
 
-**Key Types**:
-- `ArtifactStore`: Artifact storage interface
-- `LocalStorage`: Local file system storage
-- `RemoteStorage`: Remote storage (S3, GCS, MinIO)
+**Types Clés** :
+- `ArtifactStore` : Interface de stockage d'artefacts
+- `LocalStorage` : Stockage sur système de fichiers local
+- `RemoteStorage` : Stockage distant (S3, GCS, MinIO)
 
-### 7. Remote Cache (`fish-remote-cache`)
+### 7. Cache Distant (`fish-remote-cache`)
 
-**Purpose**: Tiered L1/L2 composite caching
+**Objectif** : Mise en cache composite hiérarchisée L1/L2
 
-**Responsibilities**:
-- Local L1 cache for fast access
-- Remote L2 cache for sharing
-- Cache population and eviction
-- Cache hit/miss tracking
+**Responsabilités** :
+- Cache L1 local pour un accès rapide
+- Cache L2 distant pour le partage
+- Peuplement et éviction du cache
+- Suivi des succès/échecs de cache (hit/miss)
 
-**Key Types**:
-- `CompositeCache`: Tiered cache implementation
-- `CachePolicy`: Cache population and eviction policies
+**Types Clés** :
+- `CompositeCache` : Implémentation de cache hiérarchisé
+- `CachePolicy` : Politiques de peuplement et d'éviction du cache
 
 ### 8. Worker (`fish-worker`)
 
-**Purpose**: Distributed build execution
+**Objectif** : Exécution de build distribuée
 
-**Responsibilities**:
-- Remote worker discovery and registration
-- Task distribution across workers
-- Result collection and aggregation
-- Virtual File System for on-demand file access
+**Responsabilités** :
+- Découverte et enregistrement de workers distants
+- Distribution des tâches sur les workers
+- Collecte et agrégation des résultats
+- Système de fichiers virtuel (Virtual File System) pour l'accès aux fichiers à la demande
 
-**Key Types**:
-- `WorkerServer`: Worker daemon
-- `ClusterExecutor`: Cluster task execution
-- `VirtualFileSystem`: In-memory VFS
+**Types Clés** :
+- `WorkerServer` : Démon worker
+- `ClusterExecutor` : Exécution de tâches en cluster
+- `VirtualFileSystem` : VFS en mémoire
 
 ### 9. Sandboxing (`fish-sandbox`)
 
-**Purpose**: Hermetic environment isolation
+**Objectif** : Isolation d'environnement hermétique
 
-**Responsibilities**:
-- Isolate build environments
-- Control filesystem access
-- Network isolation
-- Resource limits
+**Responsabilités** :
+- Isoler les environnements de build
+- Contrôler l'accès au système de fichiers
+- Isolation réseau
+- Limites de ressources
 
-**Key Types**:
-- `Sandbox`: Sandbox implementation
-- `SandboxConfig`: Sandbox configuration
+**Types Clés** :
+- `Sandbox` : Implémentation du sandbox
+- `SandboxConfig` : Configuration du sandbox
 
-### 10. Plugin System (`fish-plugin`)
+### 10. Système de Plugins (`fish-plugin`)
 
-**Purpose**: Extensible rule system
+**Objectif** : Système de règles extensible
 
-**Responsibilities**:
-- Load custom plugins
-- Script plugin execution (Shell, Python, Node, WASM, Lua)
-- Plugin discovery and management
-- Plugin API
+**Responsabilités** :
+- Charger les plugins personnalisés
+- Exécution de plugins scripts (Shell, Python, Node, WASM, Lua)
+- Découverte et gestion de plugins
+- API de Plugin
 
-**Key Types**:
-- `PluginManager`: Plugin manager
-- `ScriptPlugin`: Script-based plugin
-- `PluginExecutor`: Plugin execution engine
+**Types Clés** :
+- `PluginManager` : Gestionnaire de plugins
+- `ScriptPlugin` : Plugin basé sur un script
+- `PluginExecutor` : Moteur d'exécution de plugins
 
-## Language Backends
+## Backends de Langages
 
-Every backend implements the uniform `EcosystemBackend` contract from
-the `fish-backend-api` crate and registers itself in
-`fish-cli/src/backend_registry.rs` — adding an ecosystem means
-implementing the trait plus one registry line.
+Chaque backend implémente le contrat uniforme `EcosystemBackend` depuis la crate `fish-backend-api` et s'enregistre dans `fish-cli/src/backend_registry.rs` — ajouter un écosystème signifie implémenter le trait plus une ligne de registre.
 
-### Backend Interface
+### Interface du Backend
 
 ```rust
 pub trait EcosystemBackend: Send + Sync {
@@ -213,203 +210,187 @@ pub trait EcosystemBackend: Send + Sync {
 }
 ```
 
-### Supported Backends
+### Backends Supportés
 
-- **Rust** (`fish-backend-rust`): Cargo workspaces
-- **C/C++** (`fish-backend-cc`): gcc/clang/msvc
-- **Go** (`fish-backend-go`): go.mod
-- **TypeScript/JS** (`fish-backend-ts`): package.json
-- **Python** (`fish-backend-py`): pyproject.toml
-- **Java** (`fish-backend-java`): Maven/Gradle
-- **.NET** (`fish-backend-dotnet`): csproj/sln
-- **Swift** (`fish-backend-swift`): Package.swift
-- **Dart** (`fish-backend-dart`): pubspec.yaml
-- **Zig** (`fish-backend-zig`): build.zig
-- **Docker** (`fish-backend-docker`): Dockerfile
+- **Rust** (`fish-backend-rust`) : Espaces de travail (workspaces) Cargo
+- **C/C++** (`fish-backend-cc`) : gcc/clang/msvc
+- **Go** (`fish-backend-go`) : go.mod
+- **TypeScript/JS** (`fish-backend-ts`) : package.json
+- **Python** (`fish-backend-py`) : pyproject.toml
+- **Java** (`fish-backend-java`) : Maven/Gradle
+- **.NET** (`fish-backend-dotnet`) : csproj/sln
+- **Swift** (`fish-backend-swift`) : Package.swift
+- **Dart** (`fish-backend-dart`) : pubspec.yaml
+- **Zig** (`fish-backend-zig`) : build.zig
+- **Docker** (`fish-backend-docker`) : Dockerfile
 
-## Security Features
+## Fonctionnalités de Sécurité
 
-### 1. Artifact Signing (`fish-security` / `fish-remote-cache`)
+### 1. Signature d'Artefacts (`fish-security` / `fish-remote-cache`)
 
-- Ed25519 signing via `FISH_SIGNING_SEED`; public key exported with
-  `fish signing-key`
-- SLSA/in-toto provenance statements (`fish-security/src/slsa.rs`)
-- Remote-cache signature gate verifies every download against
-  `FISH_TRUSTED_KEYS` (`fish-remote-cache/signature_gate.rs`)
-- See `docs/signing.md` for the full producer/consumer flow
+- Signature Ed25519 via `FISH_SIGNING_SEED` ; clé publique exportée avec `fish signing-key`
+- Déclarations de provenance SLSA/in-toto (`fish-security/src/slsa.rs`)
+- La porte de signature du cache distant (remote-cache signature gate) vérifie chaque téléchargement par rapport à `FISH_TRUSTED_KEYS` (`fish-remote-cache/signature_gate.rs`)
+- Voir `docs/signing.md` pour le flux complet producteur/consommateur
 
-### 2. Security Scanner (`fish-security`)
+### 2. Scanner de Sécurité (`fish-security`)
 
-- Dependency vulnerability scanning
-- Multi-backend support
-- Severity-based blocking
-- CVSS score tracking
+- Scan de vulnérabilités des dépendances
+- Support multi-backends
+- Blocage basé sur la sévérité
+- Suivi du score CVSS
 
-## CI/CD Generation
+## Génération CI/CD
 
-### CI Generator (`fish-ci-generator`)
+### Générateur CI (`fish-ci-generator`)
 
-Supports multiple CI/CD platforms:
+Supporte de multiples plateformes CI/CD :
 - GitHub Actions
 - GitLab CI
 - CircleCI
 - Bitbucket Pipelines
 
-### Matrix Generation
+### Génération de Matrice
 
-- Multi-platform support (Linux, macOS, Windows)
+- Support multi-plateformes (Linux, macOS, Windows)
 - Multi-architecture (x86_64, ARM64)
-- Version matrices (Rust, Node, etc.)
-- Dependency-based optimization
+- Matrices de version (Rust, Node, etc.)
+- Optimisation basée sur les dépendances
 
-## Advanced Features
+## Fonctionnalités Avancées
 
-### 1. Build Analytics (`fish-analytics`)
+### 1. Analyses de Build (`fish-analytics`)
 
-- Real-time cache hit rate tracking
-- Build metrics collection
-- Performance visualization
-- Optimization suggestions
+- Suivi du taux de réussite du cache en temps réel (cache hit rate)
+- Collecte de métriques de build
+- Visualisation des performances
+- Suggestions d'optimisation
 
-### 2. Incremental Analysis (`fish-incremental`)
+### 2. Analyse Incrémentale (`fish-incremental`)
 
-- AST-based dependency inference (`DependencyInferenceEngine`) for Rust, TypeScript/JavaScript, Python, and Go
-- Dirty rebuild diagnostics (`DirtyExplainer`, `fish build --explain`) identifying exact source file modifications or hash mismatches
-- Build pattern detection and hotspot identification
-- Refactoring suggestions and rebuild frequency analysis
+- Inférence de dépendances basée sur l'AST (`DependencyInferenceEngine`) pour Rust, TypeScript/JavaScript, Python et Go
+- Diagnostics de rebuild sales (`DirtyExplainer`, `fish build --explain`) identifiant les modifications exactes des fichiers sources ou les déséquilibres de hachage
+- Détection des schémas de build et identification des points chauds
+- Suggestions de refactoring et analyse de fréquence des rebuilds
 
-### 3. Build Daemon & IPC (`fish-cli::daemon`)
+### 3. Démon de Build & IPC (`fish-cli::daemon`)
 
-- Background daemon (`FishDaemon`) speaking JSON-RPC 2.0 over
-  newline-delimited messages
-- Transport: Unix domain socket on Unix, TCP on `127.0.0.1` on Windows
-- Port is configurable: `fish daemon start --port <PORT>` (default `9527`)
-- Warm graph caching for repeated invocations
-- Commands: `fish daemon start`, `fish daemon status`, `fish daemon stop`
+- Démon en arrière-plan (`FishDaemon`) parlant JSON-RPC 2.0 via des messages délimités par des nouvelles lignes
+- Transport : Socket de domaine Unix sur Unix, TCP sur `127.0.0.1` sur Windows
+- Le port est configurable : `fish daemon start --port <PORT>` (par défaut `9527`)
+- Mise en cache du graphe à chaud pour les invocations répétées
+- Commandes : `fish daemon start`, `fish daemon status`, `fish daemon stop`
 
-### 4. Profile-Guided Optimization (`fish-cli::pgo`)
+### 4. Optimisation Guidée par le Profil (`fish-cli::pgo`)
 
-- 2-phase LLVM PGO workflow orchestration (`PgoManager`)
-- Automated `-Cprofile-generate` instrumentation and `llvm-profdata merge`
-- Recompilation with `-Cprofile-use` for maximum runtime performance
+- Orchestration de workflow LLVM PGO en 2 phases (`PgoManager`)
+- Instrumentation automatisée `-Cprofile-generate` et `llvm-profdata merge`
+- Recompilation avec `-Cprofile-use` pour une performance d'exécution maximale
 
-### 5. Task Pipeline Topology (`fish-cli::pipeline`)
+### 5. Topologie de Pipeline de Tâches (`fish-cli::pipeline`)
 
-- Turborepo/Nx style topological task pipelines configured via `fish.toml`
-- Cross-package dependency rules (e.g. `^build` ensuring dependency outputs are built first)
-- Configurable environment variable and input file fingerprint hashes
+- Pipelines de tâches topologiques de style Turborepo/Nx configurées via `fish.toml`
+- Règles de dépendances inter-packages (ex. `^build` garantissant que les sorties des dépendances sont construites en premier)
+- Variables d'environnement configurables et hash d'empreintes des fichiers d'entrée
 
-### Planned crates (not yet in the workspace)
+### Crates prévues (pas encore dans l'espace de travail)
 
-The following crates were described in earlier drafts but do not exist in
-the workspace yet. They are listed here as roadmap items only:
+Les crates suivantes ont été décrites dans des brouillons antérieurs mais n'existent pas encore dans l'espace de travail. Elles sont listées ici uniquement comme éléments de la feuille de route :
 
-- `fish-multiplatform` — platform detection, target triples, CI matrices
-- `fish-notifications` — Slack/Discord/email build notifications
-- `fish-flaky-detection` — statistical flaky test detection and retry policies
-- `fish-docker-builder` — first-class Docker artifacts and layer caching
-  (Docker orchestration today lives in `fish-backend-docker`)
-- `fish-templates` — shareable pipeline templates (Handlebars rendering)
+- `fish-multiplatform` — détection de plateforme, target triples, matrices CI
+- `fish-notifications` — notifications de build Slack/Discord/email
+- `fish-flaky-detection` — détection statistique de tests instables (flaky tests) et politiques de nouvelle tentative
+- `fish-docker-builder` — artefacts Docker de première classe et mise en cache des couches (L'orchestration Docker vit aujourd'hui dans `fish-backend-docker`)
+- `fish-templates` — modèles de pipeline partageables (Rendu Handlebars)
 
-## Vendored submodules
+## Sous-modules fournis (Vendored submodules)
 
-Two companion projects are vendored as git submodules and are members of the
-workspace:
+Deux projets compagnons sont fournis sous forme de sous-modules git et sont membres de l'espace de travail :
 
-- **`submodules/apple`** — hermetic sandbox and process isolation daemon
-  (kernel-level sandboxing, CoW storage jails, SLSA/SPDX/CycloneDX
-  provenance). Independent project, not affiliated with Apple Inc.
-- **`submodules/banana`** — distribution, P2P swarm, and supply-chain
-  infrastructure companion for Fish.
+- **`submodules/apple`** — bac à sable hermétique et démon d'isolation de processus (sandboxing au niveau du noyau, prisons de stockage CoW, provenance SLSA/SPDX/CycloneDX). Projet indépendant, non affilié à Apple Inc.
+- **`submodules/banana`** — distribution, essaim P2P, et infrastructure de chaîne d'approvisionnement compagnon pour Fish.
 
-## Data Flow
+## Flux de Données
 
-### Build Execution Flow
+### Flux d'Exécution de Build
 
 ```
-1. Workspace Discovery
+1. Découverte de l'Espace de Travail
    ↓
-2. Dependency Graph Construction
+2. Construction du Graphe de Dépendances
    ↓
-3. Cache Fingerprint Computation
+3. Calcul de l'Empreinte de Cache (Cache Fingerprint)
    ↓
-4. Scheduler Task Distribution
+4. Distribution des Tâches de l'Ordonnanceur
    ↓
-5. Executor Process Management
+5. Gestion des Processus de l'Exécuteur
    ↓
-6. Result Collection & Caching
+6. Collecte des Résultats & Mise en Cache
    ↓
-7. Build Completion
+7. Achèvement du Build
 ```
 
-### Distributed Build Flow
+### Flux de Build Distribué
 
 ```
-1. Worker Registration
+1. Enregistrement des Workers
    ↓
-2. Task Distribution
+2. Distribution des Tâches
    ↓
-3. VFS File Streaming
+3. Streaming de Fichiers VFS
    ↓
-4. Remote Execution
+4. Exécution Distante
    ↓
-5. Result Aggregation
+5. Agrégation des Résultats
    ↓
-6. Cache Population
+6. Peuplement du Cache
 ```
 
-## Performance Optimizations
+## Optimisations de Performances
 
-### 1. Level Partitioning
+### 1. Partitionnement par Niveau
 
-Groups independent packages per build level into single toolchain calls, eliminating process spawn overhead.
+Regroupe les packages indépendants par niveau de build en un seul appel de toolchain, éliminant les surcoûts de lancement de processus.
 
-### 2. Cache-First Execution
+### 2. Exécution Axée sur le Cache (Cache-First)
 
-Fingerprint-based caching enables instant rebuilds when inputs haven't changed.
+La mise en cache basée sur les empreintes permet des rebuilds instantanés lorsque les entrées n'ont pas changé.
 
-### 3. Parallel Execution
+### 3. Exécution Parallèle
 
-Tasks are executed in parallel respecting dependencies, maximizing CPU utilization.
+Les tâches sont exécutées en parallèle en respectant les dépendances, maximisant l'utilisation du processeur.
 
-### 4. Incremental Builds
+### 4. Builds Incrémentaux
 
-Only rebuild affected packages based on dependency graph changes.
+Ne reconstruit que les packages affectés en fonction des modifications du graphe de dépendances.
 
-### 5. Distributed Execution
+### 5. Exécution Distribuée
 
-Remote workers enable horizontal scaling for large projects.
+Les workers distants permettent une mise à l'échelle horizontale (horizontal scaling) pour les grands projets.
 
-## Architecture Status
+## Statut de l'Architecture
 
-Fish is a single-language Rust workspace. There are no Python or Go services
-in this repository, and no crate currently uses gRPC/protobuf. Earlier drafts
-of this document described a "Tri-Engine" architecture; that description did
-not match the codebase and has been removed.
+Fish est un espace de travail Rust mono-langage. Il n'y a pas de services Python ou Go dans ce dépôt, et aucune crate n'utilise actuellement gRPC/protobuf. Des brouillons antérieurs de ce document décrivaient une architecture "Tri-Engine" ; cette description ne correspondait pas au code source et a été retirée.
 
-### Current core (implemented)
+### Cœur actuel (implémenté)
 
-- **`fish-core`**: Workspace discovery, manifest models, fine-grained input filtering.
-- **`fish-graph`**: Dependency graph, topological sort, algebraic query evaluation (`deps`, `rdeps`, `somepath`).
-- **`fish-executor`**: Process execution, middleware chain, response file generation.
-- **`fish-scheduler`**: GNU Jobserver pool, work-stealing, parallel execution.
-- **`fish-cache`**: Multi-tier fingerprinting with Blake3 and two-phase pruning.
-- **`fish-cas`**: Content-addressable artifact storage with ZSTD compression.
-- **`fish-cli`**: Terminal user interface powered by ratatui and clap.
+- **`fish-core`** : Découverte de l'espace de travail, modèles de manifestes, filtrage des entrées à grain fin.
+- **`fish-graph`** : Graphe de dépendances, tri topologique, évaluation de requêtes algébriques (`deps`, `rdeps`, `somepath`).
+- **`fish-executor`** : Exécution de processus, chaîne de middlewares, génération de fichiers de réponse.
+- **`fish-scheduler`** : Pool GNU Jobserver, work-stealing, exécution parallèle.
+- **`fish-cache`** : Empreintes multiniveaux avec Blake3 et élagage en deux phases.
+- **`fish-cas`** : Stockage d'artefacts adressable par contenu avec compression ZSTD.
+- **`fish-cli`** : Interface utilisateur de terminal alimentée par ratatui et clap.
 
-### Planned: cross-language contracts (`proto/`)
+### Prévu : contrats inter-langages (`proto/`)
 
-The files under `proto/fish/v1/` (`build.proto`, `ai.proto`,
-`coordinator.proto`) are forward-looking interface drafts only. They are not
-compiled or referenced by any crate yet — the workspace has no `prost`/`tonic`
-dependencies. Distributed features shipped today use plain HTTP/JSON instead
-(see `crates/fish-worker` and `crates/fish-remote-cache`).
+Les fichiers sous `proto/fish/v1/` (`build.proto`, `ai.proto`, `coordinator.proto`) sont uniquement des brouillons d'interface tournés vers l'avenir. Ils ne sont ni compilés ni référencés par aucune crate pour le moment — l'espace de travail n'a pas de dépendances `prost`/`tonic`. Les fonctionnalités distribuées livrées aujourd'hui utilisent du simple HTTP/JSON à la place (voir `crates/fish-worker` et `crates/fish-remote-cache`).
 
-## Security Considerations
+## Considérations de Sécurité
 
-- No unsafe code in security-sensitive crates
-- Input validation across all backends
-- Least privilege for all operations
-- Audit logging for security operations
-- Secure secret management
-- Ed25519 artifact signing and cryptographic SBOM generation
+- Aucun code unsafe dans les crates sensibles à la sécurité
+- Validation des entrées à travers tous les backends
+- Moindre privilège pour toutes les opérations
+- Journalisation d'audit pour les opérations de sécurité
+- Gestion sécurisée des secrets
+- Signature d'artefacts Ed25519 et génération de SBOM cryptographique

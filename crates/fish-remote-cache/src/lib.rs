@@ -3,16 +3,16 @@
 pub mod artifact;
 pub mod banana_mesh;
 pub mod client;
+pub mod mesh_federation;
 pub mod p2p_lan;
 pub mod protocol;
 pub mod reapi;
 pub mod replication;
 pub mod server;
 pub mod signature_gate;
-pub mod mesh_federation;
 
 pub use banana_mesh::BananaMeshCache;
-pub use mesh_federation::{GlobalMeshFederation, FederationPayload, FederationError};
+pub use mesh_federation::{FederationError, FederationPayload, GlobalMeshFederation};
 pub use p2p_lan::{
     ArtifactChunk, ChunkBitfield, ChunkManifest, LanPeerNode, LanPeerRegistry,
     P2PArtifactReassembler,

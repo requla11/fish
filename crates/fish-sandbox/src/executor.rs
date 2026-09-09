@@ -44,14 +44,23 @@ impl<E: TaskExecutor> SandboxedExecutor<E> {
 impl<E: TaskExecutor + Sync> TaskExecutor for SandboxedExecutor<E> {
     fn execute(&self, task: &Task) -> Result<TaskOutcome, ExecutorError> {
         let env = sanitize_env(&self.config.env_policy, &self.config.extra_env);
-        
-        let original_cwd = task.spec.cwd.clone().unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
-        
+
+        let original_cwd = task
+            .spec
+            .cwd
+            .clone()
+            .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+
         let workspace = match self.config.fs_policy {
             FsPolicy::InPlace => crate::isolation::SandboxWorkspace::in_place(original_cwd.clone()),
             FsPolicy::IsolatedTemp => {
-                let ws = crate::isolation::SandboxWorkspace::isolated(&original_cwd)
-                    .map_err(|e| ExecutorError::SpawnFailed(format!("Failed to create isolated workspace: {}", e)))?;
+                let ws =
+                    crate::isolation::SandboxWorkspace::isolated(&original_cwd).map_err(|e| {
+                        ExecutorError::SpawnFailed(format!(
+                            "Failed to create isolated workspace: {}",
+                            e
+                        ))
+                    })?;
                 // Copy inputs
                 for input in &task.inputs {
                     if input.exists() {
@@ -63,13 +72,17 @@ impl<E: TaskExecutor + Sync> TaskExecutor for SandboxedExecutor<E> {
         };
 
         let active_cwd = workspace.root().to_path_buf();
-        
+
         // Wrap command using HermeticProcessSandbox
         use crate::hermetic::HermeticProcessSandbox;
-        let sandbox = HermeticProcessSandbox::auto_configure(active_cwd.clone(), active_cwd.clone());
-        let (wrapped_prog, wrapped_args) = sandbox.wrap_command_args(&task.spec.program, &task.spec.args);
+        let sandbox =
+            HermeticProcessSandbox::auto_configure(active_cwd.clone(), active_cwd.clone());
+        let (wrapped_prog, wrapped_args) =
+            sandbox.wrap_command_args(&task.spec.program, &task.spec.args);
 
-        let mut sandboxed_spec = CommandSpec::new(&wrapped_prog).args(wrapped_args).cwd(&active_cwd);
+        let mut sandboxed_spec = CommandSpec::new(&wrapped_prog)
+            .args(wrapped_args)
+            .cwd(&active_cwd);
 
         if self.config.env_policy != EnvPolicy::Inherit {
             sandboxed_spec = sandboxed_spec.env_clear();
@@ -80,9 +93,9 @@ impl<E: TaskExecutor + Sync> TaskExecutor for SandboxedExecutor<E> {
 
         let mut sandboxed_task = task.clone();
         sandboxed_task.spec = sandboxed_spec;
-        
+
         let outcome = self.inner.execute(&sandboxed_task);
-        
+
         // If isolated, copy artifacts back
         if self.config.fs_policy == FsPolicy::IsolatedTemp && outcome.is_ok() {
             for artifact in &task.artifacts {
@@ -96,7 +109,7 @@ impl<E: TaskExecutor + Sync> TaskExecutor for SandboxedExecutor<E> {
                 }
             }
         }
-        
+
         outcome
     }
 }

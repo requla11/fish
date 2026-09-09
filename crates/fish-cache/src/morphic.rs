@@ -102,7 +102,12 @@ impl MorphicFingerprintEngine {
     ) -> DualKeyFingerprint {
         let mut exact_hasher = blake3::Hasher::new();
         exact_hasher.update(task_name.as_bytes());
-        exact_hasher.update(workspace_root.to_string_lossy().replace('\\', "/").as_bytes());
+        exact_hasher.update(
+            workspace_root
+                .to_string_lossy()
+                .replace('\\', "/")
+                .as_bytes(),
+        );
         for arg in argv {
             exact_hasher.update(arg.as_bytes());
         }

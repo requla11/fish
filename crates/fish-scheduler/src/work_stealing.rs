@@ -117,11 +117,11 @@ impl WorkStealingScheduler {
             let local_deque = workers_local.pop().unwrap();
             let global_injector = Arc::clone(&injector);
             let sibling_stealers = Arc::clone(&stealers);
-            
+
             workers.push(std::thread::spawn(move || {
                 let mut rng_seed = worker_id as u64;
                 let num_siblings = sibling_stealers.len();
-                
+
                 loop {
                     // 1. Try local deque
                     let mut task_opt = local_deque.pop();
@@ -130,7 +130,10 @@ impl WorkStealingScheduler {
                     if task_opt.is_none() {
                         loop {
                             match global_injector.steal_batch_and_pop(&local_deque) {
-                                crossbeam_deque::Steal::Success(t) => { task_opt = Some(t); break; }
+                                crossbeam_deque::Steal::Success(t) => {
+                                    task_opt = Some(t);
+                                    break;
+                                }
                                 crossbeam_deque::Steal::Empty => break,
                                 crossbeam_deque::Steal::Retry => continue,
                             }
@@ -143,15 +146,22 @@ impl WorkStealingScheduler {
                         let start_idx = (rng_seed % num_siblings as u64) as usize;
                         for i in 0..num_siblings {
                             let target = (start_idx + i) % num_siblings;
-                            if target == worker_id { continue; }
+                            if target == worker_id {
+                                continue;
+                            }
                             loop {
                                 match sibling_stealers[target].steal_batch_and_pop(&local_deque) {
-                                    crossbeam_deque::Steal::Success(t) => { task_opt = Some(t); break; }
+                                    crossbeam_deque::Steal::Success(t) => {
+                                        task_opt = Some(t);
+                                        break;
+                                    }
                                     crossbeam_deque::Steal::Empty => break,
                                     crossbeam_deque::Steal::Retry => continue,
                                 }
                             }
-                            if task_opt.is_some() { break; }
+                            if task_opt.is_some() {
+                                break;
+                            }
                         }
                     }
 
@@ -230,8 +240,9 @@ impl WorkStealingScheduler {
             let (id, outcome, start_offset, worker_id) =
                 done_rx.recv().map_err(|_| SchedulerError::Stalled)?;
             in_flight -= 1;
-            
-            let is_success = outcome.status == TaskStatus::Executed || outcome.status == TaskStatus::Cached;
+
+            let is_success =
+                outcome.status == TaskStatus::Executed || outcome.status == TaskStatus::Cached;
             self.apply_outcome(
                 id,
                 outcome,
@@ -240,7 +251,7 @@ impl WorkStealingScheduler {
                 &mut failures,
                 &mut timings,
             )?;
-            
+
             if is_success {
                 for &dependent in self.graph.dependents(id).unwrap_or_default() {
                     indegrees[dependent.index()] -= 1;
@@ -249,10 +260,11 @@ impl WorkStealingScheduler {
                     }
                 }
             }
-            
+
             while let Ok((id, outcome, start_offset, worker_id)) = done_rx.try_recv() {
                 in_flight -= 1;
-                let is_success = outcome.status == TaskStatus::Executed || outcome.status == TaskStatus::Cached;
+                let is_success =
+                    outcome.status == TaskStatus::Executed || outcome.status == TaskStatus::Cached;
                 self.apply_outcome(
                     id,
                     outcome,

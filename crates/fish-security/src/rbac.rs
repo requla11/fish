@@ -427,7 +427,7 @@ pub fn validate_oidc_jwt(raw_token: &str, config: &OidcConfig) -> Result<Identit
             };
 
             let expected_sig = compute_hmac_sha256(secret_str.as_bytes(), signing_input.as_bytes());
-            
+
             fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
                 if a.len() != b.len() {
                     return false;
@@ -438,7 +438,7 @@ pub fn validate_oidc_jwt(raw_token: &str, config: &OidcConfig) -> Result<Identit
                 }
                 result == 0
             }
-            
+
             if !constant_time_eq(signature_bytes.as_slice(), expected_sig.as_slice()) {
                 return Err("HMAC signature verification failed".to_string());
             }

@@ -1,9 +1,9 @@
-use std::path::{Path, PathBuf};
-use std::collections::{HashMap, HashSet, BTreeSet};
 use quote::ToTokens;
-use syn::visit::Visit;
-use syn::{Item, File, Ident};
 use serde::{Deserialize, Serialize};
+use std::collections::{BTreeSet, HashMap, HashSet};
+use std::path::{Path, PathBuf};
+use syn::visit::Visit;
+use syn::{File, Ident, Item};
 
 use crate::ast_cache::AstSubTree;
 use crate::semantic_impact::SemanticImpactGraph;
@@ -83,9 +83,11 @@ pub struct DiffResult {
 
 impl DiffResult {
     pub fn has_signature_changes(&self) -> bool {
-        self.diffs.iter().any(|d| d.change == ChangeKind::SignatureModified
-            || d.change == ChangeKind::Added
-            || d.change == ChangeKind::Removed)
+        self.diffs.iter().any(|d| {
+            d.change == ChangeKind::SignatureModified
+                || d.change == ChangeKind::Added
+                || d.change == ChangeKind::Removed
+        })
     }
 
     pub fn changed_item_names(&self) -> Vec<String> {
@@ -142,14 +144,20 @@ fn extract_item_name(item: &Item) -> Option<(String, ItemKind)> {
                 String::new()
             };
             let generics = i.generics.to_token_stream().to_string().replace(' ', "");
-            Some((format!("impl_{trait_part}{target}{generics}"), ItemKind::Impl))
+            Some((
+                format!("impl_{trait_part}{target}{generics}"),
+                ItemKind::Impl,
+            ))
         }
         Item::Type(i) => Some((i.ident.to_string(), ItemKind::TypeAlias)),
         Item::Const(i) => Some((i.ident.to_string(), ItemKind::Const)),
         Item::Static(i) => Some((i.ident.to_string(), ItemKind::Static)),
         Item::Mod(i) => Some((i.ident.to_string(), ItemKind::Mod)),
         Item::Macro(i) => i.ident.as_ref().map(|id| (id.to_string(), ItemKind::Macro)),
-        Item::Use(i) => Some((i.tree.to_token_stream().to_string().replace(' ', ""), ItemKind::Use)),
+        Item::Use(i) => Some((
+            i.tree.to_token_stream().to_string().replace(' ', ""),
+            ItemKind::Use,
+        )),
         _ => None,
     }
 }
@@ -172,13 +180,23 @@ fn extract_visibility(item: &Item) -> String {
 fn extract_signature_hash(item: &Item) -> String {
     let sig_tokens = match item {
         Item::Fn(i) => {
-            let attrs = i.attrs.iter().map(|a| a.to_token_stream().to_string()).collect::<Vec<_>>().join(" ");
+            let attrs = i
+                .attrs
+                .iter()
+                .map(|a| a.to_token_stream().to_string())
+                .collect::<Vec<_>>()
+                .join(" ");
             let vis = i.vis.to_token_stream().to_string();
             let sig = i.sig.to_token_stream().to_string();
             format!("{attrs} {vis} {sig}")
         }
         Item::Struct(i) => {
-            let attrs = i.attrs.iter().map(|a| a.to_token_stream().to_string()).collect::<Vec<_>>().join(" ");
+            let attrs = i
+                .attrs
+                .iter()
+                .map(|a| a.to_token_stream().to_string())
+                .collect::<Vec<_>>()
+                .join(" ");
             let vis = i.vis.to_token_stream().to_string();
             let name = i.ident.to_string();
             let generics = i.generics.to_token_stream().to_string();
@@ -186,7 +204,12 @@ fn extract_signature_hash(item: &Item) -> String {
             format!("{attrs} {vis} struct {name}{generics} {fields}")
         }
         Item::Enum(i) => {
-            let attrs = i.attrs.iter().map(|a| a.to_token_stream().to_string()).collect::<Vec<_>>().join(" ");
+            let attrs = i
+                .attrs
+                .iter()
+                .map(|a| a.to_token_stream().to_string())
+                .collect::<Vec<_>>()
+                .join(" ");
             let vis = i.vis.to_token_stream().to_string();
             let name = i.ident.to_string();
             let generics = i.generics.to_token_stream().to_string();
@@ -194,7 +217,12 @@ fn extract_signature_hash(item: &Item) -> String {
             format!("{attrs} {vis} enum {name}{generics} {{ {variants} }}")
         }
         Item::Trait(i) => {
-            let attrs = i.attrs.iter().map(|a| a.to_token_stream().to_string()).collect::<Vec<_>>().join(" ");
+            let attrs = i
+                .attrs
+                .iter()
+                .map(|a| a.to_token_stream().to_string())
+                .collect::<Vec<_>>()
+                .join(" ");
             let vis = i.vis.to_token_stream().to_string();
             let name = i.ident.to_string();
             let generics = i.generics.to_token_stream().to_string();
@@ -206,14 +234,19 @@ fn extract_signature_hash(item: &Item) -> String {
                     syn::TraitItem::Type(t) => items_sig.push(t.to_token_stream().to_string()),
                     syn::TraitItem::Const(c) => items_sig.push(c.to_token_stream().to_string()),
                     syn::TraitItem::Macro(m) => items_sig.push(m.to_token_stream().to_string()),
-                    _ => {},
+                    _ => {}
                 }
             }
             let items_str = items_sig.join("; ");
             format!("{attrs} {vis} trait {name}{generics}: {bounds} {{ {items_str} }}")
         }
         Item::Impl(i) => {
-            let attrs = i.attrs.iter().map(|a| a.to_token_stream().to_string()).collect::<Vec<_>>().join(" ");
+            let attrs = i
+                .attrs
+                .iter()
+                .map(|a| a.to_token_stream().to_string())
+                .collect::<Vec<_>>()
+                .join(" ");
             let generics = i.generics.to_token_stream().to_string();
             let trait_ = if let Some((bang, path, _)) = &i.trait_ {
                 let b = if bang.is_some() { "!" } else { "" };
@@ -223,7 +256,12 @@ fn extract_signature_hash(item: &Item) -> String {
                 String::new()
             };
             let self_ty = i.self_ty.to_token_stream().to_string();
-            let where_clause = i.generics.where_clause.as_ref().map(|w| w.to_token_stream().to_string()).unwrap_or_default();
+            let where_clause = i
+                .generics
+                .where_clause
+                .as_ref()
+                .map(|w| w.to_token_stream().to_string())
+                .unwrap_or_default();
             let mut items_sig = Vec::new();
             for impl_item in &i.items {
                 match impl_item {
@@ -231,11 +269,11 @@ fn extract_signature_hash(item: &Item) -> String {
                         let v = m.vis.to_token_stream().to_string();
                         let s = m.sig.to_token_stream().to_string();
                         items_sig.push(format!("{v} {s}"));
-                    },
+                    }
                     syn::ImplItem::Type(t) => items_sig.push(t.to_token_stream().to_string()),
                     syn::ImplItem::Const(c) => items_sig.push(c.to_token_stream().to_string()),
                     syn::ImplItem::Macro(m) => items_sig.push(m.to_token_stream().to_string()),
-                    _ => {},
+                    _ => {}
                 }
             }
             let items_str = items_sig.join("; ");
@@ -264,7 +302,8 @@ fn collect_references_from_item(item: &Item, known_symbols: &HashSet<String>) ->
     let mut collector = IdentCollector::new();
     syn::visit::visit_item(&mut collector, item);
 
-    collector.referenced
+    collector
+        .referenced
         .into_iter()
         .filter(|name| known_symbols.contains(name))
         .collect()
@@ -275,7 +314,9 @@ pub fn parse_module(file_path: &Path, content: &str) -> Result<ModuleSnapshot, S
         .map_err(|e| format!("failed to parse Rust AST for {}: {e}", file_path.display()))?;
 
     let canonical_module_code = syntax_tree.to_token_stream().to_string();
-    let module_hash = blake3::hash(canonical_module_code.as_bytes()).to_hex().to_string();
+    let module_hash = blake3::hash(canonical_module_code.as_bytes())
+        .to_hex()
+        .to_string();
 
     let mut items = Vec::new();
     let mut name_to_item: HashMap<String, &Item> = HashMap::new();
@@ -322,12 +363,10 @@ pub fn parse_module(file_path: &Path, content: &str) -> Result<ModuleSnapshot, S
 pub fn diff_snapshots(old: &ModuleSnapshot, new: &ModuleSnapshot) -> DiffResult {
     let module_hash_changed = old.module_hash != new.module_hash;
 
-    let old_map: HashMap<&str, &SemanticItem> = old.items.iter()
-        .map(|i| (i.name.as_str(), i))
-        .collect();
-    let new_map: HashMap<&str, &SemanticItem> = new.items.iter()
-        .map(|i| (i.name.as_str(), i))
-        .collect();
+    let old_map: HashMap<&str, &SemanticItem> =
+        old.items.iter().map(|i| (i.name.as_str(), i)).collect();
+    let new_map: HashMap<&str, &SemanticItem> =
+        new.items.iter().map(|i| (i.name.as_str(), i)).collect();
 
     let mut diffs = Vec::new();
 
@@ -427,14 +466,14 @@ pub fn compute_rebuild_decision(
 
     let mut must_rebuild_vec: Vec<String> = must_rebuild.into_iter().collect();
     must_rebuild_vec.sort();
-    
+
     let mut safe_to_skip: Vec<String> = all_names
         .difference(&changed_names)
         .filter(|n| !must_rebuild_vec.contains(n))
         .cloned()
         .collect();
     safe_to_skip.sort();
-    
+
     let mut cascade_targets_vec: Vec<String> = cascade_targets.into_iter().collect();
     cascade_targets_vec.sort();
 
@@ -464,14 +503,16 @@ pub fn compute_rebuild_decision(
 }
 
 pub fn snapshot_to_ast_subtrees(snapshot: &ModuleSnapshot) -> Vec<AstSubTree> {
-    snapshot.items.iter().map(|item| {
-        AstSubTree {
+    snapshot
+        .items
+        .iter()
+        .map(|item| AstSubTree {
             symbol_name: item.name.clone(),
             kind: item.kind.to_string(),
             content_hash: item.canonical_hash.clone(),
             byte_range: item.byte_range,
-        }
-    }).collect()
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -488,8 +529,12 @@ mod tests {
 
     #[test]
     fn test_ast_hashing_ignores_comments_and_whitespace() {
-        let f1 = write_temp("pub struct Config { pub count: usize }\nfn work() { println!(\"hello\"); }");
-        let f2 = write_temp("/// doc comment\npub struct Config {\n    pub count: usize, // inline\n}\n\n// line comment\nfn work() {\n    println!(\"hello\");\n}");
+        let f1 = write_temp(
+            "pub struct Config { pub count: usize }\nfn work() { println!(\"hello\"); }",
+        );
+        let f2 = write_temp(
+            "/// doc comment\npub struct Config {\n    pub count: usize, // inline\n}\n\n// line comment\nfn work() {\n    println!(\"hello\");\n}",
+        );
 
         let s1 = parse_module(f1.path(), &std::fs::read_to_string(f1.path()).unwrap()).unwrap();
         let s2 = parse_module(f2.path(), &std::fs::read_to_string(f2.path()).unwrap()).unwrap();
@@ -505,8 +550,16 @@ mod tests {
         let f_old = write_temp("fn compute(x: i32) -> i32 { x + 1 }");
         let f_new = write_temp("fn compute(x: i32) -> i32 { x + 999 }");
 
-        let old = parse_module(f_old.path(), &std::fs::read_to_string(f_old.path()).unwrap()).unwrap();
-        let new = parse_module(f_new.path(), &std::fs::read_to_string(f_new.path()).unwrap()).unwrap();
+        let old = parse_module(
+            f_old.path(),
+            &std::fs::read_to_string(f_old.path()).unwrap(),
+        )
+        .unwrap();
+        let new = parse_module(
+            f_new.path(),
+            &std::fs::read_to_string(f_new.path()).unwrap(),
+        )
+        .unwrap();
         let diff = diff_snapshots(&old, &new);
 
         assert!(diff.module_hash_changed);
@@ -520,8 +573,16 @@ mod tests {
         let f_old = write_temp("fn compute(x: i32) -> i32 { x }");
         let f_new = write_temp("fn compute(x: i32, y: i32) -> i32 { x + y }");
 
-        let old = parse_module(f_old.path(), &std::fs::read_to_string(f_old.path()).unwrap()).unwrap();
-        let new = parse_module(f_new.path(), &std::fs::read_to_string(f_new.path()).unwrap()).unwrap();
+        let old = parse_module(
+            f_old.path(),
+            &std::fs::read_to_string(f_old.path()).unwrap(),
+        )
+        .unwrap();
+        let new = parse_module(
+            f_new.path(),
+            &std::fs::read_to_string(f_new.path()).unwrap(),
+        )
+        .unwrap();
         let diff = diff_snapshots(&old, &new);
 
         assert!(diff.has_signature_changes());
@@ -533,8 +594,16 @@ mod tests {
         let f_old = write_temp("fn alpha() {} fn beta() {}");
         let f_new = write_temp("fn alpha() {} fn gamma() {}");
 
-        let old = parse_module(f_old.path(), &std::fs::read_to_string(f_old.path()).unwrap()).unwrap();
-        let new = parse_module(f_new.path(), &std::fs::read_to_string(f_new.path()).unwrap()).unwrap();
+        let old = parse_module(
+            f_old.path(),
+            &std::fs::read_to_string(f_old.path()).unwrap(),
+        )
+        .unwrap();
+        let new = parse_module(
+            f_new.path(),
+            &std::fs::read_to_string(f_new.path()).unwrap(),
+        )
+        .unwrap();
         let diff = diff_snapshots(&old, &new);
 
         let names: HashSet<String> = diff.diffs.iter().map(|d| d.name.clone()).collect();
@@ -632,8 +701,16 @@ mod tests {
         let decision = compute_rebuild_decision(&diff, &new, Some(&impact));
 
         assert_eq!(decision.affected_tests.len(), 2);
-        assert!(decision.affected_tests.contains(&"tests::tax_10_percent".to_string()));
-        assert!(decision.affected_tests.contains(&"tests::tax_invoice_total".to_string()));
+        assert!(
+            decision
+                .affected_tests
+                .contains(&"tests::tax_10_percent".to_string())
+        );
+        assert!(
+            decision
+                .affected_tests
+                .contains(&"tests::tax_invoice_total".to_string())
+        );
     }
 
     #[test]
@@ -678,7 +755,15 @@ mod tests {
 
         let subtrees = snapshot_to_ast_subtrees(&snap);
         assert_eq!(subtrees.len(), 2);
-        assert!(subtrees.iter().any(|s| s.symbol_name == "alpha" && s.kind == "fn"));
-        assert!(subtrees.iter().any(|s| s.symbol_name == "Beta" && s.kind == "struct"));
+        assert!(
+            subtrees
+                .iter()
+                .any(|s| s.symbol_name == "alpha" && s.kind == "fn")
+        );
+        assert!(
+            subtrees
+                .iter()
+                .any(|s| s.symbol_name == "Beta" && s.kind == "struct")
+        );
     }
 }

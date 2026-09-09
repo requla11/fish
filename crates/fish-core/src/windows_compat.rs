@@ -108,7 +108,7 @@ pub fn is_developer_mode_enabled() -> bool {
             "query",
             "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\AppModelUnlock",
             "/v",
-            "AllowDevelopmentWithoutDevLicense"
+            "AllowDevelopmentWithoutDevLicense",
         ])
         .output()
     {

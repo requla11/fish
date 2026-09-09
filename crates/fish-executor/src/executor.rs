@@ -127,12 +127,20 @@ fn run_with_timeout(
             let _ = self.0.kill();
         }
     }
-    
+
     // Ensure we kill the process if this thread panics
     let mut child_guard = KillOnDrop(&mut child);
 
-    let mut stdout = child_guard.0.stdout.take().expect("piped stdout is present");
-    let mut stderr = child_guard.0.stderr.take().expect("piped stderr is present");
+    let mut stdout = child_guard
+        .0
+        .stdout
+        .take()
+        .expect("piped stdout is present");
+    let mut stderr = child_guard
+        .0
+        .stderr
+        .take()
+        .expect("piped stderr is present");
 
     let stdout_reader = std::thread::spawn(move || {
         let mut buf = Vec::new();
@@ -169,7 +177,7 @@ fn run_with_timeout(
             None => continue,
         }
     };
-    
+
     // Disable kill on drop since it successfully finished
     std::mem::forget(child_guard);
 
@@ -198,7 +206,7 @@ impl ProcessExecutor {
                         command: task.spec.program.clone(),
                         source: e,
                     })?;
-                
+
                 struct KillOnDrop<'a>(&'a mut std::process::Child);
                 impl<'a> Drop for KillOnDrop<'a> {
                     fn drop(&mut self) {
@@ -206,7 +214,7 @@ impl ProcessExecutor {
                     }
                 }
                 let mut child_guard = KillOnDrop(&mut child);
-                
+
                 let mut stdout = child_guard.0.stdout.take().expect("piped stdout");
                 let mut stderr = child_guard.0.stderr.take().expect("piped stderr");
 
@@ -235,12 +243,13 @@ impl ProcessExecutor {
                         });
                     }
                     use wait_timeout::ChildExt;
-                    match child_guard.0.wait_timeout(std::time::Duration::from_millis(50))
+                    match child_guard
+                        .0
+                        .wait_timeout(std::time::Duration::from_millis(50))
                         .map_err(|e| ExecutorError::Record {
                             command: task.spec.program.clone(),
                             source: e,
-                        })? 
-                    {
+                        })? {
                         Some(status) => break status,
                         None => continue,
                     }

@@ -1,15 +1,14 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use serde::{Deserialize, Serialize};
 
 use crate::ast_cache::AstCacheIndex;
 use crate::compiler_hooks::{
-    ModuleSnapshot, DiffResult, RebuildDecision,
-    parse_module, diff_snapshots, compute_rebuild_decision,
-    snapshot_to_ast_subtrees,
+    DiffResult, ModuleSnapshot, RebuildDecision, compute_rebuild_decision, diff_snapshots,
+    parse_module, snapshot_to_ast_subtrees,
 };
-use crate::ts_hooks::{TsDialect, parse_ts_module};
 use crate::semantic_impact::SemanticImpactGraph;
+use crate::ts_hooks::{TsDialect, parse_ts_module};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkspaceRebuildPlan {
@@ -63,7 +62,7 @@ impl CompilerHookService {
 
     pub fn analyze_file(&mut self, file_path: &Path) -> Result<Option<FileRebuildPlan>, String> {
         let norm_path = Self::normalize_path(file_path);
-        
+
         let content = match std::fs::read_to_string(file_path) {
             Ok(c) => c,
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
@@ -79,7 +78,7 @@ impl CompilerHookService {
                         must_rebuild.push(item.name.clone());
                     }
                     must_rebuild.sort();
-                    
+
                     let mut affected_tests = if diffs.is_empty() {
                         Vec::new()
                     } else {
@@ -109,7 +108,7 @@ impl CompilerHookService {
         };
 
         let ext = file_path.extension().and_then(|e| e.to_str()).unwrap_or("");
-        
+
         let new_snapshot = if TsDialect::from_extension(ext).is_some() {
             parse_ts_module(&norm_path, &content)?
         } else if ext == "rs" {
@@ -127,11 +126,8 @@ impl CompilerHookService {
             if diff.is_clean() {
                 None
             } else {
-                let decision = compute_rebuild_decision(
-                    &diff,
-                    &new_snapshot,
-                    Some(&self.impact_graph),
-                );
+                let decision =
+                    compute_rebuild_decision(&diff, &new_snapshot, Some(&self.impact_graph));
                 Some(FileRebuildPlan {
                     file_path: norm_path.clone(),
                     diff,
@@ -141,20 +137,18 @@ impl CompilerHookService {
         } else {
             let diff = DiffResult {
                 file_path: norm_path.clone(),
-                diffs: new_snapshot.items.iter().map(|item| {
-                    crate::compiler_hooks::ItemDiff {
+                diffs: new_snapshot
+                    .items
+                    .iter()
+                    .map(|item| crate::compiler_hooks::ItemDiff {
                         name: item.name.clone(),
                         kind: item.kind.clone(),
                         change: crate::compiler_hooks::ChangeKind::Added,
-                    }
-                }).collect(),
+                    })
+                    .collect(),
                 module_hash_changed: true,
             };
-            let decision = compute_rebuild_decision(
-                &diff,
-                &new_snapshot,
-                Some(&self.impact_graph),
-            );
+            let decision = compute_rebuild_decision(&diff, &new_snapshot, Some(&self.impact_graph));
             Some(FileRebuildPlan {
                 file_path: norm_path.clone(),
                 diff,
@@ -166,12 +160,15 @@ impl CompilerHookService {
         Ok(plan)
     }
 
-    pub fn analyze_workspace(&mut self, changed_files: &[PathBuf]) -> Result<WorkspaceRebuildPlan, String> {
+    pub fn analyze_workspace(
+        &mut self,
+        changed_files: &[PathBuf],
+    ) -> Result<WorkspaceRebuildPlan, String> {
         let mut files_analyzed = 0usize;
         let mut files_unchanged = 0usize;
         let mut files_body_only = 0usize;
         let mut files_sig = 0usize;
-        
+
         let mut diffs_by_file = HashMap::new();
 
         for file_path in changed_files {
@@ -203,20 +200,27 @@ impl CompilerHookService {
                 all_names.insert(item.name.clone());
             }
             for (from, to) in &snap.edges {
-                global_edges.entry(from.clone()).or_default().extend(to.iter().cloned());
+                global_edges
+                    .entry(from.clone())
+                    .or_default()
+                    .extend(to.iter().cloned());
             }
         }
 
         let mut must_rebuild_global = std::collections::HashSet::new();
         let mut cascade_targets_global = std::collections::HashSet::new();
         let mut diff_items_with_module_changes = Vec::new();
-        
+
         for (path, diff) in &diffs_by_file {
             let mut file_items = Vec::new();
             if let Some(snap) = self.snapshot_cache.get(path) {
-                file_items = snap.items.iter().map(|i| (i.name.clone(), i.kind.clone())).collect();
+                file_items = snap
+                    .items
+                    .iter()
+                    .map(|i| (i.name.clone(), i.kind.clone()))
+                    .collect();
             }
-            
+
             if diff.module_hash_changed {
                 for (name, kind) in file_items {
                     must_rebuild_global.insert(name.clone());
@@ -227,7 +231,7 @@ impl CompilerHookService {
                     });
                 }
             }
-            
+
             for diff_item in &diff.diffs {
                 must_rebuild_global.insert(diff_item.name.clone());
                 diff_items_with_module_changes.push(diff_item.clone());
@@ -238,24 +242,25 @@ impl CompilerHookService {
             if diff_item.change == crate::compiler_hooks::ChangeKind::SignatureModified
                 || diff_item.change == crate::compiler_hooks::ChangeKind::Removed
             {
-                let deps = crate::compiler_hooks::transitive_dependents(&diff_item.name, &global_edges);
+                let deps =
+                    crate::compiler_hooks::transitive_dependents(&diff_item.name, &global_edges);
                 for dep in deps {
                     must_rebuild_global.insert(dep.clone());
                     cascade_targets_global.insert(dep);
                 }
             }
         }
-        
+
         let mut items_rebuild = must_rebuild_global.len();
         let total_items = all_names.len();
         let items_skip = total_items.saturating_sub(items_rebuild);
-        
+
         let mut must_rebuild_vec: Vec<String> = must_rebuild_global.into_iter().collect();
         must_rebuild_vec.sort();
-        
+
         let mut all_tests = self.impact_graph.find_impacted_tests(&must_rebuild_vec);
         all_tests.sort();
-        
+
         let cascade_count = cascade_targets_global.len();
         let total_for_ratio = items_rebuild + items_skip;
         let overall_reuse_ratio = if total_for_ratio == 0 {
@@ -331,7 +336,12 @@ mod tests {
 
         let plan = svc.analyze_file(f.path()).unwrap().unwrap();
         assert_eq!(plan.diff.diffs.len(), 2);
-        assert!(plan.diff.diffs.iter().all(|d| d.change == crate::compiler_hooks::ChangeKind::Added));
+        assert!(
+            plan.diff
+                .diffs
+                .iter()
+                .all(|d| d.change == crate::compiler_hooks::ChangeKind::Added)
+        );
     }
 
     #[test]
@@ -354,7 +364,10 @@ mod tests {
 
         let plan = svc.analyze_file(f.path()).unwrap().unwrap();
         assert_eq!(plan.diff.diffs.len(), 1);
-        assert_eq!(plan.diff.diffs[0].change, crate::compiler_hooks::ChangeKind::BodyModified);
+        assert_eq!(
+            plan.diff.diffs[0].change,
+            crate::compiler_hooks::ChangeKind::BodyModified
+        );
     }
 
     #[test]
@@ -363,11 +376,15 @@ mod tests {
         let f2 = write_rs("fn beta() -> i32 { 2 }");
 
         let mut svc = CompilerHookService::new();
-        let _ = svc.analyze_workspace(&[f1.path().to_path_buf(), f2.path().to_path_buf()]).unwrap();
+        let _ = svc
+            .analyze_workspace(&[f1.path().to_path_buf(), f2.path().to_path_buf()])
+            .unwrap();
 
         std::fs::write(f1.path(), "fn alpha() -> i32 { 999 }").unwrap();
 
-        let plan = svc.analyze_workspace(&[f1.path().to_path_buf(), f2.path().to_path_buf()]).unwrap();
+        let plan = svc
+            .analyze_workspace(&[f1.path().to_path_buf(), f2.path().to_path_buf()])
+            .unwrap();
         assert_eq!(plan.files_with_body_only_changes, 1);
         assert_eq!(plan.files_unchanged, 1);
         assert!(plan.overall_reuse_ratio >= 0.0);
@@ -384,7 +401,11 @@ mod tests {
         std::fs::write(f.path(), "fn tax(x: f64) -> f64 { x * 0.2 }").unwrap();
 
         let plan = svc.analyze_file(f.path()).unwrap().unwrap();
-        assert!(plan.decision.affected_tests.contains(&"tests::tax_rate".to_string()));
+        assert!(
+            plan.decision
+                .affected_tests
+                .contains(&"tests::tax_rate".to_string())
+        );
     }
 
     #[test]

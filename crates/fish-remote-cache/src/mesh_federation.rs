@@ -1,10 +1,12 @@
+use ed25519_dalek::VerifyingKey;
+use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::sync::Arc;
-use serde::{Deserialize, Serialize};
-use ed25519_dalek::VerifyingKey;
 
-use fish_security::slsa::{SignedStatement, verify_statement_signature, verify_slsa_level3_compliance};
 use crate::banana_mesh::BananaMeshCache;
+use fish_security::slsa::{
+    SignedStatement, verify_slsa_level3_compliance, verify_statement_signature,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FederationPayload {
@@ -39,7 +41,12 @@ impl GlobalMeshFederation {
         self.trusted_public_keys.insert(public_key_b64.to_string());
     }
 
-    pub fn publish_artifact(&self, blake3_hash: &str, data: Vec<u8>, attestation: SignedStatement) -> Result<(), FederationError> {
+    pub fn publish_artifact(
+        &self,
+        blake3_hash: &str,
+        data: Vec<u8>,
+        attestation: SignedStatement,
+    ) -> Result<(), FederationError> {
         let payload = FederationPayload {
             artifact_data: data,
             attestation,
@@ -52,7 +59,10 @@ impl GlobalMeshFederation {
         Ok(())
     }
 
-    pub fn fetch_and_verify(&self, expected_blake3_hash: &str) -> Result<Option<Vec<u8>>, FederationError> {
+    pub fn fetch_and_verify(
+        &self,
+        expected_blake3_hash: &str,
+    ) -> Result<Option<Vec<u8>>, FederationError> {
         // Find peers holding the artifact via Kademlia DHT
         let peers = self.mesh.find_peer_nodes(expected_blake3_hash);
         if peers.is_empty() {
@@ -65,7 +75,9 @@ impl GlobalMeshFederation {
             None => {
                 // In a real network, we'd establish a P2P connection to the peer and stream.
                 // For this moonshot prototype, we assume the banana mesh retrieves it.
-                return Err(FederationError::Network("Failed to retrieve chunk from peers".to_string()));
+                return Err(FederationError::Network(
+                    "Failed to retrieve chunk from peers".to_string(),
+                ));
             }
         };
 
@@ -82,7 +94,9 @@ impl GlobalMeshFederation {
         }
 
         if !signature_valid {
-            return Err(FederationError::SignatureVerificationFailed("No trusted key matched the attestation signature".to_string()));
+            return Err(FederationError::SignatureVerificationFailed(
+                "No trusted key matched the attestation signature".to_string(),
+            ));
         }
 
         // 2. Verify SLSA Level 3 Compliance (Hermetic, exact params, valid structure)
@@ -102,9 +116,10 @@ impl GlobalMeshFederation {
         }
 
         if !subject_hash_matches {
-            return Err(FederationError::SlsaComplianceError(
-                format!("Attestation subject does not match requested hash {}", expected_blake3_hash)
-            ));
+            return Err(FederationError::SlsaComplianceError(format!(
+                "Attestation subject does not match requested hash {}",
+                expected_blake3_hash
+            )));
         }
 
         // 4. Zero-trust check: re-hash the downloaded data to ensure it hasn't been tampered with
@@ -122,11 +137,11 @@ impl GlobalMeshFederation {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
-    use fish_security::slsa::{generate_slsa_level3_statement, SlsaMaterial};
-    use ed25519_dalek::{SigningKey, Signer};
-    use rand_core::OsRng;
     use base64::{Engine as _, engine::general_purpose};
+    use ed25519_dalek::{Signer, SigningKey};
+    use fish_security::slsa::{SlsaMaterial, generate_slsa_level3_statement};
+    use rand_core::OsRng;
+    use std::collections::HashMap;
 
     #[test]
     fn test_global_mesh_federation_publish_and_verify() {
@@ -166,7 +181,9 @@ mod tests {
             key_id: pub_b64.clone(),
         };
 
-        federation.publish_artifact(&hash, data.clone(), signed).unwrap();
+        federation
+            .publish_artifact(&hash, data.clone(), signed)
+            .unwrap();
 
         let retrieved = federation.fetch_and_verify(&hash).unwrap().unwrap();
         assert_eq!(retrieved, data);

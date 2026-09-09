@@ -310,10 +310,10 @@ impl BackendScanner for MavenScanner {
             .map_err(SecurityError::IoError)?;
 
         let mut packages = Vec::new();
-        
+
         // Simple regex to extract artifactId and version from dependencies
         let re = regex::Regex::new(r"(?s)<dependency>.*?<artifactId>(.*?)</artifactId>.*?<version>(.*?)</version>.*?</dependency>").unwrap();
-        
+
         for cap in re.captures_iter(&content) {
             let name = cap[1].trim().to_string();
             let version = cap[2].trim().to_string();

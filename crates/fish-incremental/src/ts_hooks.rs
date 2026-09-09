@@ -1,8 +1,10 @@
-use std::path::{Path, PathBuf};
-use std::collections::{HashMap, BTreeSet};
 use serde::{Deserialize, Serialize};
+use std::collections::{BTreeSet, HashMap};
+use std::path::{Path, PathBuf};
 
-use crate::compiler_hooks::{ItemKind, ChangeKind, ItemDiff, DiffResult, RebuildDecision, SemanticItem, ModuleSnapshot};
+use crate::compiler_hooks::{
+    ChangeKind, DiffResult, ItemDiff, ItemKind, ModuleSnapshot, RebuildDecision, SemanticItem,
+};
 use crate::semantic_impact::SemanticImpactGraph;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -184,14 +186,20 @@ impl<'a> TsParser<'a> {
                         match self.bytes[self.pos] {
                             b'(' => depth += 1,
                             b')' => depth -= 1,
-                            b'\'' | b'"' => { self.skip_string(self.bytes[self.pos]); continue; }
+                            b'\'' | b'"' => {
+                                self.skip_string(self.bytes[self.pos]);
+                                continue;
+                            }
                             _ => {}
                         }
                         self.pos += 1;
                     }
                     continue;
                 }
-                _ => { self.pos += 1; continue; }
+                _ => {
+                    self.pos += 1;
+                    continue;
+                }
             }
             self.pos += 1;
         }
@@ -212,21 +220,32 @@ pub fn parse_ts_module(file_path: &Path, content: &str) -> Result<ModuleSnapshot
     let items = extract_ts_items(content);
 
     let content_no_comments = strip_ts_comments(content);
-    let module_hash = blake3::hash(content_no_comments.as_bytes()).to_hex().to_string();
+    let module_hash = blake3::hash(content_no_comments.as_bytes())
+        .to_hex()
+        .to_string();
 
     let mut semantic_items = Vec::new();
-    let all_names: std::collections::HashSet<String> = items.iter().map(|i| i.name.clone()).collect();
+    let all_names: std::collections::HashSet<String> =
+        items.iter().map(|i| i.name.clone()).collect();
 
     for item in &items {
         let body = &content[item.body_start..item.body_end];
         let body_no_comments = strip_ts_comments(body);
-        let canonical_hash = blake3::hash(body_no_comments.as_bytes()).to_hex().to_string();
+        let canonical_hash = blake3::hash(body_no_comments.as_bytes())
+            .to_hex()
+            .to_string();
 
         let sig = extract_ts_signature(body, &item.kind);
         let sig_no_comments = strip_ts_comments(&sig);
-        let signature_hash = blake3::hash(sig_no_comments.as_bytes()).to_hex().to_string();
+        let signature_hash = blake3::hash(sig_no_comments.as_bytes())
+            .to_hex()
+            .to_string();
 
-        let visibility = if item.is_exported { "export".to_string() } else { String::new() };
+        let visibility = if item.is_exported {
+            "export".to_string()
+        } else {
+            String::new()
+        };
 
         semantic_items.push(SemanticItem {
             name: item.name.clone(),
@@ -290,7 +309,7 @@ fn extract_ts_items(source: &str) -> Vec<TsItem> {
 
         let is_exported_default = remaining.starts_with("export default ");
         let is_exported = remaining.starts_with("export ") || is_exported_default;
-        
+
         let effective = if is_exported_default {
             &remaining[15..]
         } else if is_exported {
@@ -307,7 +326,9 @@ fn extract_ts_items(source: &str) -> Vec<TsItem> {
             parser.pos
         };
 
-        if let Some(item) = try_parse_ts_declaration(effective, effective_start, is_exported, &mut parser) {
+        if let Some(item) =
+            try_parse_ts_declaration(effective, effective_start, is_exported, &mut parser)
+        {
             items.push(item);
         } else {
             while parser.pos < parser.bytes.len()
@@ -363,7 +384,7 @@ fn try_parse_ts_declaration(
             };
 
             let body_start = if is_exported {
-                // We'll just capture from `export` for simplicity. 
+                // We'll just capture from `export` for simplicity.
                 // But the abs_offset is the effective start. We can backtrack.
                 // It's safer to just use parser.pos as body_start, but it might be off if we moved pos.
                 // The parser.pos hasn't moved yet.
@@ -391,7 +412,7 @@ fn try_parse_ts_declaration(
 fn strip_ts_comments(source: &str) -> String {
     let mut result = String::with_capacity(source.len());
     let mut chars = source.chars().peekable();
-    
+
     while let Some(c) = chars.next() {
         if c == '/' {
             if let Some(&next_c) = chars.peek() {
@@ -417,7 +438,7 @@ fn strip_ts_comments(source: &str) -> String {
                 }
             }
         }
-        
+
         if c == '\'' || c == '"' || c == '`' {
             let quote = c;
             result.push(c);
@@ -443,7 +464,7 @@ fn extract_ts_signature(body: &str, kind: &ItemKind) -> String {
     let mut signature = String::new();
     let mut chars = body.chars().peekable();
     let mut depth = 0;
-    
+
     while let Some(c) = chars.next() {
         if c == '\'' || c == '"' || c == '`' {
             let quote = c;
@@ -461,23 +482,19 @@ fn extract_ts_signature(body: &str, kind: &ItemKind) -> String {
             }
             continue;
         }
-        
+
         if c == '{' {
-            if depth == 0 && (*kind == ItemKind::Function || *kind == ItemKind::Struct || *kind == ItemKind::Trait || *kind == ItemKind::Enum) {
+            if depth == 0 {
                 break;
             }
             depth += 1;
         } else if c == '}' {
             depth -= 1;
         }
-        
-        if c == '=' && depth == 0 && (*kind == ItemKind::Const || *kind == ItemKind::Static) {
-            break;
-        }
-        
+
         signature.push(c);
     }
-    
+
     signature.trim().to_string()
 }
 
@@ -658,12 +675,17 @@ function isolated(): void {}
     fn test_ts_async_function() {
         let source = "export async function fetchData(url: string): Promise<Response> { return await fetch(url); }";
         let snap = parse_ts_module(Path::new("api.ts"), source).unwrap();
-        assert!(snap.items.iter().any(|i| i.name == "fetchData" && i.kind == ItemKind::Function));
+        assert!(
+            snap.items
+                .iter()
+                .any(|i| i.name == "fetchData" && i.kind == ItemKind::Function)
+        );
     }
 
     #[test]
     fn test_ts_type_alias() {
-        let source = "export type UserId = string;\nexport type Config = { port: number; host: string };";
+        let source =
+            "export type UserId = string;\nexport type Config = { port: number; host: string };";
         let snap = parse_ts_module(Path::new("types.ts"), source).unwrap();
         let names: Vec<&str> = snap.items.iter().map(|i| i.name.as_str()).collect();
         assert!(names.contains(&"UserId"));

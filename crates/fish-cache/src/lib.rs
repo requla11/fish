@@ -664,7 +664,9 @@ impl LocalCache {
                 *ref_counts.entry(h.clone()).or_insert(0) += 1;
                 let manifest_path = objects_dir.join(h);
                 if let Ok(bytes) = fs::read(&manifest_path) {
-                    if let Ok(entries) = serde_json::from_slice::<Vec<ArtifactManifestEntry>>(&bytes) {
+                    if let Ok(entries) =
+                        serde_json::from_slice::<Vec<ArtifactManifestEntry>>(&bytes)
+                    {
                         for entry in entries {
                             *ref_counts.entry(entry.hash).or_insert(0) += 1;
                         }
@@ -780,7 +782,9 @@ impl LocalCache {
                     *size_ref_counts.entry(h.clone()).or_insert(0) += 1;
                     let manifest_path = objects_dir.join(h);
                     if let Ok(bytes) = fs::read(&manifest_path) {
-                        if let Ok(entries) = serde_json::from_slice::<Vec<ArtifactManifestEntry>>(&bytes) {
+                        if let Ok(entries) =
+                            serde_json::from_slice::<Vec<ArtifactManifestEntry>>(&bytes)
+                        {
                             for entry in entries {
                                 *size_ref_counts.entry(entry.hash).or_insert(0) += 1;
                             }

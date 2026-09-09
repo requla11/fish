@@ -40,7 +40,8 @@ impl AsyncProcessExecutor {
         let mut command: TokioCommand = self.spec_to_tokio_command(&task.spec);
 
         let output = if let Some(timeout) = self.timeout {
-            self.run_with_timeout_async(&mut command, timeout, &task.cancel_flag).await
+            self.run_with_timeout_async(&mut command, timeout, &task.cancel_flag)
+                .await
         } else {
             self.run_async(&mut command, &task.cancel_flag).await
         };

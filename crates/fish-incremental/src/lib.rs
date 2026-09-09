@@ -9,6 +9,9 @@ pub mod abi_extractor;
 pub mod analyzer;
 pub mod ast_cache;
 pub mod change_detector;
+pub mod compiler_hooks;
+pub mod compiler_hook_service;
+pub mod ts_hooks;
 pub mod ecosystem;
 pub mod explain;
 pub mod inference;
@@ -16,6 +19,8 @@ pub mod patterns;
 pub mod suggestions;
 pub mod swpe;
 pub mod vfs;
+pub mod subtree_cache;
+pub mod test_selector;
 
 pub use abi_extractor::SemanticAbiExtractor;
 pub use analyzer::{BuildAnalysis, IncrementalAnalyzer};
@@ -139,6 +144,3 @@ mod tests {
         assert_eq!(analysis.rebuild_frequency, 0.5);
     }
 }
-
-pub mod subtree_cache;
-pub mod test_selector;

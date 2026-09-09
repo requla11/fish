@@ -164,6 +164,7 @@ fn main() -> ExitCode {
         Command::LivePatch(args) => commands::run_live_patch(args),
         Command::Jit(args) => commands::run_jit(args),
         Command::SuperOpt(args) => commands::run_super_opt(args),
+        Command::QueryHooks(args) => commands::run_query_hooks(args),
         Command::Plugin(args) => commands::run_plugin(args),
         Command::Fix(args) => commands::run_fix(args),
         Command::Pash(args) => commands::run_pash(args),

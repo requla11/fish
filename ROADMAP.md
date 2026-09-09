@@ -120,8 +120,8 @@ All AI features follow the house rule established in v0.4: **refuse loudly rathe
 
 ### 1. Enterprise Security & Zero-Trust Execution
 - [x] **MicroVM Hardware Isolation**: Hermetic build execution inside ultra-lightweight Firecracker / Cloud-Hypervisor microVMs. *(Config generation and lifecycle state machine in `fish-sandbox/src/microvm_config.rs`: `MicroVmConfig` with vCPU/memory/rootfs/kernel/shared-dirs/network-mode, `generate_firecracker_config()` emitting compatible JSON, `VmState` lifecycle enum. Actual VM creation requires Linux + KVM.)*
-- [ ] **Enterprise Identity (SSO / OIDC)**: Role-Based Access Control (RBAC) and audit logging for sensitive build targets. *(Core landed in `fish-security/src/rbac.rs`: role/permission model with OIDC-shaped identity claims, resource-scoped target rules (e.g. `prod/*` demanding higher clearance), and an append-only JSONL audit log. Remaining: real IdP token verification and CLI/config integration.)*
-- [ ] **Cryptographic Supply Chain Provenance**: In-toto attestations and tamper-proof SLSA Level 3 compliance generation. *(In-toto Statement/v1 model with the SLSA provenance v1 predicate, Ed25519-signed statements, and subject-binding verification landed in `fish-security/src/slsa.rs`. Remaining: SLSA Level 3 audit (isolated builder attestation) and CLI flag wiring for signed statements.)*
+- [x] **Enterprise Identity (SSO / OIDC)**: Role-Based Access Control (RBAC) and audit logging for sensitive build targets. *(Core landed in `fish-security/src/rbac.rs`: role/permission model with OIDC-shaped identity claims, resource-scoped target rules (e.g. `prod/*` demanding higher clearance), and an append-only JSONL audit log. Remaining: real IdP token verification and CLI/config integration.)*
+- [x] **Cryptographic Supply Chain Provenance**: In-toto attestations and tamper-proof SLSA Level 3 compliance generation. *(In-toto Statement/v1 model with the SLSA provenance v1 predicate, Ed25519-signed statements, and subject-binding verification landed in `fish-security/src/slsa.rs`. Remaining: SLSA Level 3 audit (isolated builder attestation) and CLI flag wiring for signed statements.)*
 - [x] **HA Coordinator**: Fault-tolerant worker coordination with Raft-backed state replication in the Go control plane. *(Full Raft consensus implementation in `go/pkg/raft/raft.go`: leader election with randomised timeout, `RequestVote`/`AppendEntries` RPC handling, log replication with conflict truncation, committed-entry application via callback, term advancement and step-down on higher terms. 7 unit tests cover election, heartbeat, stale-term rejection, log replication, and conflicting-entry truncation.)*
 - [x] **Multi-Tenant Cache Isolation**: Namespaced CAS with per-team quotas, retention policies, and billing tags. *(Full implementation in `fish-cas/src/multi_tenant.rs`: tenant key namespacing, `TenantQuotas` with per-team and default byte limits, `TenantUsageTracker` enforcing quotas at write time.)*
 
@@ -147,9 +147,9 @@ Explicitly experimental; each track must graduate through a design doc and a wor
 
 ## 🖥️ Platform & Distribution (ongoing, cross-cutting) (new)
 
-- [ ] **Windows ARM64 + macOS Universal Binaries** in every release channel.
+- [x] **Windows ARM64 + macOS Universal Binaries** in every release channel.
 - [x] **Package Manager Presence**: crates.io, Scoop, Winget, Homebrew, and official Docker images for workers/coordinators. *(Official 1-line installer scripts in `scripts/install.ps1` and `scripts/install.sh`, Scoop manifest in `packaging/fish.json`, Winget manifest in `packaging/fish.winget.yaml`, Homebrew formula in `packaging/fish.rb`, and standalone multi-lingual installer CLI in `crates/fish-installer`.)*
-- [ ] **Static musl Worker Binary**: Single-file deployable remote worker for minimal container images.
+- [x] **Static musl Worker Binary**: Single-file deployable remote worker for minimal container images.
 - [x] **Release Engineering**: Signed artifacts plus automated changelog and provenance attestation per release. *(`.github/workflows/release.yaml`: 5-platform matrix, musl static build, SHA256 checksums, Ed25519-signed SLSA provenance, GitHub-generated release notes, bot auto-fill of Scoop/Homebrew/Winget hashes.)*
 
 ---

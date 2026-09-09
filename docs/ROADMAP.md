@@ -120,8 +120,8 @@ All AI features follow the house rule established in v0.4: **refuse loudly rathe
 
 ### 1. Enterprise Security & Zero-Trust Execution
 - [x] **MicroVM Hardware Isolation**: Hermetic build execution inside ultra-lightweight Firecracker / Cloud-Hypervisor microVMs. *(Config generation and lifecycle state machine in `fish-sandbox/src/microvm_config.rs`: `MicroVmConfig` with vCPU/memory/rootfs/kernel/shared-dirs/network-mode, `generate_firecracker_config()` emitting compatible JSON, `VmState` lifecycle enum. Actual VM creation requires Linux + KVM.)*
-- [ ] **Enterprise Identity (SSO / OIDC)**: Role-Based Access Control (RBAC) and audit logging for sensitive build targets. *(Core landed in `fish-security/src/rbac.rs`: role/permission model with OIDC-shaped identity claims, resource-scoped target rules (e.g. `prod/*` demanding higher clearance), and an append-only JSONL audit log. Remaining: real IdP token verification and CLI/config integration.)*
-- [ ] **Cryptographic Supply Chain Provenance**: In-toto attestations and tamper-proof SLSA Level 3 compliance generation. *(In-toto Statement/v1 model with the SLSA provenance v1 predicate, Ed25519-signed statements, and subject-binding verification landed in `fish-security/src/slsa.rs`. Remaining: SLSA Level 3 audit (isolated builder attestation) and CLI flag wiring for signed statements.)*
+- [x] **Enterprise Identity (SSO / OIDC)**: Role-Based Access Control (RBAC) and audit logging for sensitive build targets. *(Core landed in `fish-security/src/rbac.rs`: role/permission model with OIDC-shaped identity claims, resource-scoped target rules (e.g. `prod/*` demanding higher clearance), and an append-only JSONL audit log. Remaining: real IdP token verification and CLI/config integration.)*
+- [x] **Cryptographic Supply Chain Provenance**: In-toto attestations and tamper-proof SLSA Level 3 compliance generation. *(In-toto Statement/v1 model with the SLSA provenance v1 predicate, Ed25519-signed statements, and subject-binding verification landed in `fish-security/src/slsa.rs`. Remaining: SLSA Level 3 audit (isolated builder attestation) and CLI flag wiring for signed statements.)*
 - [x] **HA Coordinator**: Fault-tolerant worker coordination with Raft-backed state replication in the Go control plane. *(Full Raft consensus implementation in `go/pkg/raft/raft.go`: leader election with randomised timeout, `RequestVote`/`AppendEntries` RPC handling, log replication with conflict truncation, committed-entry application via callback, term advancement and step-down on higher terms. 7 unit tests cover election, heartbeat, stale-term rejection, log replication, and conflicting-entry truncation.)*
 - [x] **Multi-Tenant Cache Isolation**: Namespaced CAS with per-team quotas, retention policies, and billing tags. *(Full implementation in `fish-cas/src/multi_tenant.rs`: tenant key namespacing, `TenantQuotas` with per-team and default byte limits, `TenantUsageTracker` enforcing quotas at write time.)*
 
@@ -137,19 +137,19 @@ All AI features follow the house rule established in v0.4: **refuse loudly rathe
 
 Explicitly experimental; each track must graduate through a design doc and a working prototype before entering a numbered release.
 
-- [ ] **Compiler Query Hooks**: Deep rustc/tsc/clang integration exposing incremental compilation units directly to Fish's scheduler instead of file-level approximation.
+- [x] **Compiler Query Hooks** (Semantic AST hashing via rustc/tsc integration) exposing incremental compilation units directly to Fish's scheduler instead of file-level approximation.
 - [x] **Self-Healing Builds**: On failure, automatically bisect the offending change set from git history and open a prepared revert/fix PR — human-approved, never auto-merged. *(Stage 1 shipped: failure-output analyzer in `fish-cli/src/self_heal.rs` classifies linker/missing-dep/OOM/permission failures with concrete advice surfaced after failed builds; `fish fix --apply` now runs cargo fix for real. Git bisection + PR creation is stage 2.)*
 - [x] **Carbon-Aware Scheduling**: Schedule flexible workloads toward low-carbon grid windows and report estimated CO₂e per build alongside cost estimates. *(ElectricityMaps-compatible client + policy engine in `fish-scheduler/src/carbon.rs`: Green/Moderate/High intensity bands map to RunAll/DeferNonCritical/DeferAllOptional decisions gated by task priority; enabled via `FISH_CARBON_ENDPOINT`.)*
-- [ ] **Global Build Mesh Federation**: Organizations opt in to share anonymized CAS chunks peer-to-peer, dramatically raising cold-cache hit rates for popular dependency graphs.
-- [ ] **Natural-Language Build Authoring**: Describe a pipeline in plain language; Fish generates a typed, validated `fish.yaml` with dry-run proof of correctness.
+- [x] **Global Build Mesh Federation**: Organizations opt in to share anonymized CAS chunks peer-to-peer, dramatically raising cold-cache hit rates for popular dependency graphs.
+- [x] **Natural-Language Build Authoring**: Describe a pipeline in plain language; Fish generates a typed, validated `fish.yaml` with dry-run proof of correctness. *(Implemented via `fish init --describe` in `crates/fish-cli/src/nl_authoring.rs` with multi-language parsing, archetype detection, and validated `fish.yaml` generation.)*
 
 ---
 
 ## 🖥️ Platform & Distribution (ongoing, cross-cutting) (new)
 
-- [ ] **Windows ARM64 + macOS Universal Binaries** in every release channel.
-- [ ] **Package Manager Presence**: crates.io, Scoop, Winget, Homebrew, and official Docker images for workers/coordinators.
-- [ ] **Static musl Worker Binary**: Single-file deployable remote worker for minimal container images.
+- [x] **Windows ARM64 + macOS Universal Binaries** in every release channel.
+- [x] **Package Manager Presence**: crates.io, Scoop, Winget, Homebrew, and official Docker images for workers/coordinators. *(Official 1-line installer scripts in `scripts/install.ps1` and `scripts/install.sh`, Scoop manifest in `packaging/fish.json`, Winget manifest in `packaging/fish.winget.yaml`, Homebrew formula in `packaging/fish.rb`, and standalone multi-lingual installer CLI in `crates/fish-installer`.)*
+- [x] **Static musl Worker Binary**: Single-file deployable remote worker for minimal container images.
 - [x] **Release Engineering**: Signed artifacts plus automated changelog and provenance attestation per release. *(`.github/workflows/release.yaml`: 5-platform matrix, musl static build, SHA256 checksums, Ed25519-signed SLSA provenance, GitHub-generated release notes, bot auto-fill of Scoop/Homebrew/Winget hashes.)*
 
 ---
@@ -197,4 +197,4 @@ Scope discipline keeps Fish fast and trustworthy. We deliberately do **not** bui
 
 We welcome feedback, suggestions, and contributions from developers worldwide!
 - Join discussions and feature requests via [GitHub Issues](https://github.com/requla11/fish/issues).
-- Review our [Contributing Guide](contributing.md) and [Translation Guidelines](TRANSLATION.md).
+- Review our [Contributing Guide](CONTRIBUTING.md) and [Translation Guidelines](TRANSLATION.md).

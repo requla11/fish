@@ -48,6 +48,7 @@ pub struct SemanticItem {
     pub canonical_hash: String,
     pub signature_hash: String,
     pub visibility: String,
+    pub byte_range: (usize, usize),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -92,7 +93,7 @@ impl DiffResult {
     }
 
     pub fn is_clean(&self) -> bool {
-        self.diffs.is_empty()
+        self.diffs.is_empty() && !self.module_hash_changed
     }
 }
 
@@ -133,18 +134,22 @@ fn extract_item_name(item: &Item) -> Option<(String, ItemKind)> {
         Item::Trait(i) => Some((i.ident.to_string(), ItemKind::Trait)),
         Item::Impl(i) => {
             let target = i.self_ty.to_token_stream().to_string().replace(' ', "");
-            let name = if let Some((_, trait_path, _)) = &i.trait_ {
-                format!("impl_{}_for_{}", trait_path.to_token_stream().to_string().replace(' ', ""), target)
+            let trait_part = if let Some((bang, trait_path, _)) = &i.trait_ {
+                let b = if bang.is_some() { "!" } else { "" };
+                let tr = trait_path.to_token_stream().to_string().replace(' ', "");
+                format!("{b}{tr}_for_")
             } else {
-                format!("impl_{target}")
+                String::new()
             };
-            Some((name, ItemKind::Impl))
+            let generics = i.generics.to_token_stream().to_string().replace(' ', "");
+            Some((format!("impl_{trait_part}{target}{generics}"), ItemKind::Impl))
         }
         Item::Type(i) => Some((i.ident.to_string(), ItemKind::TypeAlias)),
         Item::Const(i) => Some((i.ident.to_string(), ItemKind::Const)),
         Item::Static(i) => Some((i.ident.to_string(), ItemKind::Static)),
         Item::Mod(i) => Some((i.ident.to_string(), ItemKind::Mod)),
         Item::Macro(i) => i.ident.as_ref().map(|id| (id.to_string(), ItemKind::Macro)),
+        Item::Use(i) => Some((i.tree.to_token_stream().to_string().replace(' ', ""), ItemKind::Use)),
         _ => None,
     }
 }
@@ -159,33 +164,82 @@ fn extract_visibility(item: &Item) -> String {
         Item::Const(i) => i.vis.to_token_stream().to_string(),
         Item::Static(i) => i.vis.to_token_stream().to_string(),
         Item::Mod(i) => i.vis.to_token_stream().to_string(),
+        Item::Use(i) => i.vis.to_token_stream().to_string(),
         _ => String::new(),
     }
 }
 
 fn extract_signature_hash(item: &Item) -> String {
     let sig_tokens = match item {
-        Item::Fn(i) => i.sig.to_token_stream().to_string(),
+        Item::Fn(i) => {
+            let attrs = i.attrs.iter().map(|a| a.to_token_stream().to_string()).collect::<Vec<_>>().join(" ");
+            let vis = i.vis.to_token_stream().to_string();
+            let sig = i.sig.to_token_stream().to_string();
+            format!("{attrs} {vis} {sig}")
+        }
         Item::Struct(i) => {
+            let attrs = i.attrs.iter().map(|a| a.to_token_stream().to_string()).collect::<Vec<_>>().join(" ");
             let vis = i.vis.to_token_stream().to_string();
             let name = i.ident.to_string();
             let generics = i.generics.to_token_stream().to_string();
             let fields = i.fields.to_token_stream().to_string();
-            format!("{vis} struct {name}{generics} {fields}")
+            format!("{attrs} {vis} struct {name}{generics} {fields}")
         }
         Item::Enum(i) => {
+            let attrs = i.attrs.iter().map(|a| a.to_token_stream().to_string()).collect::<Vec<_>>().join(" ");
             let vis = i.vis.to_token_stream().to_string();
             let name = i.ident.to_string();
             let generics = i.generics.to_token_stream().to_string();
             let variants = i.variants.to_token_stream().to_string();
-            format!("{vis} enum {name}{generics} {{ {variants} }}")
+            format!("{attrs} {vis} enum {name}{generics} {{ {variants} }}")
         }
         Item::Trait(i) => {
+            let attrs = i.attrs.iter().map(|a| a.to_token_stream().to_string()).collect::<Vec<_>>().join(" ");
             let vis = i.vis.to_token_stream().to_string();
             let name = i.ident.to_string();
             let generics = i.generics.to_token_stream().to_string();
             let bounds = i.supertraits.to_token_stream().to_string();
-            format!("{vis} trait {name}{generics}: {bounds}")
+            let mut items_sig = Vec::new();
+            for trait_item in &i.items {
+                match trait_item {
+                    syn::TraitItem::Fn(m) => items_sig.push(m.sig.to_token_stream().to_string()),
+                    syn::TraitItem::Type(t) => items_sig.push(t.to_token_stream().to_string()),
+                    syn::TraitItem::Const(c) => items_sig.push(c.to_token_stream().to_string()),
+                    syn::TraitItem::Macro(m) => items_sig.push(m.to_token_stream().to_string()),
+                    _ => {},
+                }
+            }
+            let items_str = items_sig.join("; ");
+            format!("{attrs} {vis} trait {name}{generics}: {bounds} {{ {items_str} }}")
+        }
+        Item::Impl(i) => {
+            let attrs = i.attrs.iter().map(|a| a.to_token_stream().to_string()).collect::<Vec<_>>().join(" ");
+            let generics = i.generics.to_token_stream().to_string();
+            let trait_ = if let Some((bang, path, _)) = &i.trait_ {
+                let b = if bang.is_some() { "!" } else { "" };
+                let p = path.to_token_stream().to_string();
+                format!("{b}{p} for ")
+            } else {
+                String::new()
+            };
+            let self_ty = i.self_ty.to_token_stream().to_string();
+            let where_clause = i.generics.where_clause.as_ref().map(|w| w.to_token_stream().to_string()).unwrap_or_default();
+            let mut items_sig = Vec::new();
+            for impl_item in &i.items {
+                match impl_item {
+                    syn::ImplItem::Fn(m) => {
+                        let v = m.vis.to_token_stream().to_string();
+                        let s = m.sig.to_token_stream().to_string();
+                        items_sig.push(format!("{v} {s}"));
+                    },
+                    syn::ImplItem::Type(t) => items_sig.push(t.to_token_stream().to_string()),
+                    syn::ImplItem::Const(c) => items_sig.push(c.to_token_stream().to_string()),
+                    syn::ImplItem::Macro(m) => items_sig.push(m.to_token_stream().to_string()),
+                    _ => {},
+                }
+            }
+            let items_str = items_sig.join("; ");
+            format!("{attrs} impl{generics} {trait_}{self_ty} {where_clause} {{ {items_str} }}")
         }
         Item::Type(i) => i.to_token_stream().to_string(),
         Item::Const(i) => {
@@ -200,6 +254,7 @@ fn extract_signature_hash(item: &Item) -> String {
             let ty = i.ty.to_token_stream().to_string();
             format!("{vis} static {name}: {ty}")
         }
+        Item::Use(i) => i.to_token_stream().to_string(),
         _ => item.to_token_stream().to_string(),
     };
     blake3::hash(sig_tokens.as_bytes()).to_hex().to_string()
@@ -239,6 +294,7 @@ pub fn parse_module(file_path: &Path, content: &str) -> Result<ModuleSnapshot, S
                 canonical_hash,
                 signature_hash,
                 visibility,
+                byte_range: (0, 0), // Placeholder for Rust without span locations feature
             });
 
             name_to_item.insert(name.clone(), item);
@@ -319,7 +375,7 @@ pub fn diff_snapshots(old: &ModuleSnapshot, new: &ModuleSnapshot) -> DiffResult 
     }
 }
 
-fn transitive_dependents(
+pub fn transitive_dependents(
     item_name: &str,
     edges: &HashMap<String, BTreeSet<String>>,
 ) -> HashSet<String> {
@@ -369,10 +425,27 @@ pub fn compute_rebuild_decision(
         }
     }
 
-    let safe_to_skip: Vec<String> = all_names
-        .difference(&must_rebuild)
+    let mut must_rebuild_vec: Vec<String> = must_rebuild.into_iter().collect();
+    must_rebuild_vec.sort();
+    
+    let mut safe_to_skip: Vec<String> = all_names
+        .difference(&changed_names)
+        .filter(|n| !must_rebuild_vec.contains(n))
         .cloned()
         .collect();
+    safe_to_skip.sort();
+    
+    let mut cascade_targets_vec: Vec<String> = cascade_targets.into_iter().collect();
+    cascade_targets_vec.sort();
+
+    let affected_tests = if let Some(graph) = impact_graph {
+        let modified_symbols: Vec<String> = must_rebuild_vec.clone();
+        let mut tests = graph.find_impacted_tests(&modified_symbols);
+        tests.sort();
+        tests
+    } else {
+        Vec::new()
+    };
 
     let total = all_names.len();
     let reuse_ratio = if total == 0 {
@@ -381,17 +454,10 @@ pub fn compute_rebuild_decision(
         safe_to_skip.len() as f64 / total as f64
     };
 
-    let affected_tests = if let Some(graph) = impact_graph {
-        let modified_symbols: Vec<String> = must_rebuild.iter().cloned().collect();
-        graph.find_impacted_tests(&modified_symbols)
-    } else {
-        Vec::new()
-    };
-
     RebuildDecision {
-        must_rebuild: must_rebuild.into_iter().collect(),
+        must_rebuild: must_rebuild_vec,
         safe_to_skip,
-        cascade_targets: cascade_targets.into_iter().collect(),
+        cascade_targets: cascade_targets_vec,
         affected_tests,
         reuse_ratio,
     }
@@ -403,7 +469,7 @@ pub fn snapshot_to_ast_subtrees(snapshot: &ModuleSnapshot) -> Vec<AstSubTree> {
             symbol_name: item.name.clone(),
             kind: item.kind.to_string(),
             content_hash: item.canonical_hash.clone(),
-            byte_range: (0, 0),
+            byte_range: item.byte_range,
         }
     }).collect()
 }

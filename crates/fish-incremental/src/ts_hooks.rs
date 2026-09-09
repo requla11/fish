@@ -234,6 +234,7 @@ pub fn parse_ts_module(file_path: &Path, content: &str) -> Result<ModuleSnapshot
             canonical_hash,
             signature_hash,
             visibility,
+            byte_range: (item.body_start, item.body_end),
         });
     }
 
@@ -287,10 +288,24 @@ fn extract_ts_items(source: &str) -> Vec<TsItem> {
         let line_start = parser.pos;
         let remaining = parser.remaining();
 
-        let is_exported = remaining.starts_with("export ");
-        let effective = if is_exported { &remaining[7..] } else { remaining };
+        let is_exported_default = remaining.starts_with("export default ");
+        let is_exported = remaining.starts_with("export ") || is_exported_default;
+        
+        let effective = if is_exported_default {
+            &remaining[15..]
+        } else if is_exported {
+            &remaining[7..]
+        } else {
+            remaining
+        };
 
-        let effective_start = if is_exported { parser.pos + 7 } else { parser.pos };
+        let effective_start = if is_exported_default {
+            parser.pos + 15
+        } else if is_exported {
+            parser.pos + 7
+        } else {
+            parser.pos
+        };
 
         if let Some(item) = try_parse_ts_declaration(effective, effective_start, is_exported, &mut parser) {
             items.push(item);
@@ -338,13 +353,21 @@ fn try_parse_ts_declaration(
                 .find(|c: char| !c.is_alphanumeric() && c != '_' && c != '$')
                 .unwrap_or(after_kw.len());
 
-            if name_end == 0 {
+            let name = if name_end == 0 && text.starts_with("function ") {
+                // Anonymous export default function
+                "default".to_string()
+            } else if name_end == 0 {
                 continue;
-            }
+            } else {
+                after_kw[..name_end].to_string()
+            };
 
-            let name = after_kw[..name_end].to_string();
             let body_start = if is_exported {
-                abs_offset - 7
+                // We'll just capture from `export` for simplicity. 
+                // But the abs_offset is the effective start. We can backtrack.
+                // It's safer to just use parser.pos as body_start, but it might be off if we moved pos.
+                // The parser.pos hasn't moved yet.
+                parser.pos
             } else {
                 abs_offset
             };
@@ -366,85 +389,96 @@ fn try_parse_ts_declaration(
 }
 
 fn strip_ts_comments(source: &str) -> String {
-    let bytes = source.as_bytes();
     let mut result = String::with_capacity(source.len());
-    let mut i = 0;
-
-    while i < bytes.len() {
-        if i + 1 < bytes.len() && bytes[i] == b'/' && bytes[i + 1] == b'/' {
-            while i < bytes.len() && bytes[i] != b'\n' {
-                i += 1;
-            }
-        } else if i + 1 < bytes.len() && bytes[i] == b'/' && bytes[i + 1] == b'*' {
-            i += 2;
-            while i + 1 < bytes.len() && !(bytes[i] == b'*' && bytes[i + 1] == b'/') {
-                i += 1;
-            }
-            if i + 1 < bytes.len() {
-                i += 2;
-            }
-        } else if bytes[i] == b'\'' || bytes[i] == b'"' {
-            let quote = bytes[i];
-            result.push(bytes[i] as char);
-            i += 1;
-            while i < bytes.len() {
-                if bytes[i] == b'\\' && i + 1 < bytes.len() {
-                    result.push(bytes[i] as char);
-                    result.push(bytes[i + 1] as char);
-                    i += 2;
+    let mut chars = source.chars().peekable();
+    
+    while let Some(c) = chars.next() {
+        if c == '/' {
+            if let Some(&next_c) = chars.peek() {
+                if next_c == '/' {
+                    chars.next();
+                    while let Some(c) = chars.next() {
+                        if c == '\n' {
+                            result.push('\n');
+                            break;
+                        }
+                    }
+                    continue;
+                } else if next_c == '*' {
+                    chars.next();
+                    let mut prev = ' ';
+                    while let Some(c) = chars.next() {
+                        if prev == '*' && c == '/' {
+                            break;
+                        }
+                        prev = c;
+                    }
                     continue;
                 }
-                result.push(bytes[i] as char);
-                if bytes[i] == quote {
-                    i += 1;
+            }
+        }
+        
+        if c == '\'' || c == '"' || c == '`' {
+            let quote = c;
+            result.push(c);
+            let mut escaped = false;
+            while let Some(sc) = chars.next() {
+                result.push(sc);
+                if escaped {
+                    escaped = false;
+                } else if sc == '\\' {
+                    escaped = true;
+                } else if sc == quote {
                     break;
                 }
-                i += 1;
             }
-        } else {
-            result.push(bytes[i] as char);
-            i += 1;
+            continue;
         }
+        result.push(c);
     }
-
     result
 }
 
 fn extract_ts_signature(body: &str, kind: &ItemKind) -> String {
-    match kind {
-        ItemKind::Function => {
-            if let Some(brace_pos) = body.find('{') {
-                body[..brace_pos].trim().to_string()
-            } else {
-                body.lines().next().unwrap_or("").to_string()
+    let mut signature = String::new();
+    let mut chars = body.chars().peekable();
+    let mut depth = 0;
+    
+    while let Some(c) = chars.next() {
+        if c == '\'' || c == '"' || c == '`' {
+            let quote = c;
+            signature.push(c);
+            let mut escaped = false;
+            while let Some(sc) = chars.next() {
+                signature.push(sc);
+                if escaped {
+                    escaped = false;
+                } else if sc == '\\' {
+                    escaped = true;
+                } else if sc == quote {
+                    break;
+                }
             }
+            continue;
         }
-        ItemKind::Struct | ItemKind::Trait => {
-            if let Some(brace_pos) = body.find('{') {
-                body[..brace_pos].trim().to_string()
-            } else {
-                body.lines().next().unwrap_or("").to_string()
+        
+        if c == '{' {
+            if depth == 0 && (*kind == ItemKind::Function || *kind == ItemKind::Struct || *kind == ItemKind::Trait || *kind == ItemKind::Enum) {
+                break;
             }
+            depth += 1;
+        } else if c == '}' {
+            depth -= 1;
         }
-        ItemKind::TypeAlias => {
-            body.lines().next().unwrap_or("").to_string()
+        
+        if c == '=' && depth == 0 && (*kind == ItemKind::Const || *kind == ItemKind::Static) {
+            break;
         }
-        ItemKind::Enum => {
-            if let Some(brace_pos) = body.find('{') {
-                body[..brace_pos].trim().to_string()
-            } else {
-                body.lines().next().unwrap_or("").to_string()
-            }
-        }
-        _ => {
-            let first_line = body.lines().next().unwrap_or("");
-            if let Some(eq_pos) = first_line.find('=') {
-                first_line[..eq_pos].trim().to_string()
-            } else {
-                first_line.to_string()
-            }
-        }
+        
+        signature.push(c);
     }
+    
+    signature.trim().to_string()
 }
 
 pub fn diff_ts_modules(old: &ModuleSnapshot, new: &ModuleSnapshot) -> DiffResult {

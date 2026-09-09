@@ -214,15 +214,15 @@ impl CompilerHookService {
         for (path, diff) in &diffs_by_file {
             let mut file_items = Vec::new();
             if let Some(snap) = self.snapshot_cache.get(path) {
-                file_items = snap.items.iter().map(|i| i.name.clone()).collect();
+                file_items = snap.items.iter().map(|i| (i.name.clone(), i.kind.clone())).collect();
             }
             
             if diff.module_hash_changed {
-                for name in file_items {
+                for (name, kind) in file_items {
                     must_rebuild_global.insert(name.clone());
                     diff_items_with_module_changes.push(crate::compiler_hooks::ItemDiff {
                         name,
-                        kind: crate::compiler_hooks::ItemKind::Unknown, // we just need the name
+                        kind,
                         change: crate::compiler_hooks::ChangeKind::SignatureModified, // Treat module-level changes as signature changes to force cascade
                     });
                 }

@@ -213,7 +213,7 @@ impl ProcessExecutor {
                         let _ = self.0.kill();
                     }
                 }
-                let mut child_guard = KillOnDrop(&mut child);
+                let child_guard = KillOnDrop(&mut child);
 
                 let mut stdout = child_guard.0.stdout.take().expect("piped stdout");
                 let mut stderr = child_guard.0.stderr.take().expect("piped stderr");

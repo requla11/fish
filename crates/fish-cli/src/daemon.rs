@@ -14,6 +14,7 @@ use std::time::Duration;
 pub struct FishDaemon {
     port: u16,
     running: Arc<AtomicBool>,
+    mesh_port: u16,
 }
 
 impl FishDaemon {
@@ -21,6 +22,7 @@ impl FishDaemon {
         Self {
             port,
             running: Arc::new(AtomicBool::new(false)),
+            mesh_port: port + 1000, // Default mesh port offset
         }
     }
 
@@ -110,6 +112,19 @@ impl FishDaemon {
 
     pub fn start_in_background(&self) -> std::io::Result<()> {
         self.running.store(true, Ordering::SeqCst);
+
+        // Start Global Build Mesh Federation Seeder in background
+        let mesh_port = self.mesh_port;
+        let running_mesh = Arc::clone(&self.running);
+        std::thread::spawn(move || {
+            let addr = format!("0.0.0.0:{}", mesh_port).parse().unwrap();
+            let _mesh_cache = fish_remote_cache::BananaMeshCache::new("fish-daemon-seeder", addr);
+            let mut _federation = fish_remote_cache::GlobalMeshFederation::new(_mesh_cache);
+            // In a real scenario, this would scan local caches and publish them with attestations
+            while running_mesh.load(Ordering::Relaxed) {
+                std::thread::sleep(Duration::from_secs(10));
+            }
+        });
 
         #[cfg(unix)]
         self.start_unix_listener();

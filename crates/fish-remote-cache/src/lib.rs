@@ -9,8 +9,10 @@ pub mod reapi;
 pub mod replication;
 pub mod server;
 pub mod signature_gate;
+pub mod mesh_federation;
 
 pub use banana_mesh::BananaMeshCache;
+pub use mesh_federation::{GlobalMeshFederation, FederationPayload, FederationError};
 pub use p2p_lan::{
     ArtifactChunk, ChunkBitfield, ChunkManifest, LanPeerNode, LanPeerRegistry,
     P2PArtifactReassembler,

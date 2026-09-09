@@ -59,17 +59,17 @@ impl AppleSandboxAdapter {
 
         if let Some(ref cwd) = spec.cwd {
             apple_args.push("--workdir".to_string());
-            apple_args.push(cwd.display().to_string());
+            apple_args.push(cwd.to_string_lossy().replace('\\', "/"));
         }
 
         for input in &config.declared_inputs {
             apple_args.push("--input".to_string());
-            apple_args.push(input.display().to_string());
+            apple_args.push(input.to_string_lossy().replace('\\', "/"));
         }
 
         for output in &config.declared_outputs {
             apple_args.push("--output".to_string());
-            apple_args.push(output.display().to_string());
+            apple_args.push(output.to_string_lossy().replace('\\', "/"));
         }
 
         apple_args.push("--".to_string());

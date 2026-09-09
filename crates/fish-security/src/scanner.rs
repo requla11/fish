@@ -112,7 +112,7 @@ impl VulnerabilityScanner {
         let scan_duration = start_time.elapsed().as_secs_f64();
 
         Ok(ScanReport {
-            project_path: project_path.display().to_string(),
+            project_path: project_path.to_string_lossy().replace('\\', "/"),
             scan_timestamp: Utc::now(),
             total_vulnerabilities,
             by_severity,

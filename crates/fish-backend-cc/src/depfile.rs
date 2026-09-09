@@ -74,6 +74,34 @@ fn parse_deps(after_colon: &str) -> Vec<PathBuf> {
     deps
 }
 
+pub fn parse_show_includes(output: &str) -> Vec<PathBuf> {
+    let prefixes = [
+        "Note: including file:",
+        "Remarque : inclusion du fichier :",
+        "Hinweis: Neu inkludierte Datei:",
+        "Hinweis: Einschliessen der Datei:",
+        "メモ: インクルード ファイル: ",
+        "注意: 包含文件: ",
+    ];
+
+    let mut paths = Vec::new();
+    for line in output.lines() {
+        let trimmed = line.trim_start();
+        for prefix in &prefixes {
+            if let Some(rest) = trimmed.strip_prefix(prefix) {
+                let path_str = rest.trim();
+                if !path_str.is_empty() {
+                    paths.push(PathBuf::from(path_str));
+                }
+                break;
+            }
+        }
+    }
+    paths.sort();
+    paths.dedup();
+    paths
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -130,5 +158,18 @@ mod tests {
         let blank = dir.path().join("blank.d");
         fs::write(&blank, "  \n").unwrap();
         assert!(read_depfile(&blank).is_none());
+    }
+
+    #[test]
+    fn parses_msvc_show_includes() {
+        let output = "main.c\nNote: including file:  C:\\MSVC\\include\\stdio.h\nNote: including file:   C:\\MSVC\\include\\crtdefs.h\nNote: including file:  C:\\MSVC\\include\\stdio.h\n";
+        let paths = parse_show_includes(output);
+        assert_eq!(
+            paths,
+            vec![
+                PathBuf::from("C:\\MSVC\\include\\crtdefs.h"),
+                PathBuf::from("C:\\MSVC\\include\\stdio.h"),
+            ]
+        );
     }
 }

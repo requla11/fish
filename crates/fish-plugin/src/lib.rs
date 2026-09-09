@@ -93,7 +93,7 @@ impl PluginBackend {
         let mut graph = BuildGraph::new();
 
         let mut hasher = blake3::Hasher::new();
-        hasher.update(root.to_string_lossy().as_bytes());
+        hasher.update(root.to_string_lossy().replace('\\', "/").as_bytes());
         let namespace = hasher.finalize().to_hex().to_string()[..12].to_string();
 
         let mut node_map: HashMap<String, fish_graph::NodeId> = HashMap::new();

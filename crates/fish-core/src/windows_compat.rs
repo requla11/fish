@@ -103,15 +103,17 @@ pub fn get_windows_version() -> String {
 pub fn is_developer_mode_enabled() -> bool {
     use std::process::Command;
 
-    if let Ok(output) = Command::new("powershell")
+    if let Ok(output) = Command::new("reg")
         .args([
-            "-Command",
-            "Get-WindowsDeveloperLicense | Select-Object -ExpandProperty IsLicensed",
+            "query",
+            "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\AppModelUnlock",
+            "/v",
+            "AllowDevelopmentWithoutDevLicense"
         ])
         .output()
     {
         let result = String::from_utf8_lossy(&output.stdout);
-        result.trim() == "True"
+        result.contains("0x1")
     } else {
         false
     }

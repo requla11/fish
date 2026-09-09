@@ -112,6 +112,7 @@ fn kill_process_tree(child: &mut std::process::Child) {
 fn run_with_timeout(
     command: &mut Command,
     timeout: Duration,
+    cancel_flag: &std::sync::atomic::AtomicBool,
 ) -> Result<std::process::Output, std::io::Error> {
     use std::io::Read;
     use std::process::Stdio;
@@ -119,8 +120,19 @@ fn run_with_timeout(
 
     command.stdout(Stdio::piped()).stderr(Stdio::piped());
     let mut child = command.spawn()?;
-    let mut stdout = child.stdout.take().expect("piped stdout is present");
-    let mut stderr = child.stderr.take().expect("piped stderr is present");
+
+    struct KillOnDrop<'a>(&'a mut std::process::Child);
+    impl<'a> Drop for KillOnDrop<'a> {
+        fn drop(&mut self) {
+            let _ = self.0.kill();
+        }
+    }
+    
+    // Ensure we kill the process if this thread panics
+    let mut child_guard = KillOnDrop(&mut child);
+
+    let mut stdout = child_guard.0.stdout.take().expect("piped stdout is present");
+    let mut stderr = child_guard.0.stderr.take().expect("piped stderr is present");
 
     let stdout_reader = std::thread::spawn(move || {
         let mut buf = Vec::new();
@@ -133,16 +145,33 @@ fn run_with_timeout(
         buf
     });
 
-    let status_code = match child.wait_timeout(timeout)? {
-        Some(status) => status,
-        None => {
-            kill_process_tree(&mut child);
+    let start_time = std::time::Instant::now();
+    let status_code = loop {
+        if cancel_flag.load(std::sync::atomic::Ordering::Relaxed) {
+            kill_process_tree(child_guard.0);
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Interrupted,
+                "Task was cancelled via flag",
+            ));
+        }
+        let elapsed = start_time.elapsed();
+        if elapsed >= timeout {
+            kill_process_tree(child_guard.0);
             return Err(std::io::Error::new(
                 std::io::ErrorKind::TimedOut,
                 format!("timed out after {timeout:?}"),
             ));
         }
+        let remaining = timeout - elapsed;
+        let wait_dur = std::cmp::min(remaining, std::time::Duration::from_millis(50));
+        match child_guard.0.wait_timeout(wait_dur)? {
+            Some(status) => break status,
+            None => continue,
+        }
     };
+    
+    // Disable kill on drop since it successfully finished
+    std::mem::forget(child_guard);
 
     let out_buf = stdout_reader.join().unwrap_or_default();
     let err_buf = stderr_reader.join().unwrap_or_default();
@@ -159,8 +188,74 @@ impl ProcessExecutor {
         let start = Instant::now();
         let mut command: Command = task.spec.to_std_command();
         let output = match self.timeout {
-            Some(timeout) => run_with_timeout(&mut command, timeout),
-            None => command.output(),
+            Some(timeout) => run_with_timeout(&mut command, timeout, &task.cancel_flag),
+            None => {
+                let mut child = command
+                    .stdout(std::process::Stdio::piped())
+                    .stderr(std::process::Stdio::piped())
+                    .spawn()
+                    .map_err(|e| ExecutorError::Spawn {
+                        command: task.spec.program.clone(),
+                        source: e,
+                    })?;
+                
+                struct KillOnDrop<'a>(&'a mut std::process::Child);
+                impl<'a> Drop for KillOnDrop<'a> {
+                    fn drop(&mut self) {
+                        let _ = self.0.kill();
+                    }
+                }
+                let mut child_guard = KillOnDrop(&mut child);
+                
+                let mut stdout = child_guard.0.stdout.take().expect("piped stdout");
+                let mut stderr = child_guard.0.stderr.take().expect("piped stderr");
+
+                let stdout_reader = std::thread::spawn(move || {
+                    let mut buf = Vec::new();
+                    use std::io::Read;
+                    let _ = stdout.read_to_end(&mut buf);
+                    buf
+                });
+                let stderr_reader = std::thread::spawn(move || {
+                    let mut buf = Vec::new();
+                    use std::io::Read;
+                    let _ = stderr.read_to_end(&mut buf);
+                    buf
+                });
+
+                let status = loop {
+                    if task.cancel_flag.load(std::sync::atomic::Ordering::Relaxed) {
+                        kill_process_tree(child_guard.0);
+                        return Err(ExecutorError::Spawn {
+                            command: task.spec.command_line(),
+                            source: std::io::Error::new(
+                                std::io::ErrorKind::Interrupted,
+                                "Task was cancelled via flag",
+                            ),
+                        });
+                    }
+                    use wait_timeout::ChildExt;
+                    match child_guard.0.wait_timeout(std::time::Duration::from_millis(50))
+                        .map_err(|e| ExecutorError::Record {
+                            command: task.spec.program.clone(),
+                            source: e,
+                        })? 
+                    {
+                        Some(status) => break status,
+                        None => continue,
+                    }
+                };
+                std::mem::forget(child_guard);
+
+                let out_buf = stdout_reader.join().unwrap_or_default();
+                let err_buf = stderr_reader.join().unwrap_or_default();
+
+                Ok(std::process::Output {
+                    status,
+                    stdout: out_buf,
+                    stderr: err_buf,
+                })
+            }
         };
         let output = match output {
             Ok(output) => output,

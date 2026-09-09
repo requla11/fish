@@ -4,7 +4,7 @@
 
 # 🐟 Fish
 
-**The Blazing Fast, Cache-First Build Orchestration System for Polyglot Monorepos**
+**Le Système d'Orchestration de Build Ultra-Rapide et Orienté Cache pour les Monorepos Polyglottes**
 
 [![CI](https://github.com/requla11/fish/actions/workflows/dogfood.yaml/badge.svg)](https://github.com/requla11/fish/actions/workflows/dogfood.yaml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -18,31 +18,31 @@
 
 ---
 
-**Fish** is a high-performance build orchestration engine engineered in **Rust 2024**. It delivers the speed and simplicity of Turborepo with the polyglot power of Bazel — **without requiring complex configuration languages like Starlark or custom build DSLs**.
+**Fish** est un moteur d'orchestration de build haute performance conçu en **Rust 2024**. Il offre la vitesse et la simplicité de Turborepo avec la puissance polyglotte de Bazel — **sans nécessiter de langages de configuration complexes comme Starlark ou de DSL de build personnalisés**.
 
-Fish automatically discovers your toolchains, analyzes source trees to infer cross-language dependency edges, schedules tasks across a lock-free work-stealing pool, and caches every artifact using cryptographically secure **BLAKE3** content-addressable storage (CAS) and **Zstandard** compression.
+Fish découvre automatiquement vos toolchains, analyse les arborescences sources pour déduire les dépendances (edges) inter-langages, planifie les tâches sur un pool work-stealing sans verrouillage (lock-free), et met en cache chaque artefact en utilisant un stockage adressable par contenu (CAS) cryptographiquement sécurisé basé sur **BLAKE3** et la compression **Zstandard**.
 
-> 💡 **Notice:** Fish coordinates existing compilers and package managers (Cargo, Go, npm/pnpm, Python, Clang, etc.). It does not replace them. Unrelated to [fish-shell](https://fishshell.com) — they share only a name.
+> 💡 **Remarque :** Fish coordonne les compilateurs et les gestionnaires de paquets existants (Cargo, Go, npm/pnpm, Python, Clang, etc.). Il ne les remplace pas. Il n'a aucun lien avec [fish-shell](https://fishshell.com) — ils ne partagent que le nom.
 
 ---
 
-## ✨ Key Highlights
+## ✨ Points Clés
 
-| Feature | Description |
+| Fonctionnalité | Description |
 | :--- | :--- |
-| ⚡ **Sub-Millisecond Scheduling** | Chase-Lev work-stealing queues and critical-path scheduling dispatch tasks in <100µs. |
-| 🌐 **11+ Language Ecosystems** | Native backends for Rust, Go, TypeScript/JS, Python, C/C++, Java, .NET, Swift, Dart, Zig, and Docker. |
-| 🔗 **Automatic Dependency Inference** | Contract-first cross-language linking: references (like `include_str!`, JSON imports) automatically wire DAG edges without manual `depends_on`. |
-| 💾 **High-Throughput CAS Cache** | Deduplicated BLAKE3 content-addressable storage with tiered L1/L2 caching and ZSTD compression. |
-| 📡 **Zero-Config P2P Cache** | Share build artifacts peer-to-peer over local Wi-Fi / LAN with teammates — zero cloud server costs. |
-| 🛡️ **Hermetic Isolation** | Multi-platform sandboxing: Linux namespaces & Landlock, macOS seatbelt, and Windows security tokens. |
-| 📊 **Real-Time Interactive UI** | Built-in web dashboard (`fish ui`) featuring an interactive SVG DAG visualizer and telemetry graphs. |
+| ⚡ **Planification Sous-Milliseconde (Sub-Millisecond Scheduling)** | Les files d'attente work-stealing Chase-Lev et la planification par chemin critique répartissent les tâches en <100µs. |
+| 🌐 **Écosystème de 11+ Langages** | Backends natifs pour Rust, Go, TypeScript/JS, Python, C/C++, Java, .NET, Swift, Dart, Zig et Docker. |
+| 🔗 **Inférence Automatique des Dépendances** | Liaison inter-langages "contract-first" : les références (comme `include_str!`, imports JSON) créent automatiquement des liens dans le DAG sans `depends_on` manuel. |
+| 💾 **Cache CAS à Haut Débit** | Stockage adressable par contenu BLAKE3 dédupliqué avec mise en cache hiérarchisée L1/L2 et compression ZSTD. |
+| 📡 **Cache P2P Zero-Config** | Partagez les artefacts de build de pair-à-pair sur le Wi-Fi / LAN local avec vos coéquipiers — sans frais de serveurs cloud. |
+| 🛡️ **Isolation Hermétique** | Sandboxing multi-plateformes : namespaces Linux & Landlock, seatbelt macOS, et tokens de sécurité Windows. |
+| 📊 **Interface Utilisateur Interactive en Temps Réel** | Dashboard web intégré (`fish ui`) comprenant un visualiseur interactif de DAG en SVG et des graphes de télémétrie. |
 
 ---
 
-## 🚀 Quick Install
+## 🚀 Installation Rapide
 
-### 1-Line Installer
+### Installateur en 1 ligne
 
 #### Linux & macOS
 ```bash
@@ -56,9 +56,9 @@ irm https://raw.githubusercontent.com/requla11/fish/main/scripts/install.ps1 | i
 
 ---
 
-### Package Managers
+### Gestionnaires de paquets
 
-| Platform | Package Manager | Command |
+| Plateforme | Gestionnaire de paquets | Commande |
 | :--- | :--- | :--- |
 | **Windows** | **Scoop** | `scoop install https://raw.githubusercontent.com/requla11/fish/main/packaging/fish.json` |
 | **Windows** | **Winget** | `winget install requla11.fish` |
@@ -67,30 +67,30 @@ irm https://raw.githubusercontent.com/requla11/fish/main/scripts/install.ps1 | i
 
 ---
 
-## 🏁 Quick Start
+## 🏁 Démarrage Rapide
 
-Navigate to any multi-language repository and run:
+Naviguez vers n'importe quel dépôt multi-langages et exécutez :
 
 ```bash
-# Build the entire workspace in parallel with smart caching
+# Compilez l'ensemble du workspace en parallèle avec une mise en cache intelligente
 fish build
 
-# Run all test suites across every language
+# Exécutez toutes les suites de tests pour chaque langage
 fish test
 
-# Watch mode: re-compile and re-test on file changes
+# Mode watch : re-compile et re-teste lors de modifications de fichiers
 fish dev
 
-# Clean build artifacts (or clean everything including local cache with --all)
+# Nettoyez les artefacts de build (ou nettoyez tout y compris le cache local avec --all)
 fish clean --all
 
-# Launch the interactive web dashboard & DAG visualizer
+# Lancez le dashboard web interactif & le visualiseur de DAG
 fish ui --open
 ```
 
-### Try the Polyglot Demo
+### Essayez la Démo Polyglotte
 
-We include a realistic contract-first monorepo combining **Rust + Go + Python + TypeScript**:
+Nous incluons un monorepo réaliste de type "contract-first" combinant **Rust + Go + Python + TypeScript** :
 
 ```bash
 cd examples/polyglot-demo
@@ -113,99 +113,99 @@ Build completed successfully.
 
 ---
 
-## 🛠️ Supported Ecosystems
+## 🛠️ Écosystèmes Supportés
 
-Fish natively detects and orchestrates projects across 11 major ecosystems:
+Fish détecte et orchestre nativement des projets à travers 11 écosystèmes majeurs :
 
-| Ecosystem | Manifest Detected | Default Tasks |
+| Écosystème | Manifeste Détecté | Tâches par Défaut |
 | :--- | :--- | :--- |
 | **Rust** | `Cargo.toml` | `cargo check`, `cargo build`, `cargo test` |
 | **TypeScript / Node** | `package.json`, `tsconfig.json` | `typecheck`, `build`, `test` |
 | **Go** | `go.mod` | `go vet`, `go build`, `go test` |
-| **Python** | `pyproject.toml`, `requirements.txt` | syntax compile, `pytest`, lint |
-| **C / C++** | `CMakeLists.txt`, `fish.cc.json` | CMake configure, build, `ctest` |
+| **Python** | `pyproject.toml`, `requirements.txt` | compilation de la syntaxe, `pytest`, lint |
+| **C / C++** | `CMakeLists.txt`, `fish.cc.json` | configuration CMake, build, `ctest` |
 | **Java** | `pom.xml`, `build.gradle` | compile, test |
 | **.NET / C#** | `*.csproj`, `*.sln` | `dotnet build`, `dotnet test` |
 | **Swift** | `Package.swift` | `swift build`, `swift test` |
 | **Dart / Flutter** | `pubspec.yaml` | `dart analyze`, `dart test` |
 | **Zig** | `build.zig` | `zig build`, `zig test` |
-| **Docker / OCI** | `Dockerfile`, `docker-compose.yml` | Multi-stage image build, OCI compilation |
+| **Docker / OCI** | `Dockerfile`, `docker-compose.yml` | Build d'image multi-stage, compilation OCI |
 
 ---
 
-## 📋 Essential Commands
+## 📋 Commandes Essentielles
 
-Fish keeps its CLI clean, intuitive, and developer-friendly:
+Fish garde son CLI clair, intuitif et facile à utiliser pour les développeurs :
 
 ```text
 Build & Test:
-  fish build             Build all targets discovered from the project graph
-  fish check             Type-check and validate targets without linking
-  fish test              Execute all test suites across the workspace
-  fish run [TARGET]      Build and run a specific binary target
-  fish dev (or watch)    Continuously watch files and trigger incremental rebuilds
+  fish build             Compile toutes les cibles découvertes à partir du graphe de projet
+  fish check             Vérifie les types et valide les cibles sans lier
+  fish test              Exécute toutes les suites de tests à travers le workspace
+  fish run [TARGET]      Compile et exécute une cible binaire spécifique
+  fish dev (ou watch)    Observe en continu les fichiers et déclenche des rebuilds incrémentaux
 
 Inspect & Understand:
-  fish graph             Visualize the DAG as stage trees, DOT, or JSON
-  fish why <QUERY>       Ask in natural language why a target was rebuilt
-  fish ui                Open the real-time web dashboard & interactive DAG visualizer
-  fish doctor            Diagnose installed toolchains, cache integrity, and environment
+  fish graph             Visualise le DAG sous forme d'arbres de phases, DOT ou JSON
+  fish why <QUERY>       Demande en langage naturel pourquoi une cible a été reconstruite
+  fish ui                Ouvre le dashboard web en temps réel & le visualiseur de DAG interactif
+  fish doctor            Diagnostique les toolchains installées, l'intégrité du cache et l'environnement
 
 Maintain & Clean:
-  fish clean             Remove project build targets (pass -a/--all to wipe ~/.fish/cache)
-  fish fix               AI & compiler-grounded error diagnosis and auto-remediation
-  fish ci init           Generate optimized CI/CD workflows (GitHub Actions, GitLab, etc.)
-  fish affected          Build or test only packages affected by git changes
+  fish clean             Supprime les cibles de build (utilisez -a/--all pour effacer ~/.fish/cache)
+  fish fix               Diagnostic des erreurs basé sur l'IA et le compilateur, et auto-remédiation
+  fish ci init           Génère des workflows CI/CD optimisés (GitHub Actions, GitLab, etc.)
+  fish affected          Compile ou teste uniquement les paquets affectés par les changements git
 ```
 
 ---
 
-## 🏗️ Architecture & Workspace Layout
+## 🏗️ Architecture & Structure du Workspace
 
-The engine is structured as a modular Rust workspace (28 crates) maintaining strict boundary isolation:
+Le moteur est structuré comme un workspace Rust modulaire (28 crates) maintenant une isolation stricte des frontières :
 
 ```text
 crates/
-  fish-core/         Workspace discovery, manifest model, and DAG merger
-  fish-graph/        Dependency graph, topological sort, and query algebra
-  fish-executor/     Process execution, middleware chain, and response files
-  fish-scheduler/    Parallel work-stealing scheduler, GNU jobserver pool, racing, and DTE
-  fish-cache/        Fingerprint cache, two-phase pruning, and morphic hashes
-  fish-cas/          Content-addressable artifact storage with BLAKE3 + ZSTD compression
-  fish-incremental/  Change detection, AST inference, and dirty rebuild explainer
-  fish-backend-*/    11 language and toolchain adapters implementing EcosystemBackend
-  fish-worker/       Distributed execution server and streaming VFS protocol
-  fish-remote-cache/ High-throughput remote cache server with Ed25519 signature gating
-  fish-security/     Multi-layer security, OSV vulnerability scanner, and SLSA provenance
-  fish-cli/          Unified command-line application, daemon IPC, and terminal rendering
-submodules/          Vendored companion isolation engines:
-  apple/             Hermetic sandbox and OS process isolation daemon
-  banana/            P2P swarm mesh, OCI container builder, and Merkle ledger
-examples/            Ready-to-run polyglot monorepo demonstrations
+  fish-core/         Découverte du workspace, modèle de manifeste et fusion de DAG
+  fish-graph/        Graphe de dépendances, tri topologique et algèbre de requêtes
+  fish-executor/     Exécution de processus, chaîne de middleware et fichiers de réponse
+  fish-scheduler/    Planificateur parallèle work-stealing, pool jobserver GNU, racing et DTE
+  fish-cache/        Cache de signature, élagage en deux phases et hachages morphiques
+  fish-cas/          Stockage d'artefacts adressable par contenu avec compression BLAKE3 + ZSTD
+  fish-incremental/  Détection de changements, inférence AST et explicateur de rebuild
+  fish-backend-*/    11 adaptateurs de langages et toolchains implémentant EcosystemBackend
+  fish-worker/       Serveur d'exécution distribué et protocole VFS en streaming
+  fish-remote-cache/ Serveur de cache distant à haut débit avec filtrage de signature Ed25519
+  fish-security/     Sécurité multi-couches, scanner de vulnérabilités OSV et provenance SLSA
+  fish-cli/          Application en ligne de commande unifiée, IPC de daemon et rendu terminal
+submodules/          Moteurs d'isolation intégrés (vendored) :
+  apple/             Sandbox hermétique et daemon d'isolation de processus OS
+  banana/            Maillage swarm P2P, constructeur de conteneur OCI et registre Merkle
+examples/            Démonstrations de monorepos polyglottes prêtes à l'emploi
 ```
 
 ---
 
-## 🌿 Branch Policy
+## 🌿 Politique de Branches
 
-Fish follows a strict branch lifecycle:
+Fish suit un cycle de vie de branches strict :
 
 ```text
-dev (active development, tests, features)
+dev (développement actif, tests, fonctionnalités)
   ↓
-  ↓ verify: cargo test --workspace & cargo clippy
+  ↓ vérification: cargo test --workspace & cargo clippy
   ↓
-main (stable, production-ready releases)
+main (stable, versions prêtes pour la production)
 ```
 
-- **`dev`** — All active work, feature branches, and pull requests land here.
-- **`main`** — Stable tagged releases only.
+- **`dev`** — Tout le travail actif, les branches de fonctionnalités et les pull requests arrivent ici.
+- **`main`** — Uniquement les releases stables taguées.
 
 ---
 
-## 🧪 Development & Verification
+## 🧪 Développement & Vérification
 
-To verify the codebase locally:
+Pour vérifier la base de code localement :
 
 ```bash
 cargo fmt --all -- --check
@@ -215,18 +215,19 @@ cargo test --workspace
 
 ---
 
-## 📖 Documentation & Community
+## 📖 Documentation & Communauté
 
-- [Architecture Guide](ARCHITECTURE.md) — In-depth architectural design and components.
-- [Development Setup](DEVELOPMENT.md) — Local setup, debugging, and benchmarks.
-- [Roadmap](ROADMAP.md) — Current milestones, completed targets, and future moonshots.
-- [Contributing Guidelines](CONTRIBUTING.md) — How to propose changes and add backends.
-- [AI Agent Workflow](docs/AI_AGENT_WORKFLOW.md) — Best practices for AI coding agents.
+- [Guide d'Architecture](ARCHITECTURE.md) — Conception architecturale détaillée et composants.
+- [Configuration de Développement](DEVELOPMENT.md) — Configuration locale, débogage et benchmarks.
+- [Roadmap](ROADMAP.md) — Jalons actuels, objectifs atteints et visions futures.
+- [Guide de Contribution](CONTRIBUTING.md) — Comment proposer des modifications et ajouter des backends.
+- [Workflow pour Agent IA](docs/AI_AGENT_WORKFLOW.md) — Bonnes pratiques pour les agents de codage IA.
 
 ---
 
-## 📄 License & Disclaimer
+## 📄 Licence & Avis de Non-responsabilité
 
-Fish is licensed under the [MIT License](LICENSE).
+Fish est sous licence [MIT License](LICENSE).
 
-> **Disclaimer:** This project is an independent build orchestration system. Other unrelated tools, packages, or projects using "fish" in their names (such as `fish-shell`, `fish-image`, etc.) are independent and not affiliated with, sponsored, or endorsed by the Fish build orchestration project.
+> **Avis de Non-responsabilité :** Ce projet est un système d'orchestration de build indépendant. D'autres outils, paquets ou projets sans lien utilisant "fish" dans leur nom (tels que `fish-shell`, `fish-image`, etc.) sont indépendants et ne sont ni affiliés, ni sponsorisés, ni approuvés par le projet d'orchestration de build Fish.
+

@@ -663,13 +663,11 @@ impl LocalCache {
             if let Some(h) = &r.artifact_hash {
                 *ref_counts.entry(h.clone()).or_insert(0) += 1;
                 let manifest_path = objects_dir.join(h);
-                if let Ok(bytes) = fs::read(&manifest_path) {
-                    if let Ok(entries) =
-                        serde_json::from_slice::<Vec<ArtifactManifestEntry>>(&bytes)
-                    {
-                        for entry in entries {
-                            *ref_counts.entry(entry.hash).or_insert(0) += 1;
-                        }
+                if let Ok(bytes) = fs::read(&manifest_path)
+                    && let Ok(entries) = serde_json::from_slice::<Vec<ArtifactManifestEntry>>(&bytes)
+                {
+                    for entry in entries {
+                        *ref_counts.entry(entry.hash).or_insert(0) += 1;
                     }
                 }
             }
@@ -781,13 +779,11 @@ impl LocalCache {
                 if let Some(h) = &r.artifact_hash {
                     *size_ref_counts.entry(h.clone()).or_insert(0) += 1;
                     let manifest_path = objects_dir.join(h);
-                    if let Ok(bytes) = fs::read(&manifest_path) {
-                        if let Ok(entries) =
-                            serde_json::from_slice::<Vec<ArtifactManifestEntry>>(&bytes)
-                        {
-                            for entry in entries {
-                                *size_ref_counts.entry(entry.hash).or_insert(0) += 1;
-                            }
+                    if let Ok(bytes) = fs::read(&manifest_path)
+                        && let Ok(entries) = serde_json::from_slice::<Vec<ArtifactManifestEntry>>(&bytes)
+                    {
+                        for entry in entries {
+                            *size_ref_counts.entry(entry.hash).or_insert(0) += 1;
                         }
                     }
                 }
@@ -1008,10 +1004,10 @@ fn drop_record_and_cascade(
     if let Some(hash) = &record.artifact_hash {
         let manifest_path = objects_dir.join(hash);
         let mut payloads = Vec::new();
-        if let Ok(bytes) = fs::read(&manifest_path) {
-            if let Ok(entries) = serde_json::from_slice::<Vec<ArtifactManifestEntry>>(&bytes) {
-                payloads = entries.into_iter().map(|e| e.hash).collect();
-            }
+        if let Ok(bytes) = fs::read(&manifest_path)
+            && let Ok(entries) = serde_json::from_slice::<Vec<ArtifactManifestEntry>>(&bytes)
+        {
+            payloads = entries.into_iter().map(|e| e.hash).collect();
         }
 
         let count = ref_counts.get(hash).copied().unwrap_or(0);

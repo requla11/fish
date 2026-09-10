@@ -1,7 +1,7 @@
 ﻿# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
 language: "en-US"
 early_access: false
-tone_instructions: "Review as an assertive, rigorous Principal Systems & Security Engineer. Focus directly on correctness, concurrency safety, performance efficiency, security posture, and cross-platform compatibility (Windows, Linux, macOS). Keep feedback concise, actionable, and technically precise."
+tone_instructions: "Review rigorously for correctness, concurrency, performance, security, and Windows/Linux/macOS compatibility. Keep feedback concise, actionable, and technically precise."
 
 reviews:
   profile: "assertive"

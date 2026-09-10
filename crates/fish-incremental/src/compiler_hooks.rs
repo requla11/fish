@@ -110,14 +110,12 @@ pub struct RebuildDecision {
 
 struct IdentCollector {
     referenced: HashSet<String>,
-    defined: HashSet<String>,
 }
 
 impl IdentCollector {
     fn new() -> Self {
         Self {
             referenced: HashSet::new(),
-            defined: HashSet::new(),
         }
     }
 }
@@ -307,9 +305,77 @@ fn collect_references_from_item(item: &Item, known_symbols: &HashSet<String>) ->
         .collect()
 }
 
+fn strip_doc_attrs_from_item(item: &mut Item) {
+    match item {
+        Item::Const(i) => i.attrs.retain(|a| !a.path().is_ident("doc")),
+        Item::Enum(i) => {
+            i.attrs.retain(|a| !a.path().is_ident("doc"));
+            for v in &mut i.variants {
+                v.attrs.retain(|a| !a.path().is_ident("doc"));
+                for f in &mut v.fields {
+                    f.attrs.retain(|a| !a.path().is_ident("doc"));
+                }
+            }
+        }
+        Item::Fn(i) => i.attrs.retain(|a| !a.path().is_ident("doc")),
+        Item::ForeignMod(i) => i.attrs.retain(|a| !a.path().is_ident("doc")),
+        Item::Impl(i) => {
+            i.attrs.retain(|a| !a.path().is_ident("doc"));
+            for it in &mut i.items {
+                match it {
+                    syn::ImplItem::Const(c) => c.attrs.retain(|a| !a.path().is_ident("doc")),
+                    syn::ImplItem::Fn(f) => f.attrs.retain(|a| !a.path().is_ident("doc")),
+                    syn::ImplItem::Type(t) => t.attrs.retain(|a| !a.path().is_ident("doc")),
+                    syn::ImplItem::Macro(m) => m.attrs.retain(|a| !a.path().is_ident("doc")),
+                    _ => {}
+                }
+            }
+        }
+        Item::Macro(i) => i.attrs.retain(|a| !a.path().is_ident("doc")),
+        Item::Mod(i) => i.attrs.retain(|a| !a.path().is_ident("doc")),
+        Item::Static(i) => i.attrs.retain(|a| !a.path().is_ident("doc")),
+        Item::Struct(i) => {
+            i.attrs.retain(|a| !a.path().is_ident("doc"));
+            for f in &mut i.fields {
+                f.attrs.retain(|a| !a.path().is_ident("doc"));
+            }
+            if let syn::Fields::Named(named) = &mut i.fields {
+                named.named.pop_punct();
+            }
+        }
+        Item::Trait(i) => {
+            i.attrs.retain(|a| !a.path().is_ident("doc"));
+            for it in &mut i.items {
+                match it {
+                    syn::TraitItem::Const(c) => c.attrs.retain(|a| !a.path().is_ident("doc")),
+                    syn::TraitItem::Fn(f) => f.attrs.retain(|a| !a.path().is_ident("doc")),
+                    syn::TraitItem::Type(t) => t.attrs.retain(|a| !a.path().is_ident("doc")),
+                    syn::TraitItem::Macro(m) => m.attrs.retain(|a| !a.path().is_ident("doc")),
+                    _ => {}
+                }
+            }
+        }
+        Item::TraitAlias(i) => i.attrs.retain(|a| !a.path().is_ident("doc")),
+        Item::Type(i) => i.attrs.retain(|a| !a.path().is_ident("doc")),
+        Item::Union(i) => {
+            i.attrs.retain(|a| !a.path().is_ident("doc"));
+            for f in &mut i.fields.named {
+                f.attrs.retain(|a| !a.path().is_ident("doc"));
+            }
+        }
+        Item::Use(i) => i.attrs.retain(|a| !a.path().is_ident("doc")),
+        _ => {}
+    }
+}
+
 pub fn parse_module(file_path: &Path, content: &str) -> Result<ModuleSnapshot, String> {
-    let syntax_tree: File = syn::parse_file(content)
+    let mut syntax_tree: File = syn::parse_file(content)
         .map_err(|e| format!("failed to parse Rust AST for {}: {e}", file_path.display()))?;
+
+    syntax_tree.attrs.retain(|a| !a.path().is_ident("doc"));
+    for item in &mut syntax_tree.items {
+        strip_doc_attrs_from_item(item);
+    }
 
     let canonical_module_code = syntax_tree.to_token_stream().to_string();
     let module_hash = blake3::hash(canonical_module_code.as_bytes())

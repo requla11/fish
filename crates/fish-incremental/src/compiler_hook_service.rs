@@ -56,7 +56,7 @@ impl CompilerHookService {
         self.impact_graph.map_symbol_to_test(symbol, test_target);
     }
 
-    fn normalize_path(path: &Path) -> PathBuf {
+    pub(crate) fn normalize_path(path: &Path) -> PathBuf {
         PathBuf::from(path.to_string_lossy().replace('\\', "/"))
     }
 
@@ -183,10 +183,12 @@ impl CompilerHookService {
                     files_unchanged += 1;
                 }
                 Some(plan) => {
-                    if plan.diff.has_signature_changes() || plan.diff.module_hash_changed {
+                    if plan.diff.has_signature_changes() {
                         files_sig += 1;
-                    } else {
+                    } else if !plan.diff.diffs.is_empty() {
                         files_body_only += 1;
+                    } else if plan.diff.module_hash_changed {
+                        files_sig += 1;
                     }
                     diffs_by_file.insert(plan.file_path.clone(), plan.diff.clone());
                 }
@@ -221,7 +223,7 @@ impl CompilerHookService {
                     .collect();
             }
 
-            if diff.module_hash_changed {
+            if diff.diffs.is_empty() && diff.module_hash_changed {
                 for (name, kind) in file_items {
                     must_rebuild_global.insert(name.clone());
                     diff_items_with_module_changes.push(crate::compiler_hooks::ItemDiff {
@@ -414,7 +416,9 @@ mod tests {
         let mut svc = CompilerHookService::new();
         let _ = svc.analyze_file(f.path()).unwrap();
 
-        let key = f.path().display().to_string();
+        let key = CompilerHookService::normalize_path(f.path())
+            .display()
+            .to_string();
         let subtrees = svc.ast_cache().file_trees.get(&key).unwrap();
         assert!(subtrees.iter().any(|s| s.symbol_name == "cached_fn"));
     }

@@ -1,10 +1,7 @@
-use serde::{Deserialize, Serialize};
 use std::collections::{BTreeSet, HashMap};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
-use crate::compiler_hooks::{
-    ChangeKind, DiffResult, ItemDiff, ItemKind, ModuleSnapshot, RebuildDecision, SemanticItem,
-};
+use crate::compiler_hooks::{DiffResult, ItemKind, ModuleSnapshot, RebuildDecision, SemanticItem};
 use crate::semantic_impact::SemanticImpactGraph;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -117,23 +114,6 @@ impl<'a> TsParser<'a> {
                 return;
             }
             self.pos += 1;
-        }
-    }
-
-    fn read_identifier(&mut self) -> Option<String> {
-        self.skip_whitespace();
-        let start = self.pos;
-        while self.pos < self.bytes.len()
-            && (self.bytes[self.pos].is_ascii_alphanumeric()
-                || self.bytes[self.pos] == b'_'
-                || self.bytes[self.pos] == b'$')
-        {
-            self.pos += 1;
-        }
-        if self.pos > start {
-            Some(self.source[start..self.pos].to_string())
-        } else {
-            None
         }
     }
 
@@ -368,8 +348,7 @@ fn try_parse_ts_declaration(
     ];
 
     for (keyword, kind) in &keywords {
-        if text.starts_with(keyword) {
-            let after_kw = &text[keyword.len()..];
+        if let Some(after_kw) = text.strip_prefix(keyword) {
             let name_end = after_kw
                 .find(|c: char| !c.is_alphanumeric() && c != '_' && c != '$')
                 .unwrap_or(after_kw.len());
@@ -415,20 +394,21 @@ fn strip_ts_comments(source: &str) -> String {
 
     while let Some(c) = chars.next() {
         if c == '/' {
-            if let Some(&next_c) = chars.peek() {
-                if next_c == '/' {
+            match chars.peek().copied() {
+                Some('/') => {
                     chars.next();
-                    while let Some(c) = chars.next() {
+                    for c in chars.by_ref() {
                         if c == '\n' {
                             result.push('\n');
                             break;
                         }
                     }
                     continue;
-                } else if next_c == '*' {
+                }
+                Some('*') => {
                     chars.next();
                     let mut prev = ' ';
-                    while let Some(c) = chars.next() {
+                    for c in chars.by_ref() {
                         if prev == '*' && c == '/' {
                             break;
                         }
@@ -436,6 +416,7 @@ fn strip_ts_comments(source: &str) -> String {
                     }
                     continue;
                 }
+                _ => {}
             }
         }
 
@@ -443,7 +424,7 @@ fn strip_ts_comments(source: &str) -> String {
             let quote = c;
             result.push(c);
             let mut escaped = false;
-            while let Some(sc) = chars.next() {
+            for sc in chars.by_ref() {
                 result.push(sc);
                 if escaped {
                     escaped = false;
@@ -470,7 +451,7 @@ fn extract_ts_signature(body: &str, _kind: &ItemKind) -> String {
             let quote = c;
             signature.push(c);
             let mut escaped = false;
-            while let Some(sc) = chars.next() {
+            for sc in chars.by_ref() {
                 signature.push(sc);
                 if escaped {
                     escaped = false;
@@ -513,6 +494,7 @@ pub fn compute_ts_rebuild_decision(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::compiler_hooks::ChangeKind;
 
     #[test]
     fn test_ts_dialect_detection() {
@@ -644,7 +626,7 @@ function standalone(): void { console.log("hi"); }
         let caller_deps = snap.edges.get("caller");
         assert!(caller_deps.is_some());
         assert!(caller_deps.unwrap().contains("base"));
-        assert!(snap.edges.get("standalone").is_none());
+        assert!(!snap.edges.contains_key("standalone"));
     }
 
     #[test]

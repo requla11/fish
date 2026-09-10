@@ -102,12 +102,7 @@ impl HermeticProcessSandbox {
                 if self.allow_network {
                     profile.push_str("(allow network*)");
                 }
-                let mut sb_args = vec![
-                    "-n".to_string(),
-                    "-p".to_string(),
-                    profile,
-                    executable.to_string(),
-                ];
+                let mut sb_args = vec!["-p".to_string(), profile, executable.to_string()];
                 sb_args.extend_from_slice(args);
                 ("sandbox-exec".to_string(), sb_args)
             }
@@ -152,9 +147,9 @@ mod tests {
 
         let (cmd, args) = sb.wrap_command_args("clang", &["-c".to_string(), "main.c".to_string()]);
         assert_eq!(cmd, "sandbox-exec");
-        assert!(args[2].contains("(version 1)"));
-        assert!(args[2].contains("(subpath \"/workspace\")"));
-        assert!(args[2].contains("(allow file-write*(subpath \"/workspace/target\"))"));
+        assert!(args[1].contains("(version 1)"));
+        assert!(args[1].contains("(subpath \"/workspace\")"));
+        assert!(args[1].contains("(allow file-write*(subpath \"/workspace/target\"))"));
     }
 
     #[test]

@@ -90,18 +90,17 @@ impl HermeticProcessSandbox {
                     ]);
                 }
                 let exec_p = std::path::Path::new(executable);
-                if let Some(parent) = exec_p.parent() {
-                    if parent.exists()
-                        && !parent.starts_with("/bin")
-                        && !parent.starts_with("/usr")
-                        && !parent.starts_with("/lib")
-                    {
-                        bwrap_args.extend_from_slice(&[
-                            "--ro-bind".to_string(),
-                            parent.to_string_lossy().to_string(),
-                            parent.to_string_lossy().to_string(),
-                        ]);
-                    }
+                if let Some(parent) = exec_p.parent().filter(|p| {
+                    p.exists()
+                        && !p.starts_with("/bin")
+                        && !p.starts_with("/usr")
+                        && !p.starts_with("/lib")
+                }) {
+                    bwrap_args.extend_from_slice(&[
+                        "--ro-bind".to_string(),
+                        parent.to_string_lossy().to_string(),
+                        parent.to_string_lossy().to_string(),
+                    ]);
                 }
                 if let Ok(home) = std::env::var("HOME") {
                     let home_path = std::path::Path::new(&home);

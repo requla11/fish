@@ -32,7 +32,8 @@ impl FishSlsaWitness {
     }
 
     pub fn persist_ledger(&self, path: &Path) -> Result<(), anyhow::Error> {
-        self.witness.persist_to_disk(path)
+        self.witness.persist_to_disk(path)?;
+        Ok(())
     }
 }
 

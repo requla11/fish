@@ -14,7 +14,9 @@ impl FishOciCompiler {
             .entrypoint(entrypoint)
             .working_dir(working_dir);
 
-        Ok(builder.build_from_rootfs(rootfs, output_tar)?)
+        builder
+            .build_from_rootfs(rootfs, output_tar)
+            .map_err(anyhow::Error::from)
     }
 }
 

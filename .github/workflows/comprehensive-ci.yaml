@@ -96,49 +96,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
-          if [ -f submodules/apple/src/isolation/process.rs ]; then
-            python3 -c '
-path = "submodules/apple/src/isolation/process.rs"
-with open(path, "r") as f:
-    s = f.read()
-
-old = """        #[cfg(unix)]
-        {
-            let rules = request.profile.mount_rules.clone();
-            unsafe {
-                cmd.pre_exec(move || {"""
-
-new = """        #[cfg(unix)]
-        {
-            let rules = request.profile.mount_rules.clone();
-            #[cfg(target_os = "linux")]
-            let is_full_hermetic = request.profile.level == IsolationLevel::FullHermetic;
-            unsafe {
-                cmd.pre_exec(move || {
-                    #[cfg(target_os = "linux")]
-                    if !is_full_hermetic {
-                        if libc::setpgid(0, 0) != 0 {
-                            return Err(std::io::Error::last_os_error());
-                        }
-                        return Ok(());
-                    }"""
-
-if old in s:
-    s = s.replace(old, new, 1)
-    with open(path, "w") as f:
-        f.write(s)
-    print("Successfully patched submodules/apple/src/isolation/process.rs")
-else:
-    print("Warning: target block not found in process.rs")
-'
-            (
-              cd submodules/apple
-              git config user.name "github-actions[bot]"
-              git config user.email "github-actions[bot]@users.noreply.github.com"
-              git commit -am "fix(isolation): only apply linux namespaces and landlock in FullHermetic mode" || true
-              git push origin HEAD:dev || true
-            ) || true
-          fi
+          python3 scripts/patch_apple.py || true
       - name: Run all workspace tests
         env:
           RUST_BACKTRACE: full

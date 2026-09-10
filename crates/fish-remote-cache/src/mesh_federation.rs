@@ -1,7 +1,5 @@
-use ed25519_dalek::VerifyingKey;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
-use std::sync::Arc;
 
 use crate::banana_mesh::BananaMeshCache;
 use fish_security::slsa::{
@@ -63,18 +61,13 @@ impl GlobalMeshFederation {
         &self,
         expected_blake3_hash: &str,
     ) -> Result<Option<Vec<u8>>, FederationError> {
-        // Find peers holding the artifact via Kademlia DHT
-        let peers = self.mesh.find_peer_nodes(expected_blake3_hash);
-        if peers.is_empty() {
-            return Ok(None);
-        }
-
-        // We simulate streaming from peers. The banana mesh handles the underlying byte retrieval.
         let raw_data = match self.mesh.get_local_artifact(expected_blake3_hash) {
             Some(data) => data,
             None => {
-                // In a real network, we'd establish a P2P connection to the peer and stream.
-                // For this moonshot prototype, we assume the banana mesh retrieves it.
+                let peers = self.mesh.find_peer_nodes(expected_blake3_hash);
+                if peers.is_empty() {
+                    return Ok(None);
+                }
                 return Err(FederationError::Network(
                     "Failed to retrieve chunk from peers".to_string(),
                 ));
@@ -101,19 +94,16 @@ impl GlobalMeshFederation {
 
         // 2. Verify SLSA Level 3 Compliance (Hermetic, exact params, valid structure)
         verify_slsa_level3_compliance(&payload.attestation.statement)
-            .map_err(|e| FederationError::SlsaComplianceError(e))?;
+            .map_err(FederationError::SlsaComplianceError)?;
 
         // 3. Verify the subject in the attestation matches the requested hash
         let statement = &payload.attestation.statement;
-        let mut subject_hash_matches = false;
-        for subject in &statement.subject {
-            if let Some(hash) = subject.digest.get("blake3") {
-                if hash == expected_blake3_hash {
-                    subject_hash_matches = true;
-                    break;
-                }
-            }
-        }
+        let subject_hash_matches = statement.subject.iter().any(|subject| {
+            subject
+                .digest
+                .get("blake3")
+                .is_some_and(|hash| hash == expected_blake3_hash)
+        });
 
         if !subject_hash_matches {
             return Err(FederationError::SlsaComplianceError(format!(

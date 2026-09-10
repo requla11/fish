@@ -250,6 +250,17 @@ fn verify_with_public_key(
     verifying_key.verify(payload, &signature)
 }
 
+pub fn verify_statement_signature(
+    signed: &SignedStatement,
+    public_key_b64: &str,
+) -> Result<(), SignatureError> {
+    let payload = signed
+        .statement
+        .canonical_payload()
+        .map_err(|_| SignatureError::new())?;
+    verify_with_public_key(&payload, &signed.signature, public_key_b64)
+}
+
 pub fn sign_statement(
     statement: &InTotoStatement,
     signing_key: &SigningKey,

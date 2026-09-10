@@ -95,10 +95,12 @@ jobs:
       - name: Configure Linux environment
         if: runner.os == 'Linux'
         run: |
-          sudo aa-teardown || true
-          sudo systemctl disable --now apparmor.service || true
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          echo "=== submodules/apple/src/isolation/process.rs ==="
+          cat submodules/apple/src/isolation/process.rs || true
       - name: Run all workspace tests
+        env:
+          RUST_BACKTRACE: full
         run: cargo test --workspace --locked
 
   msrv:

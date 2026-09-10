@@ -92,15 +92,15 @@ impl HermeticProcessSandbox {
                     "(allow file-read*(subpath \"{}\"))",
                     self.root_dir.to_string_lossy()
                 ));
-                let mut writable = self.writable_dirs.clone();
-                writable.push(PathBuf::from("/dev"));
-                writable.push(PathBuf::from("/private/tmp"));
-                writable.push(PathBuf::from("/private/var"));
-                profile.push_str("(allow file-write*");
-                for w in &writable {
-                    profile.push_str(&format!("(subpath \"{}\")", w.to_string_lossy()));
+                for w in &self.writable_dirs {
+                    profile.push_str(&format!(
+                        "(allow file-write*(subpath \"{}\"))",
+                        w.to_string_lossy()
+                    ));
                 }
-                profile.push(')');
+                profile.push_str("(allow file-write*(subpath \"/dev\"))");
+                profile.push_str("(allow file-write*(subpath \"/private/tmp\"))");
+                profile.push_str("(allow file-write*(subpath \"/private/var\"))");
                 if self.allow_network {
                     profile.push_str("(allow network*)");
                 }

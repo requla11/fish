@@ -95,6 +95,8 @@ jobs:
       - name: Configure Linux environment
         if: runner.os == 'Linux'
         run: |
+          sudo aa-teardown || true
+          sudo systemctl disable --now apparmor.service || true
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
       - name: Run all workspace tests
         run: cargo test --workspace --locked

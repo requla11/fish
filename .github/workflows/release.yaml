@@ -31,6 +31,9 @@ jobs:
           - target: x86_64-pc-windows-msvc
             os: windows-latest
             archive: zip
+          - target: aarch64-pc-windows-msvc
+            os: windows-latest
+            archive: zip
           - target: aarch64-apple-darwin
             os: macos-latest
             archive: tar.gz
@@ -120,6 +123,45 @@ jobs:
           name: fish-x86_64-unknown-linux-musl
           path: dist/*
 
+  build-macos-universal:
+    name: Build macOS Universal Binary
+    needs: [build-artifacts]
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - name: Download x86_64 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: fish-x86_64-apple-darwin
+          path: dist/x86_64
+      - name: Download aarch64 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: fish-aarch64-apple-darwin
+          path: dist/aarch64
+      - name: Create Universal Binary
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          STAGE="fish-${VERSION}-universal-apple-darwin"
+          mkdir -p "dist/${STAGE}"
+          
+          # Extract both tarballs
+          tar xzf dist/x86_64/*.tar.gz -C dist/x86_64
+          tar xzf dist/aarch64/*.tar.gz -C dist/aarch64
+          
+          # Lipo them together
+          lipo -create -output "dist/${STAGE}/fish" \
+            dist/x86_64/fish-*/fish \
+            dist/aarch64/fish-*/fish
+            
+          # Package
+          tar czf "dist/${STAGE}.tar.gz" -C dist "${STAGE}"
+          sha256sum "dist/${STAGE}.tar.gz" > "dist/${STAGE}.tar.gz.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fish-universal-apple-darwin
+          path: dist/*.tar.gz*
+
   generate-provenance:
     name: SLSA Provenance + Ed25519 Signature
     needs: [build-artifacts]
@@ -167,7 +209,7 @@ jobs:
 
   create-release:
     name: Create GitHub Release
-    needs: [build-artifacts, build-musl-static, generate-provenance]
+    needs: [build-artifacts, build-musl-static, build-macos-universal, generate-provenance]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

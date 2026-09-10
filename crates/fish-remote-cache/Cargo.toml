@@ -19,6 +19,9 @@ thiserror = { workspace = true }
 zstd = { workspace = true }
 ed25519-dalek = { workspace = true }
 banana = { workspace = true }
+fish-security = { path = "../fish-security" }
+chrono = { workspace = true }
+rand_core = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }

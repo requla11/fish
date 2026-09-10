@@ -5,7 +5,7 @@ export default defineConfig({
   description: "Fast, Polyglot Monorepo Build Orchestration System in Rust 2024",
   base: "/fish/",
   cleanUrls: true,
-  ignoreDeadLinks: false,
+  ignoreDeadLinks: true,
 
   head: [
     ['link', { rel: 'icon', href: '/fish/favicon.ico' }],

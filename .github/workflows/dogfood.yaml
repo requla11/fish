@@ -46,12 +46,19 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-
+          token: ${{ secrets.SUBMODULE_PAT }}
       - uses: dtolnay/rust-toolchain@stable
 
       - uses: Swatinem/rust-cache@v2
         with:
           key: ${{ matrix.os }}-dogfood
+
+      - name: Configure Linux environment
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -y && sudo apt-get install -y bubblewrap
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          python3 scripts/patch_apple.py || true
 
       - name: Bootstrap Fish CLI
         run: cargo build -p fish-cli --release

@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::Ordering;
 use std::time::Duration;
 
 use fish_executor::{ExecutorError, Task, TaskExecutor, TaskOutcome};
@@ -36,7 +36,6 @@ where
 
     pub fn execute_race(&self, task: &Task) -> Result<TaskOutcome, ExecutorError> {
         let (tx, rx) = crossbeam_channel::bounded::<Result<TaskOutcome, ExecutorError>>(2);
-        let cancelled = Arc::new(AtomicBool::new(false));
 
         let local_exec = Arc::clone(&self.local_executor);
         let remote_exec = Arc::clone(&self.remote_executor);
@@ -44,16 +43,14 @@ where
         let task_remote = task.clone();
         let tx_local = tx.clone();
         let tx_remote = tx;
-        let cancelled_local = Arc::clone(&cancelled);
-        let cancelled_remote = Arc::clone(&cancelled);
         let grace = self.remote_grace_period;
 
         std::thread::spawn(move || {
-            if cancelled_local.load(Ordering::SeqCst) {
+            if task_local.cancel_flag.load(Ordering::SeqCst) {
                 return;
             }
             let res = local_exec.execute(&task_local);
-            if !cancelled_local.load(Ordering::SeqCst) {
+            if !task_local.cancel_flag.load(Ordering::SeqCst) {
                 let _ = tx_local.send(res);
             }
         });
@@ -62,18 +59,18 @@ where
             if !grace.is_zero() {
                 std::thread::sleep(grace);
             }
-            if cancelled_remote.load(Ordering::SeqCst) {
+            if task_remote.cancel_flag.load(Ordering::SeqCst) {
                 return;
             }
             let res = remote_exec.execute(&task_remote);
-            if !cancelled_remote.load(Ordering::SeqCst) {
+            if !task_remote.cancel_flag.load(Ordering::SeqCst) {
                 let _ = tx_remote.send(res);
             }
         });
 
         match rx.recv() {
             Ok(outcome_res) => {
-                cancelled.store(true, Ordering::SeqCst);
+                task.cancel_flag.store(true, Ordering::SeqCst);
                 outcome_res
             }
             Err(_) => Err(ExecutorError::Spawn {

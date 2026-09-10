@@ -92,37 +92,104 @@ impl WorkStealingScheduler {
         self.graph.validate()?;
         self.graph.reset_states();
 
-        let (task_tx, task_rx) = crossbeam_channel::unbounded::<(NodeId, Task)>();
+        let injector = Arc::new(crossbeam_deque::Injector::new());
         let (done_tx, done_rx) =
             crossbeam_channel::unbounded::<(NodeId, TaskOutcome, Duration, usize)>();
+        let (sleep_tx, sleep_rx) = crossbeam_channel::unbounded::<()>();
+
+        let mut workers_local = Vec::with_capacity(self.worker_count);
+        let mut stealers = Vec::with_capacity(self.worker_count);
+
+        for _ in 0..self.worker_count {
+            let worker = crossbeam_deque::Worker::new_fifo();
+            stealers.push(worker.stealer());
+            workers_local.push(worker);
+        }
+        let stealers = Arc::new(stealers);
 
         let mut workers = Vec::with_capacity(self.worker_count);
         for worker_id in 0..self.worker_count {
-            let task_rx = task_rx.clone();
             let done_tx = done_tx.clone();
+            let sleep_rx = sleep_rx.clone();
             let executor = Arc::clone(&self.executor);
             let heuristics = Arc::clone(&self.heuristics);
             let build_start = start;
+            let local_deque = workers_local.pop().unwrap();
+            let global_injector = Arc::clone(&injector);
+            let sibling_stealers = Arc::clone(&stealers);
+
             workers.push(std::thread::spawn(move || {
-                while let Ok((id, task)) = task_rx.recv() {
-                    let task_start = Instant::now();
-                    let start_offset = task_start.saturating_duration_since(build_start);
-                    let outcome = match std::panic::catch_unwind(AssertUnwindSafe(|| {
-                        executor.execute(&task)
-                    })) {
-                        Ok(Ok(outcome)) => outcome,
-                        Ok(Err(error)) => TaskOutcome::failed(&task, error.to_string()),
-                        Err(panic) => {
-                            let message = panic
-                                .downcast_ref::<&str>()
-                                .map(|s| s.to_string())
-                                .or_else(|| panic.downcast_ref::<String>().cloned())
-                                .unwrap_or_else(|| "unknown panic".to_string());
-                            TaskOutcome::failed(&task, format!("executor panicked: {message}"))
+                let mut rng_seed = worker_id as u64;
+                let num_siblings = sibling_stealers.len();
+
+                loop {
+                    // 1. Try local deque
+                    let mut task_opt = local_deque.pop();
+
+                    // 2. Try global injector
+                    if task_opt.is_none() {
+                        loop {
+                            match global_injector.steal_batch_and_pop(&local_deque) {
+                                crossbeam_deque::Steal::Success(t) => {
+                                    task_opt = Some(t);
+                                    break;
+                                }
+                                crossbeam_deque::Steal::Empty => break,
+                                crossbeam_deque::Steal::Retry => continue,
+                            }
                         }
-                    };
-                    heuristics.record_execution(&task, task_start.elapsed());
-                    let _ = done_tx.send((id, outcome, start_offset, worker_id));
+                    }
+
+                    // 3. Try stealing from siblings
+                    if task_opt.is_none() && num_siblings > 1 {
+                        rng_seed = rng_seed.wrapping_add(1);
+                        let start_idx = (rng_seed % num_siblings as u64) as usize;
+                        for i in 0..num_siblings {
+                            let target = (start_idx + i) % num_siblings;
+                            if target == worker_id {
+                                continue;
+                            }
+                            loop {
+                                match sibling_stealers[target].steal_batch_and_pop(&local_deque) {
+                                    crossbeam_deque::Steal::Success(t) => {
+                                        task_opt = Some(t);
+                                        break;
+                                    }
+                                    crossbeam_deque::Steal::Empty => break,
+                                    crossbeam_deque::Steal::Retry => continue,
+                                }
+                            }
+                            if task_opt.is_some() {
+                                break;
+                            }
+                        }
+                    }
+
+                    if let Some((id, task)) = task_opt {
+                        let task_start = Instant::now();
+                        let start_offset = task_start.saturating_duration_since(build_start);
+                        let outcome = match std::panic::catch_unwind(AssertUnwindSafe(|| {
+                            executor.execute(&task)
+                        })) {
+                            Ok(Ok(outcome)) => outcome,
+                            Ok(Err(error)) => TaskOutcome::failed(&task, error.to_string()),
+                            Err(panic) => {
+                                let message = panic
+                                    .downcast_ref::<&str>()
+                                    .map(|s| s.to_string())
+                                    .or_else(|| panic.downcast_ref::<String>().cloned())
+                                    .unwrap_or_else(|| "unknown panic".to_string());
+                                TaskOutcome::failed(&task, format!("executor panicked: {message}"))
+                            }
+                        };
+                        heuristics.record_execution(&task, task_start.elapsed());
+                        let _ = done_tx.send((id, outcome, start_offset, worker_id));
+                    } else {
+                        // Sleep until woken up by the orchestrator or shutdown
+                        if sleep_rx.recv().is_err() {
+                            break;
+                        }
+                    }
                 }
             }));
         }
@@ -132,24 +199,38 @@ impl WorkStealingScheduler {
         let mut timings: Vec<TaskTiming> = Vec::new();
         let tail_lengths = self.compute_all_tail_lengths();
 
+        // O(1) scheduling: track indegrees locally
+        let mut indegrees = vec![0; self.graph.len()];
+        let mut ready = Vec::new();
+
+        for id in self.graph.topological_order() {
+            let deps = self.graph.deps(id).unwrap_or_default();
+            indegrees[id.index()] = deps.len();
+            if deps.is_empty() {
+                ready.push(id);
+            }
+        }
+
         loop {
-            let mut ready = self.graph.ready_nodes();
-            ready.sort_unstable_by_key(|id| {
-                (
-                    std::cmp::Reverse(self.priority_score(*id, &tail_lengths)),
-                    id.index(),
-                )
-            });
-            for id in ready {
-                let task = self
-                    .graph
-                    .node(id)
-                    .expect("ready nodes exist")
-                    .payload
-                    .clone();
-                self.graph.set_state(id, TaskState::Running)?;
-                task_tx.send((id, task)).expect("workers are alive");
-                in_flight += 1;
+            if !ready.is_empty() {
+                ready.sort_unstable_by_key(|id| {
+                    (
+                        std::cmp::Reverse(self.priority_score(*id, &tail_lengths)),
+                        id.index(),
+                    )
+                });
+                for id in ready.drain(..) {
+                    let task = self
+                        .graph
+                        .node(id)
+                        .expect("ready nodes exist")
+                        .payload
+                        .clone();
+                    self.graph.set_state(id, TaskState::Running)?;
+                    injector.push((id, task));
+                    in_flight += 1;
+                    let _ = sleep_tx.send(());
+                }
             }
 
             if in_flight == 0 {
@@ -159,6 +240,9 @@ impl WorkStealingScheduler {
             let (id, outcome, start_offset, worker_id) =
                 done_rx.recv().map_err(|_| SchedulerError::Stalled)?;
             in_flight -= 1;
+
+            let is_success =
+                outcome.status == TaskStatus::Executed || outcome.status == TaskStatus::Cached;
             self.apply_outcome(
                 id,
                 outcome,
@@ -167,8 +251,20 @@ impl WorkStealingScheduler {
                 &mut failures,
                 &mut timings,
             )?;
+
+            if is_success {
+                for &dependent in self.graph.dependents(id).unwrap_or_default() {
+                    indegrees[dependent.index()] -= 1;
+                    if indegrees[dependent.index()] == 0 {
+                        ready.push(dependent);
+                    }
+                }
+            }
+
             while let Ok((id, outcome, start_offset, worker_id)) = done_rx.try_recv() {
                 in_flight -= 1;
+                let is_success =
+                    outcome.status == TaskStatus::Executed || outcome.status == TaskStatus::Cached;
                 self.apply_outcome(
                     id,
                     outcome,
@@ -177,10 +273,18 @@ impl WorkStealingScheduler {
                     &mut failures,
                     &mut timings,
                 )?;
+                if is_success {
+                    for &dependent in self.graph.dependents(id).unwrap_or_default() {
+                        indegrees[dependent.index()] -= 1;
+                        if indegrees[dependent.index()] == 0 {
+                            ready.push(dependent);
+                        }
+                    }
+                }
             }
         }
 
-        drop(task_tx);
+        drop(sleep_tx);
         for worker in workers {
             let _ = worker.join();
         }

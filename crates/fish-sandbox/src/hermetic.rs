@@ -75,6 +75,72 @@ impl HermeticProcessSandbox {
                     self.root_dir.to_string_lossy().to_string(),
                     self.root_dir.to_string_lossy().to_string(),
                 ]);
+                if std::path::Path::new("/lib64").exists() {
+                    bwrap_args.extend_from_slice(&[
+                        "--ro-bind".to_string(),
+                        "/lib64".to_string(),
+                        "/lib64".to_string(),
+                    ]);
+                }
+                if std::path::Path::new("/etc").exists() {
+                    bwrap_args.extend_from_slice(&[
+                        "--ro-bind".to_string(),
+                        "/etc".to_string(),
+                        "/etc".to_string(),
+                    ]);
+                }
+                let exec_p = std::path::Path::new(executable);
+                if let Some(parent) = exec_p.parent().filter(|p| {
+                    p.exists()
+                        && !p.starts_with("/bin")
+                        && !p.starts_with("/usr")
+                        && !p.starts_with("/lib")
+                }) {
+                    bwrap_args.extend_from_slice(&[
+                        "--ro-bind".to_string(),
+                        parent.to_string_lossy().to_string(),
+                        parent.to_string_lossy().to_string(),
+                    ]);
+                }
+                if let Ok(home) = std::env::var("HOME") {
+                    let home_path = std::path::Path::new(&home);
+                    let rustup = home_path.join(".rustup");
+                    if rustup.exists() {
+                        bwrap_args.extend_from_slice(&[
+                            "--ro-bind".to_string(),
+                            rustup.to_string_lossy().to_string(),
+                            rustup.to_string_lossy().to_string(),
+                        ]);
+                    }
+                    let cargo = home_path.join(".cargo");
+                    if cargo.exists() {
+                        bwrap_args.extend_from_slice(&[
+                            "--bind".to_string(),
+                            cargo.to_string_lossy().to_string(),
+                            cargo.to_string_lossy().to_string(),
+                        ]);
+                    }
+                }
+                if let Ok(cargo_home) = std::env::var("CARGO_HOME") {
+                    let p = std::path::Path::new(&cargo_home);
+                    if p.exists() {
+                        bwrap_args.extend_from_slice(&[
+                            "--bind".to_string(),
+                            p.to_string_lossy().to_string(),
+                            p.to_string_lossy().to_string(),
+                        ]);
+                    }
+                }
+                if let Ok(rustup_home) = std::env::var("RUSTUP_HOME") {
+                    let p = std::path::Path::new(&rustup_home);
+                    if p.exists() {
+                        bwrap_args.extend_from_slice(&[
+                            "--ro-bind".to_string(),
+                            p.to_string_lossy().to_string(),
+                            p.to_string_lossy().to_string(),
+                        ]);
+                    }
+                }
                 for w in &self.writable_dirs {
                     bwrap_args.push("--bind".to_string());
                     bwrap_args.push(w.to_string_lossy().to_string());
@@ -86,28 +152,25 @@ impl HermeticProcessSandbox {
             }
             SandboxPlatform::MacOSSandboxExec => {
                 let mut profile = String::from(
-                    "(version 1)(deny default)(allow process-exec)(allow file-read* (subpath \"/usr\")(subpath \"/bin\")(subpath \"/lib\")(subpath \"/System\")(subpath \"/Library\")",
+                    "(version 1)(deny default)(allow process*)(allow sysctl-read)(allow file-read*)",
                 );
                 profile.push_str(&format!(
-                    "(subpath \"{}\"))",
+                    "(allow file-read*(subpath \"{}\"))",
                     self.root_dir.to_string_lossy()
                 ));
-                if !self.writable_dirs.is_empty() {
-                    profile.push_str("(allow file-write*");
-                    for w in &self.writable_dirs {
-                        profile.push_str(&format!("(subpath \"{}\")", w.to_string_lossy()));
-                    }
-                    profile.push(')');
+                for w in &self.writable_dirs {
+                    profile.push_str(&format!(
+                        "(allow file-write*(subpath \"{}\"))",
+                        w.to_string_lossy()
+                    ));
                 }
+                profile.push_str("(allow file-write*(subpath \"/dev\"))");
+                profile.push_str("(allow file-write*(subpath \"/private/tmp\"))");
+                profile.push_str("(allow file-write*(subpath \"/private/var\"))");
                 if self.allow_network {
                     profile.push_str("(allow network*)");
                 }
-                let mut sb_args = vec![
-                    "-n".to_string(),
-                    "-p".to_string(),
-                    profile,
-                    executable.to_string(),
-                ];
+                let mut sb_args = vec!["-p".to_string(), profile, executable.to_string()];
                 sb_args.extend_from_slice(args);
                 ("sandbox-exec".to_string(), sb_args)
             }
@@ -152,9 +215,9 @@ mod tests {
 
         let (cmd, args) = sb.wrap_command_args("clang", &["-c".to_string(), "main.c".to_string()]);
         assert_eq!(cmd, "sandbox-exec");
-        assert!(args[2].contains("(version 1)"));
-        assert!(args[2].contains("(subpath \"/workspace\")"));
-        assert!(args[2].contains("(allow file-write*(subpath \"/workspace/target\"))"));
+        assert!(args[1].contains("(version 1)"));
+        assert!(args[1].contains("(subpath \"/workspace\")"));
+        assert!(args[1].contains("(allow file-write*(subpath \"/workspace/target\"))"));
     }
 
     #[test]

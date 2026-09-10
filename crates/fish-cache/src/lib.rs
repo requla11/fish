@@ -662,6 +662,15 @@ impl LocalCache {
         for r in &initial_records {
             if let Some(h) = &r.artifact_hash {
                 *ref_counts.entry(h.clone()).or_insert(0) += 1;
+                let manifest_path = objects_dir.join(h);
+                if let Ok(bytes) = fs::read(&manifest_path)
+                    && let Ok(entries) =
+                        serde_json::from_slice::<Vec<ArtifactManifestEntry>>(&bytes)
+                {
+                    for entry in entries {
+                        *ref_counts.entry(entry.hash).or_insert(0) += 1;
+                    }
+                }
             }
         }
 
@@ -770,6 +779,15 @@ impl LocalCache {
             for r in &records {
                 if let Some(h) = &r.artifact_hash {
                     *size_ref_counts.entry(h.clone()).or_insert(0) += 1;
+                    let manifest_path = objects_dir.join(h);
+                    if let Ok(bytes) = fs::read(&manifest_path)
+                        && let Ok(entries) =
+                            serde_json::from_slice::<Vec<ArtifactManifestEntry>>(&bytes)
+                    {
+                        for entry in entries {
+                            *size_ref_counts.entry(entry.hash).or_insert(0) += 1;
+                        }
+                    }
                 }
             }
             // If we had age phase, ref_counts already reflects deletions; use fresh one.
@@ -804,6 +822,10 @@ impl LocalCache {
                 }
                 let path_str = path.to_string_lossy().to_string();
                 if removed.contains(&path_str) {
+                    continue;
+                }
+                let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+                if ref_counts.contains_key(file_name) {
                     continue;
                 }
                 let Ok(metadata) = fs::metadata(&path) else {
@@ -982,16 +1004,42 @@ fn drop_record_and_cascade(
     report.freed_bytes += record.size;
     let mut freed = record.size;
     if let Some(hash) = &record.artifact_hash {
+        let manifest_path = objects_dir.join(hash);
+        let mut payloads = Vec::new();
+        if let Ok(bytes) = fs::read(&manifest_path)
+            && let Ok(entries) = serde_json::from_slice::<Vec<ArtifactManifestEntry>>(&bytes)
+        {
+            payloads = entries.into_iter().map(|e| e.hash).collect();
+        }
+
         let count = ref_counts.get(hash).copied().unwrap_or(0);
         if count > 0 {
             ref_counts.insert(hash.clone(), count - 1);
         }
+
+        for payload_hash in payloads {
+            let p_count = ref_counts.get(&payload_hash).copied().unwrap_or(0);
+            if p_count > 0 {
+                ref_counts.insert(payload_hash.clone(), p_count - 1);
+            }
+            if p_count <= 1 {
+                let p_path = objects_dir.join(&payload_hash);
+                let p_str = p_path.to_string_lossy().to_string();
+                if removed.insert(p_str)
+                    && let Ok(meta) = fs::metadata(&p_path)
+                    && fs::remove_file(&p_path).is_ok()
+                {
+                    report.removed_objects += 1;
+                    freed += meta.len();
+                }
+            }
+        }
+
         if count <= 1 {
-            let object_path = objects_dir.join(hash);
-            let object_str = object_path.to_string_lossy().to_string();
+            let object_str = manifest_path.to_string_lossy().to_string();
             if removed.insert(object_str)
-                && let Ok(metadata) = fs::metadata(&object_path)
-                && fs::remove_file(&object_path).is_ok()
+                && let Ok(metadata) = fs::metadata(&manifest_path)
+                && fs::remove_file(&manifest_path).is_ok()
             {
                 report.removed_objects += 1;
                 freed += metadata.len();

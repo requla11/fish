@@ -74,9 +74,31 @@ pub struct SignedStatement {
     pub key_id: String,
 }
 
+fn canonical_sort_json(value: &serde_json::Value) -> serde_json::Value {
+    match value {
+        serde_json::Value::Object(map) => {
+            let mut sorted = std::collections::BTreeMap::new();
+            for (k, v) in map {
+                sorted.insert(k.clone(), canonical_sort_json(v));
+            }
+            let mut new_map = serde_json::Map::new();
+            for (k, v) in sorted {
+                new_map.insert(k, v);
+            }
+            serde_json::Value::Object(new_map)
+        }
+        serde_json::Value::Array(arr) => {
+            serde_json::Value::Array(arr.iter().map(canonical_sort_json).collect())
+        }
+        other => other.clone(),
+    }
+}
+
 impl InTotoStatement {
     pub fn canonical_payload(&self) -> Result<Vec<u8>, serde_json::Error> {
-        serde_json::to_vec(self)
+        let val = serde_json::to_value(self)?;
+        let sorted = canonical_sort_json(&val);
+        serde_json::to_vec(&sorted)
     }
 
     pub fn verifies_subject(&self, name: &str, expected_blake3: &str) -> bool {
@@ -248,6 +270,17 @@ fn verify_with_public_key(
     let verifying_key = VerifyingKey::from_bytes(&key_bytes)?;
     let signature = Signature::from_slice(&sig_bytes)?;
     verifying_key.verify(payload, &signature)
+}
+
+pub fn verify_statement_signature(
+    signed: &SignedStatement,
+    public_key_b64: &str,
+) -> Result<(), SignatureError> {
+    let payload = signed
+        .statement
+        .canonical_payload()
+        .map_err(|_| SignatureError::new())?;
+    verify_with_public_key(&payload, &signed.signature, public_key_b64)
 }
 
 pub fn sign_statement(

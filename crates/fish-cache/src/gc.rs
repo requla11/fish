@@ -75,25 +75,31 @@ impl BackgroundCacheGc {
 
         let now = SystemTime::now();
 
-        if let Ok(entries) = std::fs::read_dir(&self.cache_root) {
+        {
             let mut file_entries = Vec::new();
+            let mut stack = vec![self.cache_root.clone()];
+            while let Some(dir) = stack.pop() {
+                if let Ok(entries) = std::fs::read_dir(&dir) {
+                    for entry in entries.flatten() {
+                        let path = entry.path();
+                        if let Ok(meta) = path.metadata() {
+                            if meta.is_dir() {
+                                stack.push(path);
+                            } else if meta.is_file() {
+                                let size = meta.len();
+                                let mtime = meta.modified().unwrap_or(now);
+                                let age = now.duration_since(mtime).unwrap_or_default();
 
-            for entry in entries.flatten() {
-                let path = entry.path();
-                if let Ok(meta) = path.metadata()
-                    && meta.is_file()
-                {
-                    let size = meta.len();
-                    let mtime = meta.modified().unwrap_or(now);
-                    let age = now.duration_since(mtime).unwrap_or_default();
-
-                    if age >= self.config.ttl {
-                        if std::fs::remove_file(&path).is_ok() {
-                            removed_count += 1;
-                            freed_bytes += size;
+                                if age >= self.config.ttl {
+                                    if std::fs::remove_file(&path).is_ok() {
+                                        removed_count += 1;
+                                        freed_bytes += size;
+                                    }
+                                } else {
+                                    file_entries.push((path, size, mtime));
+                                }
+                            }
                         }
-                    } else {
-                        file_entries.push((path, size, mtime));
                     }
                 }
             }

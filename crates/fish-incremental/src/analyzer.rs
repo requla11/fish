@@ -7,6 +7,8 @@ use crate::ecosystem::{EcosystemType, detect_ecosystems, is_build_relevant_file}
 use crate::patterns::{BuildPattern, PatternSeverity, PatternType};
 use crate::suggestions::{OptimizationSuggestion, SuggestionPriority};
 
+use crate::compiler_hook_service::{CompilerHookService, WorkspaceRebuildPlan};
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BuildAnalysis {
     pub project_path: String,
@@ -17,6 +19,7 @@ pub struct BuildAnalysis {
     pub rebuild_frequency: f64,
     pub build_relevant_files_count: usize,
     pub ignored_files_count: usize,
+    pub workspace_plan: Option<WorkspaceRebuildPlan>,
 }
 
 #[derive(Clone, Default)]
@@ -146,6 +149,14 @@ impl IncrementalAnalyzer {
             });
         }
 
+        let mut workspace_plan = None;
+        if !file_changes.is_empty() {
+            let mut hook_service = CompilerHookService::new();
+            if let Ok(plan) = hook_service.analyze_workspace(file_changes) {
+                workspace_plan = Some(plan);
+            }
+        }
+
         Ok(BuildAnalysis {
             project_path: project_path.to_string(),
             analysis_timestamp: Utc::now(),
@@ -155,6 +166,7 @@ impl IncrementalAnalyzer {
             rebuild_frequency: rebuild_freq,
             build_relevant_files_count: relevant_count,
             ignored_files_count: ignored_count,
+            workspace_plan,
         })
     }
 }

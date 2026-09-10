@@ -61,6 +61,8 @@ pub enum Command {
     Jit(JitArgs),
     #[command(hide = true)]
     SuperOpt(SuperOptArgs),
+    #[command(hide = true)]
+    QueryHooks(QueryHooksArgs),
     Plugin(PluginArgs),
     Fix(FixArgs),
     SigningKey,
@@ -556,6 +558,12 @@ pub struct JitArgs {
 pub struct SuperOptArgs {
     pub input_file: PathBuf,
     pub output_file: PathBuf,
+}
+
+#[derive(Debug, Args)]
+pub struct QueryHooksArgs {
+    #[arg(required = true)]
+    pub files: Vec<PathBuf>,
 }
 
 /// Arguments for history command

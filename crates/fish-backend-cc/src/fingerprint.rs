@@ -35,28 +35,18 @@ pub fn compute_source_fingerprint(
 
         if let Some(deps) = depfile.and_then(read_depfile) {
             let base = source_path.parent().unwrap_or_else(|| Path::new("."));
+            let mut visited = HashSet::new();
+            visited.insert(source_path.to_path_buf());
             for dep in deps {
                 let dep = if dep.is_absolute() {
                     dep
                 } else {
                     base.join(dep)
                 };
-                if dep == source_path {
-                    continue;
-                }
-                // Read each depfile-listed header once; hash it and keep
-                // the buffer for transitive #include scanning.
-                if let Ok(dep_content) = fs::read(&dep) {
+                if visited.insert(dep.clone())
+                    && let Ok(dep_content) = fs::read(&dep)
+                {
                     hasher.update(&dep_content);
-                    let mut visited = HashSet::new();
-                    visited.insert(dep.clone());
-                    scan_and_hash_headers(
-                        &dep_content,
-                        dep.parent(),
-                        includes,
-                        &mut hasher,
-                        &mut visited,
-                    )?;
                 }
             }
         } else {

@@ -107,11 +107,11 @@ impl TaskMiddleware for NativeShimMiddleware {
         let log_path = self.log_dir.join(format!("shim_trace_{}.log", safe_label));
         task.spec.env.insert(
             "FISH_SHIM_LOG".to_string(),
-            log_path.to_string_lossy().to_string(),
+            log_path.to_string_lossy().replace('\\', "/"),
         );
 
         if let Some(ref shim) = self.shim_path {
-            let shim_str = shim.to_string_lossy().to_string();
+            let shim_str = shim.to_string_lossy().replace('\\', "/");
             if cfg!(target_os = "linux") {
                 task.spec
                     .env
@@ -303,12 +303,12 @@ mod tests {
         if cfg!(windows) {
             assert_eq!(
                 task.spec.env.get("FISH_SHIM_PATH"),
-                Some(&dummy_shim.to_string_lossy().to_string())
+                Some(&dummy_shim.to_string_lossy().replace('\\', "/"))
             );
         } else if cfg!(target_os = "linux") {
             assert_eq!(
                 task.spec.env.get("LD_PRELOAD"),
-                Some(&dummy_shim.to_string_lossy().to_string())
+                Some(&dummy_shim.to_string_lossy().replace('\\', "/"))
             );
         }
 

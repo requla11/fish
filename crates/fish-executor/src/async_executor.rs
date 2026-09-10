@@ -40,9 +40,10 @@ impl AsyncProcessExecutor {
         let mut command: TokioCommand = self.spec_to_tokio_command(&task.spec);
 
         let output = if let Some(timeout) = self.timeout {
-            self.run_with_timeout_async(&mut command, timeout).await
+            self.run_with_timeout_async(&mut command, timeout, &task.cancel_flag)
+                .await
         } else {
-            self.run_async(&mut command).await
+            self.run_async(&mut command, &task.cancel_flag).await
         };
 
         let output = match output {
@@ -106,6 +107,7 @@ impl AsyncProcessExecutor {
     async fn run_async(
         &self,
         command: &mut TokioCommand,
+        cancel_flag: &std::sync::atomic::AtomicBool,
     ) -> Result<std::process::Output, std::io::Error> {
         command.stdout(std::process::Stdio::piped());
         command.stderr(std::process::Stdio::piped());
@@ -131,7 +133,23 @@ impl AsyncProcessExecutor {
         let stdout = stdout_result?;
         let stderr = stderr_result?;
 
-        let status = child.wait().await?;
+        let status = loop {
+            if cancel_flag.load(std::sync::atomic::Ordering::Relaxed) {
+                let _ = child.kill().await;
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::Interrupted,
+                    "Task was cancelled via flag",
+                ));
+            }
+            tokio::select! {
+                status_res = child.wait() => {
+                    break status_res?;
+                }
+                _ = tokio::time::sleep(std::time::Duration::from_millis(50)) => {
+                    continue;
+                }
+            }
+        };
 
         Ok(std::process::Output {
             status,
@@ -145,8 +163,9 @@ impl AsyncProcessExecutor {
         &self,
         command: &mut TokioCommand,
         timeout: Duration,
+        cancel_flag: &std::sync::atomic::AtomicBool,
     ) -> Result<std::process::Output, std::io::Error> {
-        tokio::time::timeout(timeout, self.run_async(command))
+        tokio::time::timeout(timeout, self.run_async(command, cancel_flag))
             .await
             .map_err(|_| {
                 std::io::Error::new(

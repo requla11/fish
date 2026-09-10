@@ -296,7 +296,7 @@ impl BackendScanner for MavenScanner {
     async fn scan(
         &self,
         project_path: &Path,
-        _options: &ScanOptions,
+        options: &ScanOptions,
     ) -> SecurityResult<Vec<Vulnerability>> {
         let pom_file = project_path.join("pom.xml");
         if !pom_file.exists() {
@@ -309,19 +309,36 @@ impl BackendScanner for MavenScanner {
             .await
             .map_err(SecurityError::IoError)?;
 
+        let mut packages = Vec::new();
+
+        // Simple regex to extract artifactId and version from dependencies
+        let re = regex::Regex::new(r"(?s)<dependency>.*?<artifactId>(.*?)</artifactId>.*?<version>(.*?)</version>.*?</dependency>").unwrap();
+
+        for cap in re.captures_iter(&content) {
+            let name = cap[1].trim().to_string();
+            let version = cap[2].trim().to_string();
+            packages.push((name, version));
+        }
+
+        if let Some(vulns) = query_osv(options, "Maven", &packages).await? {
+            return Ok(vulns);
+        }
+
         let mut results = Vec::new();
-        if content.contains("log4j-core")
-            && (content.contains("2.14.") || content.contains("2.15."))
-        {
-            let mut vuln = Vulnerability::new(
-                "CVE-2021-44228".to_string(),
-                "log4j-core".to_string(),
-                Severity::Critical,
-            );
-            vuln.source = VulnerabilitySource::Maven;
-            vuln.description = "Remote code execution via JNDI lookup (Log4Shell)".to_string();
-            vuln.fixed_version = Some("2.17.1".to_string());
-            results.push(vuln);
+        for (pkg_name, pkg_ver) in &packages {
+            if pkg_name == "log4j-core"
+                && (pkg_ver.starts_with("2.14.") || pkg_ver.starts_with("2.15."))
+            {
+                let mut vuln = Vulnerability::new(
+                    "CVE-2021-44228".to_string(),
+                    "log4j-core".to_string(),
+                    Severity::Critical,
+                );
+                vuln.source = VulnerabilitySource::Maven;
+                vuln.description = "Remote code execution via JNDI lookup (Log4Shell)".to_string();
+                vuln.fixed_version = Some("2.17.1".to_string());
+                results.push(vuln);
+            }
         }
 
         Ok(results)

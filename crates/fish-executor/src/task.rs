@@ -27,22 +27,31 @@ impl Default for ResourceRequirements {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct Task {
     pub label: String,
-
     pub description: String,
-
     pub spec: CommandSpec,
-
     pub cache: Option<CacheEntry>,
-
     pub artifacts: Vec<PathBuf>,
-
     pub inputs: Vec<PathBuf>,
-
     pub resources: ResourceRequirements,
+    pub cancel_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
 }
+
+impl PartialEq for Task {
+    fn eq(&self, other: &Self) -> bool {
+        self.label == other.label
+            && self.description == other.description
+            && self.spec == other.spec
+            && self.cache == other.cache
+            && self.artifacts == other.artifacts
+            && self.inputs == other.inputs
+            && self.resources == other.resources
+    }
+}
+
+impl Eq for Task {}
 
 impl Task {
     pub fn new(
@@ -58,6 +67,7 @@ impl Task {
             artifacts: Vec::new(),
             inputs: Vec::new(),
             resources: ResourceRequirements::default(),
+            cancel_flag: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
         }
     }
 

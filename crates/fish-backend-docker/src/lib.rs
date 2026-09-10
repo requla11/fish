@@ -115,8 +115,13 @@ impl DockerBackend {
             );
 
             if let Some(dockerfile) = &self.config.dockerfile_path {
+                let namespace =
+                    fish_core::FingerprintUtils::compute_namespace(&self.config.context_path);
                 task = task.with_cache(fish_executor::CacheEntry {
-                    key: format!("docker:{}", dockerfile.display()),
+                    key: format!(
+                        "docker:{namespace}:{}",
+                        dockerfile.file_name().unwrap_or_default().to_string_lossy()
+                    ),
                     fingerprint: fingerprint.clone(),
                 });
             }

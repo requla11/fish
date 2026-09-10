@@ -18,7 +18,33 @@ fn stderr(output: &Output) -> String {
 
 #[test]
 fn test_fish_fix_runs_clean_on_healthy_project() {
-    let output = fish().arg("fix").output().expect("failed to run fish fix");
+    let dir = TempDir::new().unwrap();
+    let src_dir = dir.path().join("src");
+    fs::create_dir_all(&src_dir).unwrap();
+
+    let cargo_toml = r#"
+[package]
+name = "healthy_crate"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+"#;
+    fs::write(dir.path().join("Cargo.toml"), cargo_toml).unwrap();
+
+    let main_rs = r#"
+fn main() {
+    println!("healthy");
+}
+"#;
+    fs::write(src_dir.join("main.rs"), main_rs).unwrap();
+
+    let output = fish()
+        .arg("fix")
+        .arg("--path")
+        .arg(dir.path())
+        .output()
+        .expect("failed to run fish fix");
 
     assert!(output.status.success(), "stderr: {}", stderr(&output));
     let text = stdout(&output);

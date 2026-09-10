@@ -136,10 +136,9 @@ fn extract_item_name(item: &Item) -> Option<(String, ItemKind)> {
         Item::Trait(i) => Some((i.ident.to_string(), ItemKind::Trait)),
         Item::Impl(i) => {
             let target = i.self_ty.to_token_stream().to_string().replace(' ', "");
-            let trait_part = if let Some((bang, trait_path, _)) = &i.trait_ {
-                let b = if bang.is_some() { "!" } else { "" };
+            let trait_part = if let Some((trait_path, _)) = &i.trait_ {
                 let tr = trait_path.to_token_stream().to_string().replace(' ', "");
-                format!("{b}{tr}_for_")
+                format!("{tr}_for_")
             } else {
                 String::new()
             };
@@ -248,10 +247,9 @@ fn extract_signature_hash(item: &Item) -> String {
                 .collect::<Vec<_>>()
                 .join(" ");
             let generics = i.generics.to_token_stream().to_string();
-            let trait_ = if let Some((bang, path, _)) = &i.trait_ {
-                let b = if bang.is_some() { "!" } else { "" };
+            let trait_ = if let Some((path, _)) = &i.trait_ {
                 let p = path.to_token_stream().to_string();
-                format!("{b}{p} for ")
+                format!("{p} for ")
             } else {
                 String::new()
             };

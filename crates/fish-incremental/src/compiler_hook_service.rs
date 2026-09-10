@@ -87,9 +87,9 @@ impl CompilerHookService {
                     affected_tests.sort();
 
                     return Ok(Some(FileRebuildPlan {
-                        file_path: norm_path,
+                        file_path: norm_path.clone(),
                         diff: DiffResult {
-                            file_path: norm_path.clone(),
+                            file_path: norm_path,
                             diffs,
                             module_hash_changed: true,
                         },
@@ -251,7 +251,7 @@ impl CompilerHookService {
             }
         }
 
-        let mut items_rebuild = must_rebuild_global.len();
+        let items_rebuild = must_rebuild_global.len();
         let total_items = all_names.len();
         let items_skip = total_items.saturating_sub(items_rebuild);
 

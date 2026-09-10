@@ -460,7 +460,7 @@ fn strip_ts_comments(source: &str) -> String {
     result
 }
 
-fn extract_ts_signature(body: &str, kind: &ItemKind) -> String {
+fn extract_ts_signature(body: &str, _kind: &ItemKind) -> String {
     let mut signature = String::new();
     let mut chars = body.chars().peekable();
     let mut depth = 0;

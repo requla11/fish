@@ -1,6 +1,5 @@
 use crate::args::QueryHooksArgs;
 use fish_incremental::compiler_hook_service::CompilerHookService;
-use std::path::PathBuf;
 
 pub fn run_query_hooks(args: QueryHooksArgs) -> std::process::ExitCode {
     println!("🧪 fish experimental query-hooks (Semantic AST Engine)");

@@ -95,6 +95,7 @@ jobs:
       - name: Configure Linux environment
         if: runner.os == 'Linux'
         run: |
+          sudo apt-get update -y && sudo apt-get install -y bubblewrap
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
           python3 scripts/patch_apple.py || true
       - name: Run all workspace tests

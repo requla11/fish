@@ -87,8 +87,8 @@ impl AppleBridge {
             profile: SandboxProfile::default(),
             keep_jail: false,
         };
-        Ok(verifier
+        verifier
             .verify_reproducible(request, artifact_rel_path)
-            .await?)
+            .await
     }
 }

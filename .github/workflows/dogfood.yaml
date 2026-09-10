@@ -56,9 +56,9 @@ jobs:
       - name: Configure Linux environment
         if: runner.os == 'Linux'
         run: |
-          sudo aa-teardown || true
-          sudo systemctl disable --now apparmor.service || true
+          sudo apt-get update -y && sudo apt-get install -y bubblewrap
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          python3 scripts/patch_apple.py || true
 
       - name: Bootstrap Fish CLI
         run: cargo build -p fish-cli --release

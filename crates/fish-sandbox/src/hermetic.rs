@@ -75,6 +75,73 @@ impl HermeticProcessSandbox {
                     self.root_dir.to_string_lossy().to_string(),
                     self.root_dir.to_string_lossy().to_string(),
                 ]);
+                if std::path::Path::new("/lib64").exists() {
+                    bwrap_args.extend_from_slice(&[
+                        "--ro-bind".to_string(),
+                        "/lib64".to_string(),
+                        "/lib64".to_string(),
+                    ]);
+                }
+                if std::path::Path::new("/etc").exists() {
+                    bwrap_args.extend_from_slice(&[
+                        "--ro-bind".to_string(),
+                        "/etc".to_string(),
+                        "/etc".to_string(),
+                    ]);
+                }
+                let exec_p = std::path::Path::new(executable);
+                if let Some(parent) = exec_p.parent() {
+                    if parent.exists()
+                        && !parent.starts_with("/bin")
+                        && !parent.starts_with("/usr")
+                        && !parent.starts_with("/lib")
+                    {
+                        bwrap_args.extend_from_slice(&[
+                            "--ro-bind".to_string(),
+                            parent.to_string_lossy().to_string(),
+                            parent.to_string_lossy().to_string(),
+                        ]);
+                    }
+                }
+                if let Ok(home) = std::env::var("HOME") {
+                    let home_path = std::path::Path::new(&home);
+                    let rustup = home_path.join(".rustup");
+                    if rustup.exists() {
+                        bwrap_args.extend_from_slice(&[
+                            "--ro-bind".to_string(),
+                            rustup.to_string_lossy().to_string(),
+                            rustup.to_string_lossy().to_string(),
+                        ]);
+                    }
+                    let cargo = home_path.join(".cargo");
+                    if cargo.exists() {
+                        bwrap_args.extend_from_slice(&[
+                            "--bind".to_string(),
+                            cargo.to_string_lossy().to_string(),
+                            cargo.to_string_lossy().to_string(),
+                        ]);
+                    }
+                }
+                if let Ok(cargo_home) = std::env::var("CARGO_HOME") {
+                    let p = std::path::Path::new(&cargo_home);
+                    if p.exists() {
+                        bwrap_args.extend_from_slice(&[
+                            "--bind".to_string(),
+                            p.to_string_lossy().to_string(),
+                            p.to_string_lossy().to_string(),
+                        ]);
+                    }
+                }
+                if let Ok(rustup_home) = std::env::var("RUSTUP_HOME") {
+                    let p = std::path::Path::new(&rustup_home);
+                    if p.exists() {
+                        bwrap_args.extend_from_slice(&[
+                            "--ro-bind".to_string(),
+                            p.to_string_lossy().to_string(),
+                            p.to_string_lossy().to_string(),
+                        ]);
+                    }
+                }
                 for w in &self.writable_dirs {
                     bwrap_args.push("--bind".to_string());
                     bwrap_args.push(w.to_string_lossy().to_string());

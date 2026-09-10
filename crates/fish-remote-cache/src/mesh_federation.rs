@@ -140,7 +140,6 @@ mod tests {
     use base64::{Engine as _, engine::general_purpose};
     use ed25519_dalek::{Signer, SigningKey};
     use fish_security::slsa::{SlsaMaterial, generate_slsa_level3_statement};
-    use rand_core::OsRng;
     use std::collections::HashMap;
 
     #[test]
@@ -149,8 +148,8 @@ mod tests {
         let mesh = BananaMeshCache::new("mesh-node-1", addr);
         let mut federation = GlobalMeshFederation::new(mesh);
 
-        let mut csprng = OsRng;
-        let signing_key = SigningKey::generate(&mut csprng);
+        let secret: [u8; 32] = core::array::from_fn(|i| i as u8 * 7);
+        let signing_key = SigningKey::from_bytes(&secret);
         let verifying_key = signing_key.verifying_key();
         let pub_b64 = general_purpose::STANDARD.encode(verifying_key.as_bytes());
         federation.add_trusted_key(&pub_b64);

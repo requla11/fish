@@ -92,6 +92,10 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
       - name: Restore cargo cache
         uses: Swatinem/rust-cache@v2
+      - name: Configure Linux environment
+        if: runner.os == 'Linux'
+        run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
       - name: Run all workspace tests
         run: cargo test --workspace --locked
 

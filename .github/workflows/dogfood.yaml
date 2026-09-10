@@ -53,6 +53,11 @@ jobs:
         with:
           key: ${{ matrix.os }}-dogfood
 
+      - name: Configure Linux environment
+        if: runner.os == 'Linux'
+        run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+
       - name: Bootstrap Fish CLI
         run: cargo build -p fish-cli --release
 

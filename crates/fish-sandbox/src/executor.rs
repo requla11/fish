@@ -58,10 +58,10 @@ impl<E: TaskExecutor + Sync> TaskExecutor for SandboxedExecutor<E> {
                     crate::isolation::SandboxWorkspace::isolated(&original_cwd).map_err(|e| {
                         ExecutorError::Spawn {
                             command: task.spec.program.clone(),
-                            source: std::io::Error::new(
-                                std::io::ErrorKind::Other,
-                                format!("Failed to create isolated workspace: {}", e),
-                            ),
+                            source: std::io::Error::other(format!(
+                                "Failed to create isolated workspace: {}",
+                                e
+                            )),
                         }
                     })?;
                 // Copy inputs

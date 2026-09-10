@@ -86,19 +86,21 @@ impl HermeticProcessSandbox {
             }
             SandboxPlatform::MacOSSandboxExec => {
                 let mut profile = String::from(
-                    "(version 1)(deny default)(allow process-exec)(allow file-read* (subpath \"/usr\")(subpath \"/bin\")(subpath \"/lib\")(subpath \"/System\")(subpath \"/Library\")",
+                    "(version 1)(deny default)(allow process*)(allow sysctl-read)(allow file-read*)",
                 );
                 profile.push_str(&format!(
-                    "(subpath \"{}\"))",
+                    "(allow file-read*(subpath \"{}\"))",
                     self.root_dir.to_string_lossy()
                 ));
-                if !self.writable_dirs.is_empty() {
-                    profile.push_str("(allow file-write*");
-                    for w in &self.writable_dirs {
-                        profile.push_str(&format!("(subpath \"{}\")", w.to_string_lossy()));
-                    }
-                    profile.push(')');
+                let mut writable = self.writable_dirs.clone();
+                writable.push(PathBuf::from("/dev"));
+                writable.push(PathBuf::from("/private/tmp"));
+                writable.push(PathBuf::from("/private/var"));
+                profile.push_str("(allow file-write*");
+                for w in &writable {
+                    profile.push_str(&format!("(subpath \"{}\")", w.to_string_lossy()));
                 }
+                profile.push(')');
                 if self.allow_network {
                     profile.push_str("(allow network*)");
                 }

@@ -2,7 +2,7 @@ name: Deploy Documentation
 
 on:
   push:
-    branches: [ main, dev ]
+    branches: [ main ]
   workflow_dispatch:
 
 permissions:
@@ -48,10 +48,11 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     needs: build
-    if: contains(fromJSON('["refs/heads/main", "refs/heads/dev"]'), github.ref)
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - name: Deploy static site
         id: deployment
+        continue-on-error: true
         uses: actions/deploy-pages@v4

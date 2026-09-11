@@ -5,7 +5,6 @@
 pub mod aggregator;
 pub mod banana_energy;
 pub mod cost;
-pub mod dashboard;
 pub mod metrics;
 pub mod otel;
 pub mod otel_export;
@@ -19,7 +18,6 @@ pub use cost::{
     CloudCostCalculator, CostEstimate, EstimateInput, InstancePrice, PricingCatalog,
     ProviderEstimates, ProviderPricing, SavingsReport, TaskDuration, Workload,
 };
-pub use dashboard::{AnalyticsDashboard, DashboardConfig};
 pub use metrics::{BuildMetrics, CacheMetrics};
 pub use otel::{
     ActiveSpanBuilder, AttributeValue, OtelSpan, OtelTracer, SpanEvent, SpanKind, SpanStatus,
@@ -73,20 +71,6 @@ mod tests {
         assert_eq!(metrics.total_hits, 0);
         assert_eq!(metrics.total_requests, 0);
         assert_eq!(metrics.hit_rate, 0.0);
-    }
-
-    #[tokio::test]
-    async fn test_dashboard_config_and_start() {
-        let config = DashboardConfig::default();
-        assert_eq!(config.port, 8080);
-        assert_eq!(config.refresh_interval_secs, 5);
-
-        let dashboard = AnalyticsDashboard::new(config);
-        let result = dashboard.start().await;
-        assert!(
-            result.is_err(),
-            "the stub dashboard must fail loudly while it is unimplemented"
-        );
     }
 
     #[test]

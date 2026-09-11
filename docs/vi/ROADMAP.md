@@ -64,7 +64,7 @@ Các mục tiêu cốt lõi được tối ưu hóa theo thứ tự ưu tiên:
 
 ### 3. Đo lường Đo từ xa, Khả năng Quan sát & Hợp tác
 - [x] **Tích hợp OpenTelemetry**: Truy vết phân tán OTLP xuyên suốt mọi bước build và node mạng (`fish-analytics/src/otel.rs`).
-- [x] **Web Analytics Dashboard**: Server HTTP nội bộ cung cấp số liệu tốc độ build, hiệu suất cache và flamegraph (`fish-dashboard`).
+- [x] **Web Analytics Dashboard**: Server HTTP nội bộ cung cấp đồ thị dependency và telemetry qua lệnh `fish ui` (`crates/fish-cli/src/commands/ui.rs`).
 - [x] **Ước tính Chi phí Đám mây (Cloud Cost Calculator)**: Tính toán chi phí thực tế và tiềm năng tiết kiệm trên AWS/GCP/Azure (`fish cost-estimate`).
 - [x] **Hợp nhất Trace Phân tán**: Gộp các span từ toàn bộ worker vào một trace hoàn chỉnh (`fish-analytics/src/trace_merge.rs`).
 - [x] **Cảnh báo Hồi quy Build**: Tự động phát hiện suy giảm tốc độ build giữa nhánh phát triển và PR.

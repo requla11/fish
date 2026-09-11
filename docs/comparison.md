@@ -27,7 +27,7 @@ Each Fish-specific capability above maps to real code in this repository:
 | In-memory VFS snapshot tree | `crates/fish-incremental/src/vfs.rs` (`VfsSnapshotTree`) — latency depends on tree size; see [benchmarks](benchmarks.md) |
 | Semantic/ABI invalidation | `crates/fish-incremental/src/abi_extractor.rs` |
 | AI diagnostics bridge | `crates/fish-cli/src/ai_bridge.rs` over the JSON-RPC daemon IPC |
-| Web dashboard + TUI | `crates/fish-dashboard/` and `crates/fish-cli/src/tui.rs` |
+| Web dashboard + TUI | `fish ui` in `crates/fish-cli/src/commands/ui.rs` |
 
 Competitor columns describe those tools as publicly documented; we do not maintain their code.
 

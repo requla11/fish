@@ -12,7 +12,6 @@ This document provides support resources for Fish users.
 - [ARCHITECTURE.md](ARCHITECTURE.md) - System architecture
 - [DEVELOPMENT.md](DEVELOPMENT.md) - Development guide
 - [CONTRIBUTING.md](CONTRIBUTING.md) - Contribution guidelines
-- [ROADMAP.md](ROADMAP.md) - Project roadmap
 
 ### Community
 

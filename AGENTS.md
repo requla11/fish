@@ -172,7 +172,6 @@ cargo clippy --workspace --all-targets --all-features -- -D warnings
 - [ARCHITECTURE.md](ARCHITECTURE.md) - System architecture
 - [DEVELOPMENT.md](DEVELOPMENT.md) - Development setup
 - [CONTRIBUTING.md](CONTRIBUTING.md) - Contribution guidelines
-- [ROADMAP.md](ROADMAP.md) - Project roadmap
 - [docs/AI_AGENT_WORKFLOW.md](docs/AI_AGENT_WORKFLOW.md) - Detailed workflow guide
 
 ### External Resources

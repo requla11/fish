@@ -6,4 +6,3 @@
 >
 > 本页仅作为未来设计的占位说明。当前的分布式执行由 Rust crate
 > `fish-worker` 和 `fish-remote-cache`（纯 HTTP/JSON）实现。
-> 详见 [ROADMAP.md](ROADMAP.md)。

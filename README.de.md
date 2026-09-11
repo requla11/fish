@@ -219,7 +219,6 @@ cargo test --workspace
 
 - [Architektur-Leitfaden](ARCHITECTURE.md) — Detailliertes Architekturdesign und Komponenten.
 - [Entwicklungs-Setup](DEVELOPMENT.md) — Lokale Einrichtung, Debugging und Benchmarks.
-- [Roadmap](ROADMAP.md) — Aktuelle Meilensteine, abgeschlossene Ziele und zukünftige "Moonshots".
 - [Mitwirkungsrichtlinien](CONTRIBUTING.md) — Wie man Änderungen vorschlägt und Backends hinzufügt.
 - [AI Agent Workflow](docs/AI_AGENT_WORKFLOW.md) — Best Practices für KI-Programmieragenten.
 

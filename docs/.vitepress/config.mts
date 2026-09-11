@@ -27,7 +27,6 @@ export default defineConfig({
           { text: 'IDE & Tools', link: '/ide-integration' },
           { text: 'AI Agents', link: '/ai-agents' },
           { text: 'CLI', link: '/cli-reference' },
-          { text: 'Roadmap', link: '/ROADMAP' },
           { text: 'API', link: '/api/overview' }
         ],
         sidebar: [
@@ -83,7 +82,6 @@ export default defineConfig({
               { text: 'Support & Community', link: '/support' },
               { text: 'Security Policy', link: '/security' },
               { text: 'Translation Guide', link: '/TRANSLATION' },
-              { text: 'Roadmap', link: '/ROADMAP' },
               { text: 'FAQ & Troubleshooting', link: '/faq-troubleshooting' }
             ]
           }
@@ -104,8 +102,7 @@ export default defineConfig({
           { text: 'Backend', link: '/vi/backends/' },
           { text: 'IDE & Tools', link: '/vi/ide-integration' },
           { text: 'AI Agent', link: '/vi/ai-agents' },
-          { text: 'CLI', link: '/vi/cli-reference' },
-          { text: 'Lộ trình', link: '/vi/ROADMAP' }
+          { text: 'CLI', link: '/vi/cli-reference' }
         ],
         sidebar: [
           {
@@ -160,7 +157,6 @@ export default defineConfig({
               { text: 'Kênh hỗ trợ', link: '/vi/support' },
               { text: 'Chính sách bảo mật', link: '/vi/security' },
               { text: 'Hướng dẫn dịch thuật', link: '/vi/TRANSLATION' },
-              { text: 'Lộ trình phát triển', link: '/vi/ROADMAP' },
               { text: 'FAQ & Xử lý sự cố', link: '/vi/faq-troubleshooting' }
             ]
           }
@@ -236,7 +232,6 @@ export default defineConfig({
               { text: '支持与社区', link: '/zh-hans/support' },
               { text: '安全策略', link: '/zh-hans/security' },
               { text: '多语言翻译指南', link: '/zh-hans/TRANSLATION' },
-              { text: '项目路线图', link: '/zh-hans/ROADMAP' },
               { text: '常见问题排查', link: '/zh-hans/faq-troubleshooting' }
             ]
           }
@@ -312,7 +307,6 @@ export default defineConfig({
               { text: '支援與社群', link: '/zh-hant/support' },
               { text: '安全政策', link: '/zh-hant/security' },
               { text: '多語言翻譯指南', link: '/zh-hant/TRANSLATION' },
-              { text: '項目路線圖', link: '/zh-hant/ROADMAP' },
               { text: '常見問題排查', link: '/zh-hant/faq-troubleshooting' }
             ]
           }
@@ -388,7 +382,6 @@ export default defineConfig({
               { text: 'サポート & コミュニティ', link: '/ja/support' },
               { text: 'セキュリティポリシー', link: '/ja/security' },
               { text: '翻訳ガイドライン', link: '/ja/TRANSLATION' },
-              { text: 'ロードマップ', link: '/ja/ROADMAP' },
               { text: 'FAQ & トラブルシューティング', link: '/ja/faq-troubleshooting' }
             ]
           }

@@ -7,4 +7,4 @@
 >
 > このページは将来の設計のためのプレースホルダーです。現在の分散実行は、
 > Rust クレート `fish-worker` および `fish-remote-cache`（プレーンな
-> HTTP/JSON）が担っています。詳細は [ROADMAP.md](ROADMAP.md) を参照。
+> HTTP/JSON）が担っています。

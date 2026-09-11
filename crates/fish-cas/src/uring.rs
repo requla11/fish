@@ -2,7 +2,7 @@
 
 //! io_uring accelerated file I/O for high-fanout cache fetch storms
 //!
-//! ROADMAP.md:84 - io_uring Async Executor Backend
+//! io_uring Async Executor Backend
 //! When the `io-uring` feature is enabled on Linux, this module routes
 //! hot-path CAS reads/writes through `tokio-uring` submission queues for
 //! zero-copy, batched completions. On other platforms or without the feature

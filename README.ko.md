@@ -219,7 +219,6 @@ cargo test --workspace
 
 - [아키텍처 가이드](ARCHITECTURE.md) — 심층적인 아키텍처 설계 및 컴포넌트.
 - [개발 환경 설정](DEVELOPMENT.md) — 로컬 설정, 디버깅 및 벤치마크.
-- [로드맵](ROADMAP.md) — 현재 마일스톤, 완료된 대상 및 향후 목표.
 - [기여 가이드라인](CONTRIBUTING.md) — 변경 사항 제안 및 백엔드 추가 방법.
 - [AI 에이전트 워크플로](docs/AI_AGENT_WORKFLOW.md) — AI 코딩 에이전트를 위한 모범 사례.
 

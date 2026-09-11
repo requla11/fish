@@ -219,7 +219,6 @@ cargo test --workspace
 
 - [Architecture Guide](ARCHITECTURE.md) — In-depth architectural design and components.
 - [Development Setup](DEVELOPMENT.md) — Local setup, debugging, and benchmarks.
-- [Roadmap](ROADMAP.md) — Current milestones, completed targets, and future moonshots.
 - [Contributing Guidelines](CONTRIBUTING.md) — How to propose changes and add backends.
 - [AI Agent Workflow](docs/AI_AGENT_WORKFLOW.md) — Best practices for AI coding agents.
 

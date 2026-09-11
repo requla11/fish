@@ -219,7 +219,6 @@ cargo test --workspace
 
 - [Kiến trúc Hệ thống](ARCHITECTURE.md) — Chi tiết thiết kế kiến trúc và các thành phần cốt lõi.
 - [Hướng dẫn Phát triển](DEVELOPMENT.md) — Cài đặt môi trường lập trình, debug và benchmark.
-- [Lộ trình Phát triển](ROADMAP.md) — Các mốc đã hoàn thành và mục tiêu tương lai.
 - [Hướng dẫn Đóng góp](CONTRIBUTING.md) — Cách tạo đề xuất tính năng và bổ sung backend mới.
 - [Quy trình AI Agent](docs/AI_AGENT_WORKFLOW.md) — Quy tắc và quy trình làm việc chuẩn cho các AI agent.
 

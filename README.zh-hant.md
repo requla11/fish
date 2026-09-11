@@ -219,7 +219,6 @@ cargo test --workspace
 
 - [系統架構全景](ARCHITECTURE.md) — 深入了解底層架構設計與各子系統互動。
 - [本地開發指南](DEVELOPMENT.md) — 快速搭建本地開發、除錯與基準測試環境。
-- [專案路線圖](ROADMAP.md) — 查看各版本研發里程碑與長遠演進計畫。
 - [貢獻指南](CONTRIBUTING.md) — 如何提交高品質程式碼以及新增新的語言適配器。
 - [AI 智能體研發指南](docs/AI_AGENT_WORKFLOW.md) — 面向 AI Coding Agent 的開發最佳實踐。
 

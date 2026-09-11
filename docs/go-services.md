@@ -6,4 +6,4 @@
 >
 > This page is kept as a placeholder for future design work. Distributed
 > execution today is handled by the Rust crates `fish-worker` and
-> `fish-remote-cache` (plain HTTP/JSON). See [ROADMAP.md](ROADMAP.md).
+> `fish-remote-cache` (plain HTTP/JSON).

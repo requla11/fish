@@ -492,7 +492,6 @@ git clean -fd
 - [ARCHITECTURE.md](architecture.md) - System architecture
 - [DEVELOPMENT.md](development.md) - Development setup
 - [CONTRIBUTING.md](contributing.md) - Contribution guidelines
-- [ROADMAP.md](ROADMAP.md) - Project roadmap
 
 ### External Resources
 - [Rust Book](https://doc.rust-lang.org/book/)

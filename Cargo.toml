@@ -34,7 +34,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.6.0"
+version = "1.0.0"
 edition = "2024"
 rust-version = "1.88"
 license = "MIT"
@@ -51,32 +51,32 @@ categories = ["development-tools", "development-tools::build-utils"]
 anyhow = "1.0"
 apple = { path = "submodules/apple", version = "0.1.0" }
 banana = { path = "submodules/banana", version = "0.1.0" }
-fish-backend-api = { path = "crates/fish-backend-api", version = "0.6.0" }
-fish-core = { path = "crates/fish-core", version = "0.6.0" }
-fish-graph = { path = "crates/fish-graph", version = "0.6.0" }
-fish-executor = { path = "crates/fish-executor", version = "0.6.0" }
-fish-scheduler = { path = "crates/fish-scheduler", version = "0.6.0" }
-fish-cache = { path = "crates/fish-cache", version = "0.6.0" }
-fish-cas = { path = "crates/fish-cas", version = "0.6.0" }
-fish-ci-generator = { path = "crates/fish-ci-generator", version = "0.6.0" }
-fish-backend-rust = { path = "crates/fish-backend-rust", version = "0.6.0" }
-fish-backend-cc = { path = "crates/fish-backend-cc", version = "0.6.0" }
-fish-backend-go = { path = "crates/fish-backend-go", version = "0.6.0" }
-fish-backend-ts = { path = "crates/fish-backend-ts", version = "0.6.0" }
-fish-backend-py = { path = "crates/fish-backend-py", version = "0.6.0" }
-fish-backend-java = { path = "crates/fish-backend-java", version = "0.6.0" }
-fish-backend-dotnet = { path = "crates/fish-backend-dotnet", version = "0.6.0" }
-fish-backend-swift = { path = "crates/fish-backend-swift", version = "0.6.0" }
-fish-backend-dart = { path = "crates/fish-backend-dart", version = "0.6.0" }
-fish-backend-zig = { path = "crates/fish-backend-zig", version = "0.6.0" }
-fish-backend-docker = { path = "crates/fish-backend-docker", version = "0.6.0" }
-fish-worker = { path = "crates/fish-worker", version = "0.6.0" }
-fish-plugin = { path = "crates/fish-plugin", version = "0.6.0" }
-fish-remote-cache = { path = "crates/fish-remote-cache", version = "0.6.0" }
-fish-sandbox = { path = "crates/fish-sandbox", version = "0.6.0" }
-fish-security = { path = "crates/fish-security", version = "0.6.0" }
-fish-analytics = { path = "crates/fish-analytics", version = "0.6.0" }
-fish-incremental = { path = "crates/fish-incremental", version = "0.6.0" }
+fish-backend-api = { path = "crates/fish-backend-api", version = "1.0.0" }
+fish-core = { path = "crates/fish-core", version = "1.0.0" }
+fish-graph = { path = "crates/fish-graph", version = "1.0.0" }
+fish-executor = { path = "crates/fish-executor", version = "1.0.0" }
+fish-scheduler = { path = "crates/fish-scheduler", version = "1.0.0" }
+fish-cache = { path = "crates/fish-cache", version = "1.0.0" }
+fish-cas = { path = "crates/fish-cas", version = "1.0.0" }
+fish-ci-generator = { path = "crates/fish-ci-generator", version = "1.0.0" }
+fish-backend-rust = { path = "crates/fish-backend-rust", version = "1.0.0" }
+fish-backend-cc = { path = "crates/fish-backend-cc", version = "1.0.0" }
+fish-backend-go = { path = "crates/fish-backend-go", version = "1.0.0" }
+fish-backend-ts = { path = "crates/fish-backend-ts", version = "1.0.0" }
+fish-backend-py = { path = "crates/fish-backend-py", version = "1.0.0" }
+fish-backend-java = { path = "crates/fish-backend-java", version = "1.0.0" }
+fish-backend-dotnet = { path = "crates/fish-backend-dotnet", version = "1.0.0" }
+fish-backend-swift = { path = "crates/fish-backend-swift", version = "1.0.0" }
+fish-backend-dart = { path = "crates/fish-backend-dart", version = "1.0.0" }
+fish-backend-zig = { path = "crates/fish-backend-zig", version = "1.0.0" }
+fish-backend-docker = { path = "crates/fish-backend-docker", version = "1.0.0" }
+fish-worker = { path = "crates/fish-worker", version = "1.0.0" }
+fish-plugin = { path = "crates/fish-plugin", version = "1.0.0" }
+fish-remote-cache = { path = "crates/fish-remote-cache", version = "1.0.0" }
+fish-sandbox = { path = "crates/fish-sandbox", version = "1.0.0" }
+fish-security = { path = "crates/fish-security", version = "1.0.0" }
+fish-analytics = { path = "crates/fish-analytics", version = "1.0.0" }
+fish-incremental = { path = "crates/fish-incremental", version = "1.0.0" }
 
 cargo_metadata = "0.23"
 thiserror = "2"

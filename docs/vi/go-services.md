@@ -6,4 +6,4 @@
 >
 > Trang này chỉ là bản ghi chú giữ chỗ cho thiết kế tương lai. Thực thi phân tán
 > hiện tại do các crate Rust `fish-worker` và `fish-remote-cache`
-> (HTTP/JSON thuần) đảm nhiệm. Xem [ROADMAP.md](ROADMAP.md).
+> (HTTP/JSON thuần) đảm nhiệm.

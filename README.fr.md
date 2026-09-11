@@ -219,7 +219,6 @@ cargo test --workspace
 
 - [Guide d'Architecture](ARCHITECTURE.md) — Conception architecturale détaillée et composants.
 - [Configuration de Développement](DEVELOPMENT.md) — Configuration locale, débogage et benchmarks.
-- [Roadmap](ROADMAP.md) — Jalons actuels, objectifs atteints et visions futures.
 - [Guide de Contribution](CONTRIBUTING.md) — Comment proposer des modifications et ajouter des backends.
 - [Workflow pour Agent IA](docs/AI_AGENT_WORKFLOW.md) — Bonnes pratiques pour les agents de codage IA.
 

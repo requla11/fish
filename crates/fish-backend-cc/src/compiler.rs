@@ -73,10 +73,7 @@ impl CcCompiler {
             }
         }
 
-        Err(format!(
-            "No suitable C/C++ compiler found for {:?}",
-            language
-        ))
+        Err(format!("No suitable C/C++ compiler found for {language:?}"))
     }
 
     pub fn compile_object_args(

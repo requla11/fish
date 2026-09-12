@@ -37,21 +37,21 @@ pub fn run_query_hooks(args: QueryHooksArgs) -> std::process::ExitCode {
                 file_plan.file_path.display()
             );
             for item in &file_plan.decision.must_rebuild {
-                println!("  - {}", item);
+                println!("  - {item}");
             }
         }
 
         if !file_plan.decision.safe_to_skip.is_empty() {
             println!("\n⏭️  Safe to Skip ({}):", file_plan.file_path.display());
             for item in &file_plan.decision.safe_to_skip {
-                println!("  - {}", item);
+                println!("  - {item}");
             }
         }
 
         if !file_plan.decision.cascade_targets.is_empty() {
             println!("\n🌊 Cascade Targets ({}):", file_plan.file_path.display());
             for item in &file_plan.decision.cascade_targets {
-                println!("  - {}", item);
+                println!("  - {item}");
             }
         }
     }
@@ -59,7 +59,7 @@ pub fn run_query_hooks(args: QueryHooksArgs) -> std::process::ExitCode {
     if !plan.affected_tests.is_empty() {
         println!("\n🧪 Tests Affected by Changes:");
         for test in &plan.affected_tests {
-            println!("  - {}", test);
+            println!("  - {test}");
         }
     }
 

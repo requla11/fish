@@ -33,44 +33,47 @@ pub struct AutoRemediator;
 
 impl AutoRemediator {
     pub fn parse_diagnostics(compiler_output: &str) -> Vec<CompilerDiagnostic> {
-        static ERROR_REGEX: std::sync::LazyLock<Regex> = std::sync::LazyLock::new(|| {
-            Regex::new(r"(?m)^(?:error\[E\d+\]:\s+)?(.+?):(\d+):(\d+):\s+(?:error:\s+)?(.+)$")
-                .unwrap()
+        static ERROR_REGEX: std::sync::LazyLock<Option<Regex>> = std::sync::LazyLock::new(|| {
+            Regex::new(r"(?m)^(?:error\[E\d+\]:\s+)?(.+?):(\d+):(\d+):\s+(?:error:\s+)?(.+)$").ok()
         });
-        static RUST_ALT: std::sync::LazyLock<Regex> =
-            std::sync::LazyLock::new(|| Regex::new(r"-->\s+(.+?):(\d+):(\d+)").unwrap());
+        static RUST_ALT: std::sync::LazyLock<Option<Regex>> =
+            std::sync::LazyLock::new(|| Regex::new(r"-->\s+(.+?):(\d+):(\d+)").ok());
 
         let mut diagnostics = Vec::new();
 
-        for cap in ERROR_REGEX.captures_iter(compiler_output) {
-            let file_str = cap.get(1).map(|m| m.as_str()).unwrap_or_default();
-            let line: usize = cap
-                .get(2)
-                .and_then(|m| m.as_str().parse().ok())
-                .unwrap_or(1);
-            let col: usize = cap
-                .get(3)
-                .and_then(|m| m.as_str().parse().ok())
-                .unwrap_or(1);
-            let msg = cap
-                .get(4)
-                .map(|m| m.as_str())
-                .unwrap_or_default()
-                .to_string();
+        if let Some(error_regex) = &*ERROR_REGEX {
+            for cap in error_regex.captures_iter(compiler_output) {
+                let file_str = cap.get(1).map(|m| m.as_str()).unwrap_or_default();
+                let line: usize = cap
+                    .get(2)
+                    .and_then(|m| m.as_str().parse().ok())
+                    .unwrap_or(1);
+                let col: usize = cap
+                    .get(3)
+                    .and_then(|m| m.as_str().parse().ok())
+                    .unwrap_or(1);
+                let msg = cap
+                    .get(4)
+                    .map(|m| m.as_str())
+                    .unwrap_or_default()
+                    .to_string();
 
-            let error_kind = Self::classify_error(&msg);
+                let error_kind = Self::classify_error(&msg);
 
-            diagnostics.push(CompilerDiagnostic {
-                file: PathBuf::from(file_str),
-                line,
-                column: col,
-                error_kind,
-                raw_message: msg,
-            });
+                diagnostics.push(CompilerDiagnostic {
+                    file: PathBuf::from(file_str),
+                    line,
+                    column: col,
+                    error_kind,
+                    raw_message: msg,
+                });
+            }
         }
 
-        if diagnostics.is_empty() {
-            for cap in RUST_ALT.captures_iter(compiler_output) {
+        if diagnostics.is_empty()
+            && let Some(rust_alt) = &*RUST_ALT
+        {
+            for cap in rust_alt.captures_iter(compiler_output) {
                 let file_str = cap.get(1).map(|m| m.as_str()).unwrap_or_default();
                 let line: usize = cap
                     .get(2)

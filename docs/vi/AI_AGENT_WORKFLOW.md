@@ -22,14 +22,14 @@ Quy trình làm việc toàn diện này được thiết kế để:
 **Thứ tự đọc ưu tiên:**
 1. **README.md** - Tổng quan dự án, hướng dẫn bắt đầu nhanh, các lệnh cơ bản.
 2. **Cargo.toml** - Cấu trúc workspace, các phụ thuộc, yêu cầu MSRV (Rust 1.88+).
-3. **ARCHITECTURE.md** - Kiến trúc hệ thống và trách nhiệm của từng thành phần.
-4. **DEVELOPMENT.md** - Quy trình thiết lập môi trường phát triển cục bộ.
+3. **../architecture.md** - Kiến trúc hệ thống và trách nhiệm của từng thành phần.
+4. **../development.md** - Quy trình thiết lập môi trường phát triển cục bộ.
 
 ### Bước 1.2: Đọc tài liệu chuyên biệt theo nhiệm vụ
 
 | Loại nhiệm vụ | Tài liệu bổ sung cần đọc |
 |---|---|
-| Language backend | `crates/fish-backend-rust/` (làm mẫu), phần Backend trong `ARCHITECTURE.md` |
+| Language backend | `crates/fish-backend-rust/` (làm mẫu), phần Backend trong `../architecture.md` |
 | Thay đổi Scheduler | Các tệp mã nguồn trong `crates/fish-scheduler/` |
 | Cải tiến Cache | Các tệp mã nguồn trong `crates/fish-cache/` và `crates/fish-cas/` |
 | Thay đổi CLI | Các tệp mã nguồn trong `crates/fish-cli/` |

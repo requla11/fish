@@ -94,12 +94,14 @@ where
             ok @ Ok(_) => ok,
             // The fallback's own symptom is intentionally dropped when the
             // primary already produced a real diagnosis.
-            Err(_fallback_err) => {
+            Err(fallback_err) => {
                 if let Some(err) = last_preempted_err {
                     return Err(err);
                 }
-                Ok(last_preempted_outcome
-                    .expect("retries ran, so an outcome or error was captured"))
+                if let Some(outcome) = last_preempted_outcome {
+                    return Ok(outcome);
+                }
+                Err(fallback_err)
             }
         }
     }

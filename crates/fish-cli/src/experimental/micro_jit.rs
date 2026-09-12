@@ -112,7 +112,7 @@ impl MicroJitEngine {
                     }
                     bytes.push(opcode);
                     bytes.extend_from_slice(&(*val as i32).to_le_bytes());
-                    disassembly.push(format!("mov {:?}, {val}", reg));
+                    disassembly.push(format!("mov {reg:?}, {val}"));
                 }
                 JitOpcode::Add(dst, src) => {
                     if (*dst, *src) != (JitRegister::Rax, JitRegister::Rcx) {

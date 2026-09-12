@@ -76,7 +76,7 @@ impl TimeMachine {
             total_artifacts,
         };
 
-        let file_path = self.storage_dir.join(format!("{}.json", id));
+        let file_path = self.storage_dir.join(format!("{id}.json"));
         let content = serde_json::to_string_pretty(&snapshot)
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
         fs::write(file_path, content)?;
@@ -122,7 +122,7 @@ impl TimeMachine {
             .ok_or_else(|| {
                 io::Error::new(
                     io::ErrorKind::NotFound,
-                    format!("Snapshot `{}` not found in history", snapshot_id),
+                    format!("Snapshot `{snapshot_id}` not found in history"),
                 )
             })?;
 

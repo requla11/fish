@@ -554,7 +554,7 @@ mod tests {
             Err(SecurityError::ApiError(msg)) => {
                 assert!(msg.contains("offline mode"));
             }
-            other => panic!("expected SecurityError::ApiError, got {:?}", other),
+            other => panic!("expected SecurityError::ApiError, got {other:?}"),
         }
     }
 }

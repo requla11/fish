@@ -127,8 +127,7 @@ impl FastCdcChunker {
             let computed = blake3::hash(chunk_bytes).to_hex().to_string();
             if &computed != hash {
                 return Err(format!(
-                    "Chunk {} content does not match its hash; expected `{computed}`",
-                    hash
+                    "Chunk {hash} content does not match its hash; expected `{computed}`"
                 ));
             }
             let expected_len = manifest.chunk_lengths.get(index).copied().unwrap_or(0);

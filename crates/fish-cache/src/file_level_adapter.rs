@@ -36,13 +36,13 @@ impl FileLevelCacheAdapter {
 
     /// Register a task with its source files
     pub fn register_task_files(&self, task_key: String, files: Vec<PathBuf>) {
-        let mut task_files = self.task_files.write().unwrap();
+        let mut task_files = self.task_files.write().unwrap_or_else(|e| e.into_inner());
         task_files.insert(task_key, files);
     }
 
     /// Check if all files for a task are cached
     pub fn is_task_files_cached(&self, task_key: &str) -> bool {
-        let task_files = self.task_files.read().unwrap();
+        let task_files = self.task_files.read().unwrap_or_else(|e| e.into_inner());
         if let Some(files) = task_files.get(task_key) {
             files.iter().all(|f| self.file_cache.is_file_cached(f))
         } else {
@@ -52,7 +52,7 @@ impl FileLevelCacheAdapter {
 
     /// Invalidate cache for a task's files
     pub fn invalidate_task_files(&self, task_key: &str) {
-        let task_files = self.task_files.read().unwrap();
+        let task_files = self.task_files.read().unwrap_or_else(|e| e.into_inner());
         if let Some(files) = task_files.get(task_key) {
             for file in files {
                 self.dep_graph

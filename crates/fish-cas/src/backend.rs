@@ -327,7 +327,7 @@ impl CasBackend for LocalCasBackend {
                         .is_ok()
                     {
                         let dir_name = path.file_name().and_then(|s| s.to_str()).unwrap_or("");
-                        let full_hash = format!("{}{}", dir_name, hash_str);
+                        let full_hash = format!("{dir_name}{hash_str}");
                         hashes.push(ArtifactHash::new(full_hash));
                     }
                 }
@@ -642,7 +642,7 @@ impl RemoteCasBackend for RemoteCasBackendImpl {
 
     async fn health_check(&self) -> Result<bool> {
         let base = self.config.endpoint.trim_end_matches('/');
-        let url = format!("{}/health", base);
+        let url = format!("{base}/health");
         let req = self.apply_auth(self.client.get(&url));
         match req.send().await {
             Ok(resp) => Ok(resp.status().is_success()),

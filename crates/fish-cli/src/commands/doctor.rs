@@ -113,10 +113,7 @@ pub fn run_doctor_with_ai(ai_enabled: bool, fix: bool) -> ExitCode {
     let cpu_cores = std::thread::available_parallelism()
         .map(|n| n.get())
         .unwrap_or(1);
-    println!(
-        "💻 Host System: {} ({}) | Logical Cores: {}",
-        os_name, arch_name, cpu_cores
-    );
+    println!("💻 Host System: {os_name} ({arch_name}) | Logical Cores: {cpu_cores}",);
     println!();
 
     println!("🔍 Checking Language Toolchains & Backends:");
@@ -177,7 +174,7 @@ pub fn run_doctor_with_ai(ai_enabled: bool, fix: bool) -> ExitCode {
     if !missing_tools.is_empty() || fix {
         println!("🛠️ Toolchain Installation & Remediation Hints:");
         for (name, hint) in &missing_tools {
-            println!("  • {:<26}: {}", name, hint);
+            println!("  • {name:<26}: {hint}");
         }
         println!();
     }
@@ -330,7 +327,6 @@ mod tests {
 
     #[test]
     fn test_toolchains_probe_definitions() {
-        assert!(!TOOLCHAINS.is_empty());
         for probe in TOOLCHAINS {
             assert!(!probe.name.is_empty());
             assert!(!probe.binary.is_empty());

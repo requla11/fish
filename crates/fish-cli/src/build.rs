@@ -313,10 +313,7 @@ pub(crate) fn run_build_mode_with(
             );
         } else {
             let peer_count = swarm_cache.active_peer_count();
-            println!(
-                "🌐 P2P Swarm Cache enabled (active LAN peers: {})",
-                peer_count
-            );
+            println!("🌐 P2P Swarm Cache enabled (active LAN peers: {peer_count})");
         }
     }
 
@@ -334,7 +331,7 @@ pub(crate) fn run_build_mode_with(
 
     if merged.turbo_link {
         if let Err(e) = crate::experimental::require_enabled("turbolink") {
-            eprintln!("warning: {}", e);
+            eprintln!("warning: {e}");
         } else {
             let flags = crate::experimental::turbolink::TurboLinker::generate_rustc_flags();
             println!(
@@ -350,7 +347,7 @@ pub(crate) fn run_build_mode_with(
 
     if merged.daemon_pool {
         if let Err(e) = crate::experimental::require_enabled("daemon_pool") {
-            eprintln!("warning: {}", e);
+            eprintln!("warning: {e}");
         } else {
             let _pool = crate::experimental::daemon_pool::CompilerDaemonPool::new(4);
             println!("🌌 Pre-Warmed Compiler Zombie-Daemon Pool active (0ms Cold-Start)");
@@ -359,7 +356,7 @@ pub(crate) fn run_build_mode_with(
 
     if merged.kernel_bypass {
         if let Err(e) = crate::experimental::require_enabled("kernel_bypass") {
-            eprintln!("warning: {}", e);
+            eprintln!("warning: {e}");
         } else {
             let _vfs = crate::experimental::kernel_bypass::KernelBypassVfs::new();
             println!("⚡ Kernel-Bypass Direct Ring-Buffer DMA VFS active (120+ GB/s)");
@@ -860,16 +857,14 @@ fn report_regression_verdict(summary: &fish_scheduler::BuildSummary) {
                 baseline_secs,
                 overshoot_pct,
             } => println!(
-                "⚠️  Build regression alert: {:.2}s vs {:.2}s median (+{:.1}%). \
-                 Investigate before merging.",
-                current, baseline_secs, overshoot_pct
+                "⚠️  Build regression alert: {current:.2}s vs {baseline_secs:.2}s median (+{overshoot_pct:.1}%). \
+                 Investigate before merging."
             ),
             fish_analytics::RegressionVerdict::Improved {
                 improvement_pct, ..
-            } => println!(
-                "🚀 Build improved: {:.1}% faster than the recent median.",
-                improvement_pct
-            ),
+            } => {
+                println!("🚀 Build improved: {improvement_pct:.1}% faster than the recent median.")
+            }
             _ => {}
         }
         Ok(())

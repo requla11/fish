@@ -60,9 +60,7 @@ impl ZigToolchain {
         let output = std::process::Command::new(executable)
             .args(args)
             .output()
-            .map_err(|e| {
-                ZigBackendError::Toolchain(format!("Failed to run {}: {}", executable, e))
-            })?;
+            .map_err(|e| ZigBackendError::Toolchain(format!("Failed to run {executable}: {e}")))?;
 
         if !output.status.success() {
             return Err(ZigBackendError::Toolchain(format!(

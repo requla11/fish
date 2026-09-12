@@ -287,8 +287,12 @@ impl<T> BuildGraph<T> {
             let id = NodeId(index);
             if let Ok(deps) = self.deps(id) {
                 for dep in deps {
-                    out.add_dependency(*dep, id)
-                        .expect("mapped graph inherits the DAG structure");
+                    // The mapped graph inherits the DAG structure, so this
+                    // only fails on internal inconsistency; skip the edge
+                    // rather than panicking.
+                    if out.add_dependency(*dep, id).is_err() {
+                        debug_assert!(false, "mapped graph inherits the DAG structure");
+                    }
                 }
             }
         }
@@ -338,8 +342,11 @@ impl<T> BuildGraph<T> {
             if let Ok(deps) = self.deps(id) {
                 for dep in deps {
                     if let Some(&new_dep) = renumber.get(dep) {
-                        out.add_dependency(new_dep, new_id)
-                            .expect("a subgraph of a DAG is a DAG");
+                        // A subgraph of a DAG is a DAG; skip the edge rather
+                        // than panicking on internal inconsistency.
+                        if out.add_dependency(new_dep, new_id).is_err() {
+                            debug_assert!(false, "a subgraph of a DAG is a DAG");
+                        }
                     }
                 }
             }
@@ -490,15 +497,17 @@ impl<T> BuildGraph<T> {
                     continue;
                 }
                 let child = dependents[next];
-                stack.last_mut().expect("stack is non-empty").1 = next + 1;
+                let Some(top) = stack.last_mut() else {
+                    continue;
+                };
+                top.1 = next + 1;
                 let child_color = color.get(child.0).copied().unwrap_or(BLACK);
                 if child_color == GRAY {
                     // Back edge: the cycle is the gray path from `child` down
                     // to `id`, closed by the `id -> child` edge.
-                    let entry = stack
-                        .iter()
-                        .position(|&(node, _)| node == child)
-                        .expect("a gray node must be on the DFS stack");
+                    let Some(entry) = stack.iter().position(|&(node, _)| node == child) else {
+                        continue;
+                    };
                     return Some(stack[entry..].iter().map(|&(node, _)| node).collect());
                 } else if child_color == WHITE {
                     color[child.0] = GRAY;

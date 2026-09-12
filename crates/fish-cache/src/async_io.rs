@@ -43,7 +43,11 @@ impl AsyncFileWriter {
 
     /// Write data to a file atomically (write to temp, then rename)
     pub async fn write_atomic(&self, path: PathBuf, data: Vec<u8>) -> Result<(), AsyncIoError> {
-        let _permit = self.semaphore.acquire().await.unwrap();
+        let _permit = self
+            .semaphore
+            .acquire()
+            .await
+            .map_err(|e| AsyncIoError::Io(std::io::Error::other(e.to_string())))?;
 
         let tmp_path = crate::unique_tmp_path(&path);
 
@@ -108,7 +112,11 @@ impl AsyncFileReader {
 
     /// Read entire file asynchronously
     pub async fn read_file(&self, path: &Path) -> Result<Vec<u8>, AsyncIoError> {
-        let _permit = self.semaphore.acquire().await.unwrap();
+        let _permit = self
+            .semaphore
+            .acquire()
+            .await
+            .map_err(|e| AsyncIoError::Io(std::io::Error::other(e.to_string())))?;
 
         let mut file = fs::File::open(path).await?;
         let metadata = file.metadata().await?;
@@ -177,8 +185,8 @@ impl AsyncCache {
             "fingerprint": fingerprint,
             "stored_at": std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_secs(),
+                .map(|d| d.as_secs())
+                .unwrap_or(0),
             "artifact_hash": artifact_hash,
         });
 
@@ -307,8 +315,8 @@ mod tests {
             let operations = (0..10)
                 .map(|i| {
                     (
-                        temp_dir.path().join(format!("file_{}.txt", i)),
-                        format!("content_{}", i).into_bytes(),
+                        temp_dir.path().join(format!("file_{i}.txt")),
+                        format!("content_{i}").into_bytes(),
                     )
                 })
                 .collect();
@@ -317,17 +325,14 @@ mod tests {
 
             let reader = AsyncFileReader::new(4);
             let paths = (0..10)
-                .map(|i| temp_dir.path().join(format!("file_{}.txt", i)))
+                .map(|i| temp_dir.path().join(format!("file_{i}.txt")))
                 .collect();
             let results = reader.read_batch(paths).await.unwrap();
 
             assert_eq!(results.len(), 10);
             for (i, result) in results.into_iter().enumerate() {
                 let content = result.unwrap();
-                assert_eq!(
-                    String::from_utf8(content).unwrap(),
-                    format!("content_{}", i)
-                );
+                assert_eq!(String::from_utf8(content).unwrap(), format!("content_{i}"));
             }
         });
     }

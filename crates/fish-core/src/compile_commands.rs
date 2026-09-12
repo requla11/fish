@@ -82,7 +82,7 @@ impl CompilationDatabase {
                 file: main_file.clone(),
                 command: Some(cmd_str),
                 arguments: Some(args),
-                output: Some(format!("target/debug/build/{}", pkg_name)),
+                output: Some(format!("target/debug/build/{pkg_name}")),
             });
         }
 

@@ -52,7 +52,7 @@ impl WasmPluginRunner {
         if version != 1 {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                format!("Unsupported WASM version: {}", version),
+                format!("Unsupported WASM version: {version}"),
             ));
         }
 

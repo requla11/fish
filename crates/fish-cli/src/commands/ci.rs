@@ -23,8 +23,7 @@ pub fn run_ci(args: CiArgs) -> ExitCode {
                     "all" => CIPlatform::All,
                     _ => {
                         eprintln!(
-                            "error: invalid platform '{}', expected 'github', 'gitlab', 'circleci', 'bitbucket', 'azure', or 'all'",
-                            platform
+                            "error: invalid platform '{platform}', expected 'github', 'gitlab', 'circleci', 'bitbucket', 'azure', or 'all'",
                         );
                         return ExitCode::FAILURE;
                     }
@@ -70,15 +69,14 @@ pub fn run_ci(args: CiArgs) -> ExitCode {
                                 Ok(_) => println!("✓ Created .github/workflows/fish.yml"),
                                 Err(e) => {
                                     eprintln!(
-                                        "error: failed to write GitHub Actions workflow: {}",
-                                        e
+                                        "error: failed to write GitHub Actions workflow: {e}",
                                     );
                                     return ExitCode::FAILURE;
                                 }
                             }
                         }
                         Err(e) => {
-                            eprintln!("error: failed to generate GitHub Actions workflow: {}", e);
+                            eprintln!("error: failed to generate GitHub Actions workflow: {e}");
                             return ExitCode::FAILURE;
                         }
                     }
@@ -89,12 +87,12 @@ pub fn run_ci(args: CiArgs) -> ExitCode {
                         Ok(pipeline) => match std::fs::write(".gitlab-ci.yml", pipeline) {
                             Ok(_) => println!("✓ Created .gitlab-ci.yml"),
                             Err(e) => {
-                                eprintln!("error: failed to write GitLab CI pipeline: {}", e);
+                                eprintln!("error: failed to write GitLab CI pipeline: {e}");
                                 return ExitCode::FAILURE;
                             }
                         },
                         Err(e) => {
-                            eprintln!("error: failed to generate GitLab CI pipeline: {}", e);
+                            eprintln!("error: failed to generate GitLab CI pipeline: {e}");
                             return ExitCode::FAILURE;
                         }
                     }
@@ -105,12 +103,12 @@ pub fn run_ci(args: CiArgs) -> ExitCode {
                         Ok(config) => match std::fs::write(".circleci/config.yml", config) {
                             Ok(_) => println!("✓ Created .circleci/config.yml"),
                             Err(e) => {
-                                eprintln!("error: failed to write CircleCI config: {}", e);
+                                eprintln!("error: failed to write CircleCI config: {e}");
                                 return ExitCode::FAILURE;
                             }
                         },
                         Err(e) => {
-                            eprintln!("error: failed to generate CircleCI config: {}", e);
+                            eprintln!("error: failed to generate CircleCI config: {e}");
                             return ExitCode::FAILURE;
                         }
                     }
@@ -121,18 +119,12 @@ pub fn run_ci(args: CiArgs) -> ExitCode {
                         Ok(config) => match std::fs::write("bitbucket-pipelines.yml", config) {
                             Ok(_) => println!("✓ Created bitbucket-pipelines.yml"),
                             Err(e) => {
-                                eprintln!(
-                                    "error: failed to write Bitbucket Pipelines config: {}",
-                                    e
-                                );
+                                eprintln!("error: failed to write Bitbucket Pipelines config: {e}",);
                                 return ExitCode::FAILURE;
                             }
                         },
                         Err(e) => {
-                            eprintln!(
-                                "error: failed to generate Bitbucket Pipelines config: {}",
-                                e
-                            );
+                            eprintln!("error: failed to generate Bitbucket Pipelines config: {e}",);
                             return ExitCode::FAILURE;
                         }
                     }
@@ -143,12 +135,12 @@ pub fn run_ci(args: CiArgs) -> ExitCode {
                         Ok(config) => match std::fs::write("azure-pipelines.yml", config) {
                             Ok(_) => println!("✓ Created azure-pipelines.yml"),
                             Err(e) => {
-                                eprintln!("error: failed to write Azure Pipelines config: {}", e);
+                                eprintln!("error: failed to write Azure Pipelines config: {e}");
                                 return ExitCode::FAILURE;
                             }
                         },
                         Err(e) => {
-                            eprintln!("error: failed to generate Azure Pipelines config: {}", e);
+                            eprintln!("error: failed to generate Azure Pipelines config: {e}");
                             return ExitCode::FAILURE;
                         }
                     }
@@ -180,13 +172,13 @@ pub fn run_ci(args: CiArgs) -> ExitCode {
                                     std::fs::create_dir_all(parent).ok();
                                 }
                                 if let Err(e) = std::fs::write(file_path, content) {
-                                    eprintln!("error: failed to write {}: {}", file_path, e);
+                                    eprintln!("error: failed to write {file_path}: {e}");
                                     return ExitCode::FAILURE;
                                 }
-                                println!("✓ Created {}", file_path);
+                                println!("✓ Created {file_path}");
                             }
                             Err(e) => {
-                                eprintln!("error: failed to generate CI config: {}", e);
+                                eprintln!("error: failed to generate CI config: {e}");
                                 return ExitCode::FAILURE;
                             }
                         }
@@ -195,10 +187,10 @@ pub fn run_ci(args: CiArgs) -> ExitCode {
             }
 
             println!("✓ CI configuration initialized successfully");
-            println!("  Platform: {}", platform);
+            println!("  Platform: {platform}");
             println!("  Cache: {}", if cache { "enabled" } else { "disabled" });
             if let Some(url) = &remote_cache {
-                println!("  Remote cache: {}", url);
+                println!("  Remote cache: {url}");
             }
 
             ExitCode::SUCCESS
@@ -213,8 +205,7 @@ pub fn run_ci(args: CiArgs) -> ExitCode {
                     "azure" | "azure-pipelines" => CIPlatform::AzurePipelines,
                     _ => {
                         eprintln!(
-                            "error: invalid platform '{}', expected 'github', 'gitlab', 'circleci', 'bitbucket', or 'azure'",
-                            platform
+                            "error: invalid platform '{platform}', expected 'github', 'gitlab', 'circleci', 'bitbucket', or 'azure'",
                         );
                         return ExitCode::FAILURE;
                     }
@@ -276,7 +267,7 @@ pub fn run_ci(args: CiArgs) -> ExitCode {
                     }
                 },
                 Err(e) => {
-                    eprintln!("error: failed to generate CI configuration: {}", e);
+                    eprintln!("error: failed to generate CI configuration: {e}");
                     ExitCode::FAILURE
                 }
             }

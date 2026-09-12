@@ -457,7 +457,7 @@ mod tests {
             ExecutorError::Spawn { source, .. } => {
                 assert_eq!(source.kind(), std::io::ErrorKind::PermissionDenied);
             }
-            other => panic!("expected ExecutorError::Spawn, got {:?}", other),
+            other => panic!("expected ExecutorError::Spawn, got {other:?}"),
         }
     }
 }

@@ -124,6 +124,6 @@ mod tests {
     #[test]
     fn test_docker_toolchain_detect() {
         let toolchain = DockerToolchain::detect();
-        println!("Toolchain detection result: {:?}", toolchain);
+        println!("Toolchain detection result: {toolchain:?}");
     }
 }

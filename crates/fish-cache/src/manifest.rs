@@ -556,7 +556,7 @@ impl ManifestDiff {
                 out.push_str("Verdict: Cache hit (all inputs match previous build)\n");
                 if let Some(fp) = &self.old_fingerprint {
                     let short_fp = &fp[..fp.len().min(16)];
-                    out.push_str(&format!("Cached fingerprint: {}...\n", short_fp));
+                    out.push_str(&format!("Cached fingerprint: {short_fp}...\n"));
                 }
                 out.push_str(
                     "No rebuild necessary; outputs can be securely restored from CAS cache.\n",
@@ -570,12 +570,11 @@ impl ManifestDiff {
                     let old_short = &old_fp[..old_fp.len().min(12)];
                     let new_short = &new_fp[..new_fp.len().min(12)];
                     out.push_str(&format!(
-                        "Fingerprint transition: {}... -> {}...\n",
-                        old_short, new_short
+                        "Fingerprint transition: {old_short}... -> {new_short}...\n"
                     ));
                 } else if let Some(old_fp) = &self.old_fingerprint {
                     let old_short = &old_fp[..old_fp.len().min(12)];
-                    out.push_str(&format!("Recorded fingerprint: {}...\n", old_short));
+                    out.push_str(&format!("Recorded fingerprint: {old_short}...\n"));
                 }
             }
         }
@@ -598,7 +597,7 @@ impl ManifestDiff {
         if !self.added_files.is_empty() {
             out.push_str(&format!("\nAdded files ({}):\n", self.added_files.len()));
             for f in &self.added_files {
-                out.push_str(&format!("  + {}\n", f));
+                out.push_str(&format!("  + {f}\n"));
             }
         }
 
@@ -608,7 +607,7 @@ impl ManifestDiff {
                 self.removed_files.len()
             ));
             for f in &self.removed_files {
-                out.push_str(&format!("  - {}\n", f));
+                out.push_str(&format!("  - {f}\n"));
             }
         }
 
@@ -629,8 +628,8 @@ impl ManifestDiff {
 
         if let Some((old_args, new_args)) = &self.changed_args {
             out.push_str("\nCommand arguments changed:\n");
-            out.push_str(&format!("  Old: {:?}\n", old_args));
-            out.push_str(&format!("  New: {:?}\n", new_args));
+            out.push_str(&format!("  Old: {old_args:?}\n"));
+            out.push_str(&format!("  New: {new_args:?}\n"));
         }
 
         if !self.changed_deps.is_empty() {

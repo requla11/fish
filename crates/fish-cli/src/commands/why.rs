@@ -38,7 +38,7 @@ fn answer_why_rebuilt(target: &str) -> ExitCode {
         match explanation.cached_fingerprint {
             Some(fp) => {
                 let short_fp = &fp[..fp.len().min(16)];
-                println!("Cached fingerprint: {}...", short_fp);
+                println!("Cached fingerprint: {short_fp}...");
                 println!("Verdict: record exists — the rebuild was triggered by fingerprint drift");
                 println!("(source hash, toolchain flags, or env vars changed since this record).");
                 println!("Compare against the current inputs with `fish build --verbose`.");

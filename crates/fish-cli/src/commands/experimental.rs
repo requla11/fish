@@ -6,7 +6,7 @@ use crate::utils::resolve_start_dir;
 
 pub fn run_live_patch(args: LivePatchArgs) -> ExitCode {
     if let Err(e) = experimental::require_enabled("hotpatch") {
-        eprintln!("error: {}", e);
+        eprintln!("error: {e}");
         return ExitCode::FAILURE;
     }
 
@@ -50,7 +50,7 @@ pub fn run_live_patch(args: LivePatchArgs) -> ExitCode {
 
 pub fn run_jit(args: JitArgs) -> ExitCode {
     if let Err(e) = experimental::require_enabled("micro_jit") {
-        eprintln!("error: {}", e);
+        eprintln!("error: {e}");
         return ExitCode::FAILURE;
     }
 
@@ -79,7 +79,7 @@ pub fn run_jit(args: JitArgs) -> ExitCode {
 
 pub fn run_super_opt(args: SuperOptArgs) -> ExitCode {
     if let Err(e) = experimental::require_enabled("super_opt") {
-        eprintln!("error: {}", e);
+        eprintln!("error: {e}");
         return ExitCode::FAILURE;
     }
 

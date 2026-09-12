@@ -111,9 +111,9 @@ pub fn evaluate(
     if history.runs.len() < 3 {
         return RegressionVerdict::InsufficientHistory;
     }
-    let baseline = history
-        .baseline_median_secs()
-        .expect("history checked non-empty");
+    let Some(baseline) = history.baseline_median_secs() else {
+        return RegressionVerdict::InsufficientHistory;
+    };
     if baseline <= 0.0 {
         return RegressionVerdict::InsufficientHistory;
     }

@@ -64,7 +64,7 @@ variables:
         let stages: Vec<String> = parallel_levels
             .iter()
             .enumerate()
-            .map(|(i, _)| format!("stage-{}", i))
+            .map(|(i, _)| format!("stage-{i}"))
             .collect();
 
         let data = json!({
@@ -75,7 +75,7 @@ variables:
             "jobs": matrix.jobs.iter().map(|job| {
                 let stage = parallel_levels.iter()
                     .position(|level| level.iter().any(|id| id == &job.id))
-                    .map(|level| format!("stage-{}", level))
+                    .map(|level| format!("stage-{level}"))
                     .unwrap_or_else(|| "build".to_string());
 
                 json!({
@@ -109,9 +109,8 @@ variables:
 # - Artifact sharing between jobs
 # - Remote cache support if configured
 
-{}
-"#,
-            content
+{content}
+"#
         ))
     }
 }

@@ -80,9 +80,7 @@ impl DartToolchain {
         let output = std::process::Command::new(executable)
             .args(args)
             .output()
-            .map_err(|e| {
-                DartBackendError::Toolchain(format!("Failed to run {}: {}", executable, e))
-            })?;
+            .map_err(|e| DartBackendError::Toolchain(format!("Failed to run {executable}: {e}")))?;
 
         if !output.status.success() {
             return Err(DartBackendError::Toolchain(format!(

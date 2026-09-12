@@ -41,7 +41,7 @@ impl HostResourceBroker {
             .clone()
     }
 
-    pub async fn acquire(&self, req: &ResourceRequirements) -> HostResourceGuard {
+    pub async fn acquire(&self, req: &ResourceRequirements) -> Option<HostResourceGuard> {
         let mut sorted_tokens = req.tokens.clone();
         sorted_tokens.sort();
         sorted_tokens.dedup();
@@ -49,7 +49,9 @@ impl HostResourceBroker {
         let mut token_permits = Vec::with_capacity(sorted_tokens.len());
         for token in sorted_tokens {
             let sem = self.get_token_semaphore(&token).await;
-            let permit = sem.acquire_owned().await.expect("semaphore is not closed");
+            let Ok(permit) = sem.acquire_owned().await else {
+                return None;
+            };
             token_permits.push(permit);
         }
 
@@ -59,17 +61,19 @@ impl HostResourceBroker {
             req.permits.clamp(1, self.total_permits) as u32
         };
 
-        let host_permit = self
+        let Ok(host_permit) = self
             .host_semaphore
             .clone()
             .acquire_many_owned(needed_permits)
             .await
-            .expect("host semaphore is not closed");
+        else {
+            return None;
+        };
 
-        HostResourceGuard {
+        Some(HostResourceGuard {
             _host_permit: host_permit,
             _token_permits: token_permits,
-        }
+        })
     }
 }
 
@@ -90,7 +94,7 @@ mod tests {
             exclusive: false,
         };
 
-        let guard = broker.acquire(&req).await;
+        let guard = broker.acquire(&req).await.expect("semaphore is open");
         assert_eq!(broker.available_permits(), 2);
 
         drop(guard);
@@ -107,7 +111,10 @@ mod tests {
             exclusive: true,
         };
 
-        let guard = broker.acquire(&req_exclusive).await;
+        let guard = broker
+            .acquire(&req_exclusive)
+            .await
+            .expect("semaphore is open");
         assert_eq!(broker.available_permits(), 0);
 
         drop(guard);
@@ -129,7 +136,7 @@ mod tests {
         };
 
         let task1 = tokio::spawn(async move {
-            let _guard = broker1.acquire(&req).await;
+            let _guard = broker1.acquire(&req).await.expect("semaphore is open");
             sleep(Duration::from_millis(50)).await;
             1
         });
@@ -141,7 +148,7 @@ mod tests {
                 tokens: vec![token.to_string()],
                 exclusive: false,
             };
-            let _guard = broker2.acquire(&req2).await;
+            let _guard = broker2.acquire(&req2).await.expect("semaphore is open");
             2
         });
 
@@ -170,12 +177,12 @@ mod tests {
         };
 
         let t1 = tokio::spawn(async move {
-            let _g = b1.acquire(&req1).await;
+            let _g = b1.acquire(&req1).await.expect("semaphore is open");
             sleep(Duration::from_millis(20)).await;
         });
 
         let t2 = tokio::spawn(async move {
-            let _g = b2.acquire(&req2).await;
+            let _g = b2.acquire(&req2).await.expect("semaphore is open");
             sleep(Duration::from_millis(20)).await;
         });
 

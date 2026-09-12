@@ -159,11 +159,9 @@ pub fn prune_workspace(
     sorted_included.sort();
 
     for pkg_name in &sorted_included {
-        let pkg = metadata
-            .packages
-            .iter()
-            .find(|p| p.name == *pkg_name)
-            .unwrap();
+        let Some(pkg) = metadata.packages.iter().find(|p| p.name == *pkg_name) else {
+            continue;
+        };
 
         let pkg_manifest = pkg.manifest_path.as_std_path();
         let Some(pkg_dir) = pkg_manifest.parent() else {

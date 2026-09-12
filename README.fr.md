@@ -162,7 +162,7 @@ Maintain & Clean:
 
 ## 🏗️ Architecture & Structure du Workspace
 
-Le moteur est structuré comme un workspace Rust modulaire (28 crates) maintenant une isolation stricte des frontières :
+Le moteur est structuré comme un workspace Rust modulaire (30 crates) maintenant une isolation stricte des frontières :
 
 ```text
 crates/
@@ -178,9 +178,8 @@ crates/
   fish-remote-cache/ Serveur de cache distant à haut débit avec filtrage de signature Ed25519
   fish-security/     Sécurité multi-couches, scanner de vulnérabilités OSV et provenance SLSA
   fish-cli/          Application en ligne de commande unifiée, IPC de daemon et rendu terminal
-submodules/          Moteurs d'isolation intégrés (vendored) :
-  apple/             Sandbox hermétique et daemon d'isolation de processus OS
-  banana/            Maillage swarm P2P, constructeur de conteneur OCI et registre Merkle
+crates/fish-apple-shim/  Repli hors ligne pour l'API sandbox privée `apple`
+crates/fish-banana-shim/  Repli hors ligne pour l'API de distribution privée `banana`
 examples/            Démonstrations de monorepos polyglottes prêtes à l'emploi
 ```
 
@@ -217,8 +216,8 @@ cargo test --workspace
 
 ## 📖 Documentation & Communauté
 
-- [Guide d'Architecture](ARCHITECTURE.md) — Conception architecturale détaillée et composants.
-- [Configuration de Développement](DEVELOPMENT.md) — Configuration locale, débogage et benchmarks.
+- [Guide d'Architecture](docs/architecture.md) — Conception architecturale détaillée et composants.
+- [Configuration de Développement](docs/development.md) — Configuration locale, débogage et benchmarks.
 - [Guide de Contribution](CONTRIBUTING.md) — Comment proposer des modifications et ajouter des backends.
 - [Workflow pour Agent IA](docs/AI_AGENT_WORKFLOW.md) — Bonnes pratiques pour les agents de codage IA.
 

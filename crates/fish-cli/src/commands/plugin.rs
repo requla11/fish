@@ -71,7 +71,7 @@ pub fn run_plugin(args: PluginArgs) -> ExitCode {
             if !script_plugins.is_empty() {
                 println!("Available Script Plugins:");
                 for plugin in &script_plugins {
-                    println!("  - {}", plugin);
+                    println!("  - {plugin}");
                 }
             }
 
@@ -236,11 +236,11 @@ pub fn run_plugin(args: PluginArgs) -> ExitCode {
         }
         PluginAction::Uninstall { name } => match uninstall_plugin(&name, &plugins_dir) {
             Ok(true) => {
-                println!("Successfully uninstalled plugin '{}'", name);
+                println!("Successfully uninstalled plugin '{name}'");
                 ExitCode::SUCCESS
             }
             Ok(false) => {
-                eprintln!("error: plugin '{}' is not installed", name);
+                eprintln!("error: plugin '{name}' is not installed");
                 ExitCode::FAILURE
             }
             Err(err) => {
@@ -318,22 +318,22 @@ pub fn run_plugin(args: PluginArgs) -> ExitCode {
                 }
             }
             Err(PluginError::InvalidConfig(msg)) => {
-                eprintln!("error: {}", msg);
+                eprintln!("error: {msg}");
                 ExitCode::FAILURE
             }
             Err(PluginError::Execution {
                 command: cmd,
                 message,
             }) => {
-                eprintln!("error: plugin '{}' failed: {}", cmd, message);
+                eprintln!("error: plugin '{cmd}' failed: {message}");
                 ExitCode::FAILURE
             }
             Err(PluginError::Unsupported(msg)) => {
-                eprintln!("error: {}", msg);
+                eprintln!("error: {msg}");
                 ExitCode::FAILURE
             }
             Err(PluginError::DependencyMissing(dep)) => {
-                eprintln!("error: missing plugin dependency: {}", dep);
+                eprintln!("error: missing plugin dependency: {dep}");
                 ExitCode::FAILURE
             }
         },

@@ -1,0 +1,11 @@
+# Clippy configuration for Fish
+# See https://doc.rust-lang.org/clippy/lint_configuration.html
+
+# `unwrap_used` / `expect_used` are set to `warn` in Cargo.toml
+# [workspace.lints.clippy]. Unit / integration tests idiomatically use
+# `.unwrap()` / `.expect()` for setup and assertions — flagging them drowns
+# out real production warnings. Allow them in test code so
+# `cargo clippy --workspace --all-targets -- -D warnings` only gates
+# non-test code (src/lib.rs, src/main.rs, benches still gated via allow? no:
+# benches are not tests, fix them explicitly).
+allow-unwrap-in-tests = true

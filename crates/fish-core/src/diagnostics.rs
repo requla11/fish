@@ -465,7 +465,7 @@ mod tests {
     fn test_diagnostic_logger_max_logs() {
         let logger = DiagnosticLogger::new(5);
         for i in 0..10 {
-            logger.log(LogLevel::Info, "test", format!("Message {}", i));
+            logger.log(LogLevel::Info, "test", format!("Message {i}"));
         }
 
         assert_eq!(logger.log_count(), 5);

@@ -312,7 +312,10 @@ impl BackendScanner for MavenScanner {
         let mut packages = Vec::new();
 
         // Simple regex to extract artifactId and version from dependencies
-        let re = regex::Regex::new(r"(?s)<dependency>.*?<artifactId>(.*?)</artifactId>.*?<version>(.*?)</version>.*?</dependency>").unwrap();
+        let re = regex::Regex::new(r"(?s)<dependency>.*?<artifactId>(.*?)</artifactId>.*?<version>(.*?)</version>.*?</dependency>")
+            .map_err(|e| {
+                SecurityError::LockFileParseFailed(format!("invalid dependency pattern: {e}"))
+            })?;
 
         for cap in re.captures_iter(&content) {
             let name = cap[1].trim().to_string();

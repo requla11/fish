@@ -156,13 +156,12 @@ impl Project {
             }
             for dep in &node.deps {
                 if members.contains(&dep.pkg) && node.id != dep.pkg {
-                    depended_on_by
-                        .get_mut(&dep.pkg)
-                        .expect("workspace members are pre-registered")
-                        .push(node.id.clone());
-                    *indegree
-                        .get_mut(&node.id)
-                        .expect("workspace members are pre-registered") += 1;
+                    if let Some(list) = depended_on_by.get_mut(&dep.pkg) {
+                        list.push(node.id.clone());
+                    }
+                    if let Some(degree) = indegree.get_mut(&node.id) {
+                        *degree += 1;
+                    }
                 }
             }
         }
@@ -178,37 +177,33 @@ impl Project {
         let mut ready: BinaryHeap<Reverse<String>> = BinaryHeap::new();
         for id in &self.metadata.workspace_members {
             if indegree[id] == 0 {
-                ready.push(Reverse(
-                    self.package(id)
-                        .expect("members are present in metadata")
-                        .name
-                        .to_string(),
-                ));
+                let Some(package) = self.package(id) else {
+                    continue;
+                };
+                ready.push(Reverse(package.name.to_string()));
             }
         }
 
         let mut order: Vec<PackageId> = Vec::with_capacity(members.len());
         while let Some(Reverse(name)) = ready.pop() {
-            let id = name_to_id
-                .get(&name)
-                .expect("ready names come from the name_to_id map")
-                .clone();
+            let Some(id) = name_to_id.get(&name) else {
+                continue;
+            };
+            let id = id.clone();
             order.push(id.clone());
             let Some(dependents) = depended_on_by.get(&id) else {
                 continue;
             };
             for dependent in dependents {
-                let degree = indegree
-                    .get_mut(dependent)
-                    .expect("workspace members are pre-registered");
+                let Some(degree) = indegree.get_mut(dependent) else {
+                    continue;
+                };
                 *degree -= 1;
                 if *degree == 0 {
-                    ready.push(Reverse(
-                        self.package(dependent)
-                            .expect("members are present in metadata")
-                            .name
-                            .to_string(),
-                    ));
+                    let Some(package) = self.package(dependent) else {
+                        continue;
+                    };
+                    ready.push(Reverse(package.name.to_string()));
                 }
             }
         }

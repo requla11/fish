@@ -43,7 +43,7 @@ impl FromStr for CompressionAlgorithm {
             "zstd" => Ok(Self::Zstd),
             "zstd-max" => Ok(Self::ZstdMax),
             "zstd-fast" => Ok(Self::ZstdFast),
-            _ => Err(format!("Unknown compression algorithm: {}", s)),
+            _ => Err(format!("Unknown compression algorithm: {s}")),
         }
     }
 }
@@ -90,12 +90,12 @@ pub fn decompress(data: &[u8], algorithm: CompressionAlgorithm) -> Result<Vec<u8
 fn compress_zstd(data: &[u8], level: CompressionLevel) -> Result<Vec<u8>> {
     let level = level.as_i32();
     zstd::bulk::compress(data, level)
-        .map_err(|e| CasError::Compression(format!("Zstd compression failed: {}", e)))
+        .map_err(|e| CasError::Compression(format!("Zstd compression failed: {e}")))
 }
 
 fn decompress_zstd(data: &[u8]) -> Result<Vec<u8>> {
     zstd::decode_all(data)
-        .map_err(|e| CasError::Compression(format!("Zstd decompression failed: {}", e)))
+        .map_err(|e| CasError::Compression(format!("Zstd decompression failed: {e}")))
 }
 
 /// Estimate compression ratio for a given data

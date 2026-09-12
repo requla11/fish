@@ -1,0 +1,25 @@
+[package]
+name = "banana"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+license = "MIT"
+description = "Offline fallback shim for the private banana companion (see submodules/banana). Provides the minimal API used by fish so the workspace builds without network access."
+repository = "https://github.com/requla11/fish"
+keywords = ["build", "cache", "shim"]
+categories = ["development-tools"]
+readme = "../../README.md"
+
+[dependencies]
+anyhow = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+blake3 = { workspace = true }
+tar = { workspace = true }
+sha2 = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+
+[lints]
+workspace = true

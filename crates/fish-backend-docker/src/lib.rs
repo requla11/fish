@@ -97,7 +97,7 @@ impl DockerBackend {
         let stages_count = stages.len();
 
         for (index, (stage_name, commands)) in stages.into_iter().enumerate() {
-            let task_id = format!("docker:build:{}", stage_name);
+            let task_id = format!("docker:build:{stage_name}");
             let is_last = index + 1 == stages_count;
 
             // One task per stage. Every parsed instruction carries the same
@@ -108,11 +108,8 @@ impl DockerBackend {
                 continue;
             };
 
-            let mut task = fish_executor::Task::new(
-                task_id,
-                format!("Build Docker stage: {}", stage_name),
-                cmd,
-            );
+            let mut task =
+                fish_executor::Task::new(task_id, format!("Build Docker stage: {stage_name}"), cmd);
 
             if let Some(dockerfile) = &self.config.dockerfile_path {
                 let namespace =
@@ -127,10 +124,8 @@ impl DockerBackend {
             }
 
             if is_last {
-                task = task.with_artifacts(vec![std::path::PathBuf::from(format!(
-                    "{}.tar",
-                    stage_name
-                ))]);
+                task = task
+                    .with_artifacts(vec![std::path::PathBuf::from(format!("{stage_name}.tar"))]);
             }
 
             let _node_id = graph.add_node(task);

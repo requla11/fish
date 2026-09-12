@@ -29,6 +29,15 @@ members = [
     "crates/fish-incremental",
     "crates/fish-cli",
     "crates/fish-installer",
+    "crates/fish-apple-shim",
+    "crates/fish-banana-shim",
+]
+# Private companion repos. Kept out of `members` so offline builds work via
+# the local shims above. To restore full implementations once public:
+#   rm -rf submodules/apple submodules/banana
+#   git submodule update --init --recursive
+#   then point `apple`/`banana` below back to `submodules/...`.
+exclude = [
     "submodules/apple",
     "submodules/banana",
 ]
@@ -49,8 +58,10 @@ categories = ["development-tools", "development-tools::build-utils"]
 
 [workspace.dependencies]
 anyhow = "1.0"
-apple = { path = "submodules/apple", version = "0.1.0" }
-banana = { path = "submodules/banana", version = "0.1.0" }
+# Offline fallback shims (package names `apple`/`banana` preserved so
+# `use apple::...` / `use banana::...` keeps compiling).
+apple = { path = "crates/fish-apple-shim", version = "0.1.0" }
+banana = { path = "crates/fish-banana-shim", version = "0.1.0" }
 fish-backend-api = { path = "crates/fish-backend-api", version = "1.0.0" }
 fish-core = { path = "crates/fish-core", version = "1.0.0" }
 fish-graph = { path = "crates/fish-graph", version = "1.0.0" }

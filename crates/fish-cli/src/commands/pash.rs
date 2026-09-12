@@ -102,7 +102,10 @@ pub fn run_pash(args: PashArgs) -> ExitCode {
                     "rebuild_downstream": true,
                 }),
             };
-            println!("{}", serde_json::to_string_pretty(&json_out).unwrap());
+            match serde_json::to_string_pretty(&json_out) {
+                Ok(s) => println!("{s}"),
+                Err(e) => eprintln!("failed to serialize JSON: {e}"),
+            }
             return ExitCode::SUCCESS;
         }
 
@@ -143,7 +146,10 @@ pub fn run_pash(args: PashArgs) -> ExitCode {
             "public_symbols_count": boundary.symbols.len(),
             "symbols": boundary.symbols,
         });
-        println!("{}", serde_json::to_string_pretty(&json_out).unwrap());
+        match serde_json::to_string_pretty(&json_out) {
+            Ok(s) => println!("{s}"),
+            Err(e) => eprintln!("failed to serialize JSON: {e}"),
+        }
         return ExitCode::SUCCESS;
     }
 

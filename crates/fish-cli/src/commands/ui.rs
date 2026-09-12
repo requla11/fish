@@ -13,14 +13,14 @@ use fish_core::project::Project;
 pub fn run_ui(port: u16, open: bool, project_path: Option<PathBuf>) -> Result<(), anyhow::Error> {
     let root =
         project_path.unwrap_or_else(|| env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
-    let bind_addr = format!("127.0.0.1:{}", port);
+    let bind_addr = format!("127.0.0.1:{port}");
     let listener = TcpListener::bind(&bind_addr)?;
     let local_port = listener.local_addr()?.port();
-    let url = format!("http://localhost:{}", local_port);
+    let url = format!("http://localhost:{local_port}");
 
     println!("🦀 Fish Web Dashboard & Telemetry Visualizer");
     println!("============================================================");
-    println!("🌐 Dashboard running at: {}", url);
+    println!("🌐 Dashboard running at: {url}");
     println!("📂 Workspace root: {}", root.display());
     println!("⚡ Press Ctrl+C to stop dashboard server\n");
 

@@ -269,7 +269,7 @@ Closes #123
 ## Getting Help
 
 - Check existing issues on GitHub
-- Read ARCHITECTURE.md for system design questions
+- Read architecture.md for system design questions
 - Join the community discussions
 - Contact maintainers for security issues
 

@@ -20,8 +20,8 @@
 
 1. **README.md** - プロジェクト概要、クイックスタート
 2. **Cargo.toml** - ワークスペース構造、MSRV要件 (1.88+)
-3. **ARCHITECTURE.md** - システムアーキテクチャと責務
-4. **DEVELOPMENT.md** - ローカル開発環境のセットアップ
+3. **../architecture.md** - システムアーキテクチャと責務
+4. **../development.md** - ローカル開発環境のセットアップ
 
 ---
 

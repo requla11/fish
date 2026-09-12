@@ -162,7 +162,7 @@ Fish 保持命令列工具簡單、直觀且易用：
 
 ## 🏗️ 架構設計與工作區模組劃分
 
-本專案採用嚴謹的模組化 Rust 工作區結構（共 28 個 Crates）：
+本專案採用嚴謹的模組化 Rust 工作區結構（共 30 個 Crates）：
 
 ```text
 crates/
@@ -178,9 +178,8 @@ crates/
   fish-remote-cache/ 支援 Ed25519 簽名驗證的高吞吐遠端快取伺服器
   fish-security/     多層次安全合規、OSV 漏洞掃描與 SLSA 產物簽名認證
   fish-cli/          統一定義命令列互動介面、守護處理序 IPC 與終端互動呈現
-submodules/          配套的安全與網路子系統：
-  apple/             Hermetic 密封沙盒與系統處理序安全隔離守護處理序
-  banana/            P2P Swarm 區域網路、OCI 容器構建器與 Merkle 帳本
+crates/fish-apple-shim/  私有 `apple` sandbox API 的離線回退實作
+crates/fish-banana-shim/  私有 `banana` 分發 API 的離線回退實作
 examples/            現成可運行的多語言 Monorepo 實戰範例
 ```
 
@@ -217,8 +216,8 @@ cargo test --workspace
 
 ## 📖 延伸文件與社群交流
 
-- [系統架構全景](ARCHITECTURE.md) — 深入了解底層架構設計與各子系統互動。
-- [本地開發指南](DEVELOPMENT.md) — 快速搭建本地開發、除錯與基準測試環境。
+- [系統架構全景](docs/architecture.md) — 深入了解底層架構設計與各子系統互動。
+- [本地開發指南](docs/development.md) — 快速搭建本地開發、除錯與基準測試環境。
 - [貢獻指南](CONTRIBUTING.md) — 如何提交高品質程式碼以及新增新的語言適配器。
 - [AI 智能體研發指南](docs/AI_AGENT_WORKFLOW.md) — 面向 AI Coding Agent 的開發最佳實踐。
 

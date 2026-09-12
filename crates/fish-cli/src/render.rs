@@ -266,7 +266,9 @@ fn print_tree_node(
     is_last: bool,
     is_root: bool,
 ) {
-    let node = graph.node(node_id).unwrap();
+    let Some(node) = graph.node(node_id) else {
+        return;
+    };
     let name = package_name(project, &node.payload);
 
     let connector = if is_root {
@@ -291,9 +293,9 @@ fn print_tree_node(
     let child_prefix = if is_root {
         "".to_string()
     } else if is_last {
-        format!("{}    ", prefix)
+        format!("{prefix}    ")
     } else {
-        format!("{}│   ", prefix)
+        format!("{prefix}│   ")
     };
 
     for (i, dep) in deps_vec.iter().enumerate() {
@@ -344,7 +346,10 @@ pub fn print_graph_json(project: &Project, graph: &BuildGraph<PackageId>) {
         "levels": levels_json,
     });
 
-    println!("{}", serde_json::to_string_pretty(&output).unwrap());
+    match serde_json::to_string_pretty(&output) {
+        Ok(s) => println!("{s}"),
+        Err(e) => eprintln!("failed to serialize graph JSON: {e}"),
+    }
 }
 
 pub fn print_graph_dot(project: &Project, graph: &BuildGraph<PackageId>) {
@@ -416,9 +421,9 @@ fn print_task_tree_node(
     let child_prefix = if is_root {
         String::new()
     } else if is_last {
-        format!("{}    ", prefix)
+        format!("{prefix}    ")
     } else {
-        format!("{}│   ", prefix)
+        format!("{prefix}│   ")
     };
 
     for (i, dep) in deps_vec.iter().enumerate() {
@@ -462,7 +467,10 @@ pub fn print_task_graph_json(graph: &BuildGraph<Task>) {
         "levels": levels_json,
     });
 
-    println!("{}", serde_json::to_string_pretty(&output).unwrap());
+    match serde_json::to_string_pretty(&output) {
+        Ok(s) => println!("{s}"),
+        Err(e) => eprintln!("failed to serialize task graph JSON: {e}"),
+    }
 }
 
 /// Render a unified polyglot task graph in Graphviz DOT format.

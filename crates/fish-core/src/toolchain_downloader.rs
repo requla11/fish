@@ -191,7 +191,7 @@ impl ToolchainDownloader {
                 }
             }
             let default_exe = if cfg!(windows) {
-                format!("{}.exe", kind_str)
+                format!("{kind_str}.exe")
             } else {
                 kind_str
             };
@@ -225,9 +225,7 @@ impl ToolchainDownloader {
 
         if self.offline {
             return Err(anyhow!(
-                "Toolchain {:?} {} is not installed locally and offline mode is enabled",
-                kind,
-                version
+                "Toolchain {kind:?} {version} is not installed locally and offline mode is enabled"
             ));
         }
 
@@ -235,11 +233,7 @@ impl ToolchainDownloader {
             .sources
             .get(&(kind.clone(), version.to_string()))
             .ok_or_else(|| {
-                anyhow!(
-                    "No remote distribution source registered for toolchain {:?} {}",
-                    kind,
-                    version
-                )
+                anyhow!("No remote distribution source registered for toolchain {kind:?} {version}")
             })?;
 
         let install_dir = self.base_dir.join(toolchain_kind_name(kind)).join(version);
@@ -280,9 +274,7 @@ impl ToolchainDownloader {
             let actual: String = digest.iter().map(|b| format!("{b:02x}")).collect();
             if actual != *expected {
                 return Err(anyhow!(
-                    "checksum mismatch for {:?} {}: expected `{expected}`, got `{actual}`",
-                    kind,
-                    version
+                    "checksum mismatch for {kind:?} {version}: expected `{expected}`, got `{actual}`"
                 ));
             }
         }

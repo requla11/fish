@@ -109,17 +109,17 @@ impl VirtualFileSystem {
 
     /// Read a file from the virtual file system
     pub fn read_file(&self, path: &Path) -> Result<Vec<u8>, VfsError> {
-        let cache = self.cache.read().unwrap();
+        let cache = self.cache.read().unwrap_or_else(|e| e.into_inner());
         if let Some(cached) = cache.entries.get(path) {
             return Ok(cached.clone());
         }
         drop(cache);
 
-        let root = self.root.read().unwrap();
+        let root = self.root.read().unwrap_or_else(|e| e.into_inner());
         let content = self.read_from_node(&root, path)?;
         drop(root);
 
-        let mut cache = self.cache.write().unwrap();
+        let mut cache = self.cache.write().unwrap_or_else(|e| e.into_inner());
         if cache.entries.contains_key(path) {
             return Ok(content);
         }
@@ -138,11 +138,10 @@ impl VirtualFileSystem {
             return Err(VfsError::InvalidPath("Empty path".to_string()));
         }
 
-        self.traverse_node(node, &components, 0)
+        Self::traverse_node(node, &components, 0)
     }
 
     fn traverse_node(
-        &self,
         node: &VfsNode,
         components: &[&str],
         index: usize,
@@ -167,7 +166,7 @@ impl VirtualFileSystem {
                     .get(child_name)
                     .ok_or_else(|| VfsError::NotFound(child_name.to_string()))?;
 
-                self.traverse_node(child, components, index + 1)
+                Self::traverse_node(child, components, index + 1)
             }
         }
     }
@@ -179,11 +178,11 @@ impl VirtualFileSystem {
         content: Vec<u8>,
         metadata: FileMetadata,
     ) -> Result<(), VfsError> {
-        let mut root = self.root.write().unwrap();
+        let mut root = self.root.write().unwrap_or_else(|e| e.into_inner());
         self.write_to_node(&mut root, path, content, metadata)?;
         drop(root);
 
-        let mut cache = self.cache.write().unwrap();
+        let mut cache = self.cache.write().unwrap_or_else(|e| e.into_inner());
         if let Some(old) = cache.entries.remove(path) {
             cache.total_bytes = cache.total_bytes.saturating_sub(old.len());
         }
@@ -204,11 +203,10 @@ impl VirtualFileSystem {
             return Err(VfsError::InvalidPath("Empty path".to_string()));
         }
 
-        self.traverse_and_write(node, &components, 0, content, metadata)
+        Self::traverse_and_write(node, &components, 0, content, metadata)
     }
 
     fn traverse_and_write(
-        &self,
         node: &mut VfsNode,
         components: &[&str],
         index: usize,
@@ -248,7 +246,7 @@ impl VirtualFileSystem {
                         }
                     });
 
-                    self.traverse_and_write(child, components, index + 1, content, metadata)
+                    Self::traverse_and_write(child, components, index + 1, content, metadata)
                 }
             }
         }
@@ -256,7 +254,7 @@ impl VirtualFileSystem {
 
     /// Check if a file exists
     pub fn exists(&self, path: &Path) -> bool {
-        let root = self.root.read().unwrap();
+        let root = self.root.read().unwrap_or_else(|e| e.into_inner());
         self.check_exists(&root, path)
     }
 
@@ -267,10 +265,10 @@ impl VirtualFileSystem {
             return true;
         }
 
-        self.traverse_exists(node, &components, 0)
+        Self::traverse_exists(node, &components, 0)
     }
 
-    fn traverse_exists(&self, node: &VfsNode, components: &[&str], index: usize) -> bool {
+    fn traverse_exists(node: &VfsNode, components: &[&str], index: usize) -> bool {
         match node {
             VfsNode::File { .. } => index == components.len(),
             VfsNode::Directory { children, .. } => {
@@ -280,7 +278,7 @@ impl VirtualFileSystem {
 
                 let child_name = components[index];
                 if let Some(child) = children.get(child_name) {
-                    self.traverse_exists(child, components, index + 1)
+                    Self::traverse_exists(child, components, index + 1)
                 } else {
                     false
                 }
@@ -290,7 +288,7 @@ impl VirtualFileSystem {
 
     /// Get file metadata
     pub fn metadata(&self, path: &Path) -> Result<FileMetadata, VfsError> {
-        let root = self.root.read().unwrap();
+        let root = self.root.read().unwrap_or_else(|e| e.into_inner());
         self.get_metadata_from_node(&root, path)
     }
 
@@ -301,12 +299,11 @@ impl VirtualFileSystem {
     ) -> Result<FileMetadata, VfsError> {
         let components: Vec<&str> = path.iter().filter_map(|c| c.to_str()).collect();
 
-        let (_, metadata) = self.traverse_metadata(node, &components, 0)?;
+        let (_, metadata) = Self::traverse_metadata(node, &components, 0)?;
         Ok(metadata)
     }
 
     fn traverse_metadata(
-        &self,
         node: &VfsNode,
         components: &[&str],
         index: usize,
@@ -331,22 +328,21 @@ impl VirtualFileSystem {
                     .get(child_name)
                     .ok_or_else(|| VfsError::NotFound(child_name.to_string()))?;
 
-                self.traverse_metadata(child, components, index + 1)
+                Self::traverse_metadata(child, components, index + 1)
             }
         }
     }
 
     /// List directory contents
     pub fn list_directory(&self, path: &Path) -> Result<Vec<String>, VfsError> {
-        let root = self.root.read().unwrap();
+        let root = self.root.read().unwrap_or_else(|e| e.into_inner());
         let components: Vec<&str> = path.iter().filter_map(|c| c.to_str()).collect();
 
-        let children = self.traverse_list(&root, &components, 0)?;
+        let children = Self::traverse_list(&root, &components, 0)?;
         Ok(children)
     }
 
     fn traverse_list(
-        &self,
         node: &VfsNode,
         components: &[&str],
         index: usize,
@@ -361,7 +357,7 @@ impl VirtualFileSystem {
                     let child = children
                         .get(child_name)
                         .ok_or_else(|| VfsError::NotFound(child_name.to_string()))?;
-                    self.traverse_list(child, components, index + 1)
+                    Self::traverse_list(child, components, index + 1)
                 }
             }
         }
@@ -369,14 +365,14 @@ impl VirtualFileSystem {
 
     /// Clear the cache
     pub fn clear_cache(&self) {
-        let mut cache = self.cache.write().unwrap();
+        let mut cache = self.cache.write().unwrap_or_else(|e| e.into_inner());
         cache.entries.clear();
         cache.total_bytes = 0;
     }
 
     /// Get cache statistics
     pub fn cache_stats(&self) -> CacheStats {
-        let cache = self.cache.read().unwrap();
+        let cache = self.cache.read().unwrap_or_else(|e| e.into_inner());
         CacheStats {
             entries: cache.entries.len(),
             total_size: cache.total_bytes,
@@ -402,9 +398,9 @@ pub enum VfsError {
 impl std::fmt::Display for VfsError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            VfsError::NotFound(path) => write!(f, "Path not found: {}", path),
-            VfsError::InvalidPath(msg) => write!(f, "Invalid path: {}", msg),
-            VfsError::IoError(msg) => write!(f, "IO error: {}", msg),
+            VfsError::NotFound(path) => write!(f, "Path not found: {path}"),
+            VfsError::InvalidPath(msg) => write!(f, "Invalid path: {msg}"),
+            VfsError::IoError(msg) => write!(f, "IO error: {msg}"),
         }
     }
 }

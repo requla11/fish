@@ -491,7 +491,11 @@ impl Scheduler {
                     let id = ready[ready_index];
                     ready_index += 1;
                     graph.set_state(id, TaskState::Running)?;
-                    let task = graph.node(id).expect("ready nodes exist").payload.clone();
+                    let task = graph
+                        .node(id)
+                        .ok_or(GraphError::MissingNode(id))?
+                        .payload
+                        .clone();
                     in_flight += 1;
                     let worker_id = free_workers.pop().unwrap_or(0);
                     let task_start_offset = start.elapsed();

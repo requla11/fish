@@ -280,7 +280,7 @@ mod tests {
             RemoteCacheError::Offline(msg) => {
                 assert!(msg.contains("offline mode"));
             }
-            other => panic!("expected RemoteCacheError::Offline, got {:?}", other),
+            other => panic!("expected RemoteCacheError::Offline, got {other:?}"),
         }
     }
 

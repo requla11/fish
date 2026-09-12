@@ -395,7 +395,7 @@ fn waterfall_lines(rows: &[(String, u64, u64)], width: usize) -> Vec<String> {
     for (label, start, dur) in rows {
         let start_col = scale(*start, total_ms, timeline_width);
         let bar_len = scale(*dur, total_ms, timeline_width).max(1);
-        let mut line = format!("{:<label_width$} │", label, label_width = LABEL_WIDTH);
+        let mut line = format!("{label:<LABEL_WIDTH$} │");
         for col in 0..timeline_width {
             if col >= start_col && col < start_col + bar_len {
                 line.push('█');

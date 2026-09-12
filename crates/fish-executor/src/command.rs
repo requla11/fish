@@ -57,14 +57,15 @@ impl CommandSpec {
 
     pub fn command_line(&self) -> String {
         let mut line = String::new();
-        write!(&mut line, "{}", self.program).unwrap();
+        // Writing to a `String` is infallible; ignore the `fmt::Result`.
+        let _ = write!(&mut line, "{}", self.program);
         for arg in &self.args {
             if arg.chars().any(char::is_whitespace)
                 || arg.chars().any(|c| "\"$`\\;|&<>()[]{}*?!~".contains(c))
             {
-                write!(&mut line, " '{}'", arg).unwrap();
+                let _ = write!(&mut line, " '{arg}'");
             } else {
-                write!(&mut line, " {arg}").unwrap();
+                let _ = write!(&mut line, " {arg}");
             }
         }
         line

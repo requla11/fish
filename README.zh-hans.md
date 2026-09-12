@@ -162,7 +162,7 @@ Fish 保持命令行工具简单、直观且易用：
 
 ## 🏗️ 架构设计与工作区模块划分
 
-本项目采用严谨的模块化 Rust 工作区结构（共 28 个 Crates）：
+本项目采用严谨的模块化 Rust 工作区结构（共 30 个 Crates）：
 
 ```text
 crates/
@@ -178,9 +178,8 @@ crates/
   fish-remote-cache/ 支持 Ed25519 签名验证的高吞吐远程缓存服务器
   fish-security/     多层次安全合规、OSV 漏洞扫描与 SLSA 产物签名认证
   fish-cli/          统一命令行交互界面、守护进程 IPC 与终端交互呈现
-submodules/          配套的安全与网络子系统：
-  apple/             Hermetic 密封沙盒与系统进程安全隔离守护进程
-  banana/            P2P Swarm 局域网络、OCI 容器构建器与 Merkle 账本
+crates/fish-apple-shim/  私有 `apple` sandbox API 的离线回退实现
+crates/fish-banana-shim/  私有 `banana` 分发 API 的离线回退实现
 examples/            现成可运行的多语言 Monorepo 实战示例
 ```
 
@@ -217,8 +216,8 @@ cargo test --workspace
 
 ## 📖 扩展文档与社区交流
 
-- [系统架构全景](ARCHITECTURE.md) — 深入了解底层架构设计与各子系统交互。
-- [本地开发指南](DEVELOPMENT.md) — 快速搭建本地开发、调试与基准测试环境。
+- [系统架构全景](docs/architecture.md) — 深入了解底层架构设计与各子系统交互。
+- [本地开发指南](docs/development.md) — 快速搭建本地开发、调试与基准测试环境。
 - [贡献指南](CONTRIBUTING.md) — 如何提交高质量代码以及添加新的语言适配器。
 - [AI 智能体研发指南](docs/AI_AGENT_WORKFLOW.md) — 面向 AI Coding Agent 的开发最佳实践。
 

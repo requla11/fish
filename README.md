@@ -162,7 +162,7 @@ Maintain & Clean:
 
 ## 🏗️ Architecture & Workspace Layout
 
-The engine is structured as a modular Rust workspace (28 crates) maintaining strict boundary isolation:
+The engine is structured as a modular Rust workspace (30 crates) maintaining strict boundary isolation:
 
 ```text
 crates/
@@ -178,9 +178,8 @@ crates/
   fish-remote-cache/ High-throughput remote cache server with Ed25519 signature gating
   fish-security/     Multi-layer security, OSV vulnerability scanner, and SLSA provenance
   fish-cli/          Unified command-line application, daemon IPC, and terminal rendering
-submodules/          Vendored companion isolation engines:
-  apple/             Hermetic sandbox and OS process isolation daemon
-  banana/            P2P swarm mesh, OCI container builder, and Merkle ledger
+crates/fish-apple-shim/  Offline fallback for the private `apple` sandbox API
+crates/fish-banana-shim/  Offline fallback for the private `banana` distribution API
 examples/            Ready-to-run polyglot monorepo demonstrations
 ```
 
@@ -217,8 +216,8 @@ cargo test --workspace
 
 ## 📖 Documentation & Community
 
-- [Architecture Guide](ARCHITECTURE.md) — In-depth architectural design and components.
-- [Development Setup](DEVELOPMENT.md) — Local setup, debugging, and benchmarks.
+- [Architecture Guide](docs/architecture.md) — In-depth architectural design and components.
+- [Development Setup](docs/development.md) — Local setup, debugging, and benchmarks.
 - [Contributing Guidelines](CONTRIBUTING.md) — How to propose changes and add backends.
 - [AI Agent Workflow](docs/AI_AGENT_WORKFLOW.md) — Best practices for AI coding agents.
 

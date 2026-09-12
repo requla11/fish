@@ -56,7 +56,7 @@ impl SwiftProjectConfig {
         }
 
         let content = std::fs::read_to_string(&package_path)
-            .map_err(|e| format!("Failed to read Package.swift: {}", e))?;
+            .map_err(|e| format!("Failed to read Package.swift: {e}"))?;
 
         let package_name =
             Self::extract_package_name(&content).unwrap_or_else(|| "SwiftPackage".to_string());

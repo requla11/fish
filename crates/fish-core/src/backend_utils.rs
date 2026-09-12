@@ -69,7 +69,7 @@ impl FingerprintUtils {
         mode: &str,
         identifier: &str,
     ) -> String {
-        format!("{}/{}/{}/{}", backend, namespace, mode, identifier)
+        format!("{backend}/{namespace}/{mode}/{identifier}")
     }
 
     pub fn hash_bytes(data: &[u8]) -> String {
@@ -191,7 +191,8 @@ impl ToolchainUtils {
             .map_err(|e| format!("failed to run `{tool}`: {e}"))?;
 
         if !output.status.success() {
-            return Err(format!("`{tool}` exited with {}", output.status));
+            let status = output.status;
+            return Err(format!("`{tool}` exited with {status}"));
         }
 
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -254,7 +255,7 @@ impl BinaryUtils {
 
     pub fn add_binary_extension(name: &str) -> String {
         if cfg!(windows) && !name.ends_with(".exe") {
-            format!("{}.exe", name)
+            format!("{name}.exe")
         } else {
             name.to_string()
         }

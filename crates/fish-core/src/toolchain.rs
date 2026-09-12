@@ -44,7 +44,7 @@ pub fn find_executable_in_path(names: &[&str]) -> Option<PathBuf> {
                 }
                 #[cfg(windows)]
                 {
-                    let candidate_exe = dir.join(format!("{}.exe", name));
+                    let candidate_exe = dir.join(format!("{name}.exe"));
                     if candidate_exe.is_file() {
                         return Some(candidate_exe);
                     }

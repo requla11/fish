@@ -98,9 +98,7 @@ impl JavaToolchain {
         let output = std::process::Command::new(executable)
             .args(args)
             .output()
-            .map_err(|e| {
-                JavaBackendError::Toolchain(format!("Failed to run {}: {}", executable, e))
-            })?;
+            .map_err(|e| JavaBackendError::Toolchain(format!("Failed to run {executable}: {e}")))?;
 
         if !output.status.success() {
             return Err(JavaBackendError::Toolchain(format!(

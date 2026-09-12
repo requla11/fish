@@ -107,8 +107,7 @@ impl GlobalMeshFederation {
 
         if !subject_hash_matches {
             return Err(FederationError::SlsaComplianceError(format!(
-                "Attestation subject does not match requested hash {}",
-                expected_blake3_hash
+                "Attestation subject does not match requested hash {expected_blake3_hash}"
             )));
         }
 

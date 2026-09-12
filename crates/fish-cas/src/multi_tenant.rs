@@ -1,6 +1,6 @@
 //! Multi-tenant cache isolation with per-namespace quotas.
 //!
-//! Wraps [`CasStorage`] to add tenant namespacing: every key is prefixed
+//! Wraps [`crate::storage::CasStorage`] to add tenant namespacing: every key is prefixed
 //! with a tenant identifier so different teams cannot read each other's
 //! artifacts. Per-tenant byte quotas are enforced at write time by
 //! tracking cumulative usage from metadata.
@@ -50,7 +50,7 @@ impl TenantUsageTracker {
         bytes: u64,
         quotas: &TenantQuotas,
     ) -> Result<u64, u64> {
-        let mut guard = self.usage.lock().unwrap();
+        let mut guard = self.usage.lock().unwrap_or_else(|e| e.into_inner());
         let current = guard.entry(tenant.to_string()).or_insert(0);
         let projected = *current + bytes;
         if let Some(max) = quotas.max_bytes_for(tenant)
@@ -63,7 +63,12 @@ impl TenantUsageTracker {
     }
 
     pub fn usage_for(&self, tenant: &str) -> u64 {
-        self.usage.lock().unwrap().get(tenant).copied().unwrap_or(0)
+        self.usage
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(tenant)
+            .copied()
+            .unwrap_or(0)
     }
 }
 

@@ -169,7 +169,7 @@ impl LanPeerRegistry {
     }
 
     pub fn register_peer(&self, peer_id: &str, address: SocketAddr) {
-        let mut map = self.peers.write().unwrap();
+        let mut map = self.peers.write().unwrap_or_else(|e| e.into_inner());
         map.insert(
             peer_id.to_string(),
             LanPeerNode {
@@ -182,7 +182,7 @@ impl LanPeerRegistry {
     }
 
     pub fn announce_artifact(&self, peer_id: &str, artifact_hash: &str) {
-        let mut map = self.peers.write().unwrap();
+        let mut map = self.peers.write().unwrap_or_else(|e| e.into_inner());
         if let Some(peer) = map.get_mut(peer_id) {
             peer.available_artifacts.insert(artifact_hash.to_string());
         }
@@ -194,7 +194,7 @@ impl LanPeerRegistry {
         artifact_hash: &str,
         bitfield: ChunkBitfield,
     ) {
-        let mut map = self.peers.write().unwrap();
+        let mut map = self.peers.write().unwrap_or_else(|e| e.into_inner());
         if let Some(peer) = map.get_mut(peer_id) {
             if bitfield.is_complete() {
                 peer.available_artifacts.insert(artifact_hash.to_string());
@@ -205,7 +205,7 @@ impl LanPeerRegistry {
     }
 
     pub fn locate_artifact_peers(&self, artifact_hash: &str) -> Vec<SocketAddr> {
-        let map = self.peers.read().unwrap();
+        let map = self.peers.read().unwrap_or_else(|e| e.into_inner());
         let mut found = Vec::new();
         for peer in map.values() {
             if peer.available_artifacts.contains(artifact_hash) {
@@ -220,7 +220,7 @@ impl LanPeerRegistry {
         artifact_hash: &str,
         chunk_index: usize,
     ) -> Vec<SocketAddr> {
-        let map = self.peers.read().unwrap();
+        let map = self.peers.read().unwrap_or_else(|e| e.into_inner());
         let mut found = Vec::new();
         for peer in map.values() {
             if peer.available_artifacts.contains(artifact_hash) {
@@ -235,7 +235,7 @@ impl LanPeerRegistry {
     }
 
     pub fn peer_count(&self) -> usize {
-        self.peers.read().unwrap().len()
+        self.peers.read().unwrap_or_else(|e| e.into_inner()).len()
     }
 }
 

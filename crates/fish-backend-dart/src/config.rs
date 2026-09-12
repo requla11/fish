@@ -71,7 +71,7 @@ impl DartProjectConfig {
         }
 
         let content = std::fs::read_to_string(&pubspec_path)
-            .map_err(|e| format!("Failed to read pubspec.yaml: {}", e))?;
+            .map_err(|e| format!("Failed to read pubspec.yaml: {e}"))?;
 
         let project_name =
             Self::extract_project_name(&content).unwrap_or_else(|| "dart_project".to_string());

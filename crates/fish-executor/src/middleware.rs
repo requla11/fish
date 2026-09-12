@@ -104,7 +104,7 @@ impl NativeShimMiddleware {
 impl TaskMiddleware for NativeShimMiddleware {
     fn pre_execute(&self, task: &mut Task) -> Result<(), ExecutorError> {
         let safe_label = task.label.replace([':', '/', '\\'], "_");
-        let log_path = self.log_dir.join(format!("shim_trace_{}.log", safe_label));
+        let log_path = self.log_dir.join(format!("shim_trace_{safe_label}.log"));
         task.spec.env.insert(
             "FISH_SHIM_LOG".to_string(),
             log_path.to_string_lossy().replace('\\', "/"),

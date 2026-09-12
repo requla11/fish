@@ -22,14 +22,14 @@ This guide outlines a comprehensive workflow designed to:
 **Order of reading:**
 1. **README.md** - Project overview, quick start, basic commands
 2. **Cargo.toml** - Workspace structure, dependencies, MSRV (1.88+)
-3. **ARCHITECTURE.md** - System architecture, component responsibilities
-4. **DEVELOPMENT.md** - Local development setup and workflow
+3. **../architecture.md** - System architecture, component responsibilities
+4. **../development.md** - Local development setup and workflow
 
 **Why this order:**
 - README provides project context and goals
 - Cargo.toml reveals structure and technical constraints
-- ARCHITECTURE.md explains how components interact
-- DEVELOPMENT.md provides local environment setup
+- ../architecture.md explains how components interact
+- ../development.md provides local environment setup
 
 ### Step 1.2: Read Task-Specific Documentation
 
@@ -37,7 +37,7 @@ This guide outlines a comprehensive workflow designed to:
 
 | Task Type | Additional Files to Read |
 |-----------|--------------------------|
-| Language backend | `crates/fish-backend-rust/` (as example), `ARCHITECTURE.md` Backend section |
+| Language backend | `crates/fish-backend-rust/` (as example), `../architecture.md` Backend section |
 | Scheduler changes | `crates/fish-scheduler/` source files |
 | Cache improvements | `crates/fish-cache/` and `crates/fish-cas/` source files |
 | CLI modifications | `crates/fish-cli/` source files |
@@ -155,8 +155,8 @@ cargo test --workspace
 
 **Documentation updates:**
 - Update rustdoc comments for changed APIs
-- Update ARCHITECTURE.md for structural changes
-- Update DEVELOPMENT.md for workflow changes
+- Update ../architecture.md for structural changes
+- Update ../development.md for workflow changes
 - Update relevant examples in `examples/`
 
 ---
@@ -272,8 +272,8 @@ cargo run -p fish-cli -- --help
 ### Step 6.2: Update Relevant Documentation
 
 **Documentation checklist:**
-- [ ] ARCHITECTURE.md (if structural changes)
-- [ ] DEVELOPMENT.md (if workflow changes)
+- [ ] ../architecture.md (if structural changes)
+- [ ] ../development.md (if workflow changes)
 - [ ] README.md (if user-facing changes)
 - [ ] Rustdoc comments (for API changes)
 - [ ] Examples (if behavior changes)
@@ -354,7 +354,7 @@ Detailed explanation of the change, including:
 
 **Before creating pull request:**
 - [ ] All pre-commit items verified
-- [ ] Code reviewed against ARCHITECTURE.md patterns
+- [ ] Code reviewed against ../architecture.md patterns
 - [ ] Integration tests performed
 - [ ] Performance impact assessed
 - [ ] Security review completed
@@ -438,7 +438,7 @@ cargo audit
 - ✅¦ Review security implications
 
 ### Don'ts
-- ❌ Skip reading ARCHITECTURE.md
+- ❌ Skip reading ../architecture.md
 - ❌ Commit directly to `main` branch
 - ❌ Ignore test failures
 - ❌ Suppress clippy warnings without justification
@@ -488,10 +488,10 @@ git clean -fd
 ## 📞 Additional Resources
 
 ### Project Documentation
-- [README.md](getting-started.md) - Project overview
-- [ARCHITECTURE.md](architecture.md) - System architecture
-- [DEVELOPMENT.md](development.md) - Development setup
-- [CONTRIBUTING.md](contributing.md) - Contribution guidelines
+- [README.md](../../README.md) - Project overview
+- [Architecture guide](../architecture.md) - System architecture
+- [Development guide](../development.md) - Development setup
+- [Contributing Guidelines](../../CONTRIBUTING.md) - Contribution guidelines
 
 ### External Resources
 - [Rust Book](https://doc.rust-lang.org/book/)

@@ -162,7 +162,7 @@ Dọn dẹp & Khắc phục:
 
 ## 🏗️ Kiến trúc & Bố cục Thư mục Workspace
 
-Hệ thống được tổ chức thành một Rust workspace gồm 28 crates với ranh giới rõ ràng:
+Hệ thống được tổ chức thành một Rust workspace gồm 30 crates với ranh giới rõ ràng:
 
 ```text
 crates/
@@ -178,9 +178,8 @@ crates/
   fish-remote-cache/ Máy chủ remote cache thông lượng cao với xác thực chữ ký Ed25519
   fish-security/     Bảo mật đa lớp, quét lỗ hổng OSV và chứng thực nguồn gốc SLSA
   fish-cli/          Ứng dụng dòng lệnh hợp nhất, daemon IPC và render terminal
-submodules/          Các bộ máy cô lập đồng hành:
-  apple/             Sandbox hermetic và daemon cô lập tiến trình hệ điều hành
-  banana/            Mạng P2P swarm mesh, đóng gói container OCI và sổ cái Merkle
+crates/fish-apple-shim/  Fallback offline cho API sandbox `apple` riêng tư
+crates/fish-banana-shim/  Fallback offline cho API phân phối `banana` riêng tư
 examples/            Các dự án monorepo mẫu sẵn sàng chạy
 ```
 
@@ -217,8 +216,8 @@ cargo test --workspace
 
 ## 📖 Tài liệu & Cộng đồng
 
-- [Kiến trúc Hệ thống](ARCHITECTURE.md) — Chi tiết thiết kế kiến trúc và các thành phần cốt lõi.
-- [Hướng dẫn Phát triển](DEVELOPMENT.md) — Cài đặt môi trường lập trình, debug và benchmark.
+- [Kiến trúc Hệ thống](docs/architecture.md) — Chi tiết thiết kế kiến trúc và các thành phần cốt lõi.
+- [Hướng dẫn Phát triển](docs/development.md) — Cài đặt môi trường lập trình, debug và benchmark.
 - [Hướng dẫn Đóng góp](CONTRIBUTING.md) — Cách tạo đề xuất tính năng và bổ sung backend mới.
 - [Quy trình AI Agent](docs/AI_AGENT_WORKFLOW.md) — Quy tắc và quy trình làm việc chuẩn cho các AI agent.
 

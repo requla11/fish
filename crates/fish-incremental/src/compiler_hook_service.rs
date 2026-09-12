@@ -114,7 +114,7 @@ impl CompilerHookService {
         } else if ext == "rs" {
             parse_module(&norm_path, &content)?
         } else {
-            return Err(format!("Unsupported file extension: {}", ext));
+            return Err(format!("Unsupported file extension: {ext}"));
         };
 
         let subtrees = snapshot_to_ast_subtrees(&new_snapshot);

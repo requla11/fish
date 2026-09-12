@@ -162,7 +162,7 @@ Fish は以下の 11 主要言語エコシステムを自動検出してオー�
 
 ## 🏗️ アーキテクチャとワークスペース構成
 
-Fish は 28 個の Rust クレートで構成されるモジュラーワークスペースです：
+Fish は 30 個の Rust クレートで構成されるモジュラーワークスペースです：
 
 ```text
 crates/
@@ -178,9 +178,8 @@ crates/
   fish-remote-cache/ Ed25519 署名検証付き高スループットリモートキャッシュサーバー
   fish-security/     多層セキュリティ、OSV 脆弱性スキャン、SLSA 出所証明
   fish-cli/          統合 CLI アプリケーション、デーモン IPC、ターミナルレンダリング
-submodules/          同梱サブシステム：
-  apple/             密閉サンドボックスおよび OS プロセス隔離デーモン
-  banana/            P2P Swarm メッシュ、OCI コンテナビルダ、Merkle 台帳
+crates/fish-apple-shim/  非公開の `apple` sandbox API 用オフラインフォールバック
+crates/fish-banana-shim/  非公開の `banana` 配信 API 用オフラインフォールバック
 examples/            すぐに実行可能な多言語モノレポサンプル
 ```
 
@@ -217,8 +216,8 @@ cargo test --workspace
 
 ## 📖 ドキュメント & コミュニティ
 
-- [アーキテクチャ詳細](ARCHITECTURE.md) — システム内部設計と各コンポーネントの責務。
-- [開発環境セットアップ](DEVELOPMENT.md) — ローカル開発環境の構築、デバッグ、ベンチマーク。
+- [アーキテクチャ詳細](docs/architecture.md) — システム内部設計と各コンポーネントの責務。
+- [開発環境セットアップ](docs/development.md) — ローカル開発環境の構築、デバッグ、ベンチマーク。
 - [コントリビューションガイド](CONTRIBUTING.md) — 変更提案の手順や新規バックエンドの追加方法。
 - [AI エージェントワークフロー](docs/AI_AGENT_WORKFLOW.md) — AI コーディングエージェントのための開発ガイドライン。
 

@@ -15,10 +15,10 @@ AI agents should read files in this priority order:
 ### Phase 1: Initial Context (Must Read)
 1. **README.md** - Project overview, quick start, basic commands
 2. **Cargo.toml** - Workspace structure, dependencies, MSRV (1.88+)
-3. **ARCHITECTURE.md** - System architecture, component responsibilities
+3. **docs/architecture.md** - System architecture, component responsibilities (`ARCHITECTURE.md` at root is a compat pointer)
 
 ### Phase 2: Development Context (Read Before Editing)
-4. **DEVELOPMENT.md** - Local setup, testing, build instructions
+4. **docs/development.md** - Local setup, testing, build instructions (`DEVELOPMENT.md` at root is a compat pointer)
 5. **CONTRIBUTING.md** - Contribution guidelines, code standards
 
 ### Phase 3: Detailed Workflow (Read Before Starting Work)
@@ -29,7 +29,7 @@ AI agents should read files in this priority order:
 ### Version Requirements
 - **MSRV**: Rust 1.88+ (Minimum Supported Rust Version)
 - **Edition**: Rust 2024
-- **Workspace**: 28 crates with resolver = "2" (see `Cargo.toml` workspace members)
+- **Workspace**: 30 crates with resolver = "2" (see `Cargo.toml` workspace members)
 
 ### Branch Policy
 - **`dev`** branch - All development happens here
@@ -114,8 +114,8 @@ Rust, C/C++, Go, TypeScript/JavaScript, Python, Java, .NET, Swift, Dart, Zig, Do
 
 ### Documentation
 - Document public APIs with rustdoc comments
-- Update ARCHITECTURE.md for structural changes
-- Update DEVELOPMENT.md for workflow changes
+- Update docs/architecture.md for structural changes
+- Update docs/development.md for workflow changes
 
 ## 🚨 Before Committing
 
@@ -169,8 +169,8 @@ cargo clippy --workspace --all-targets --all-features -- -D warnings
 
 ### Project Documentation
 - [README.md](README.md) - Project overview
-- [ARCHITECTURE.md](ARCHITECTURE.md) - System architecture
-- [DEVELOPMENT.md](DEVELOPMENT.md) - Development setup
+- [docs/architecture.md](docs/architecture.md) - System architecture
+- [docs/development.md](docs/development.md) - Development setup
 - [CONTRIBUTING.md](CONTRIBUTING.md) - Contribution guidelines
 - [docs/AI_AGENT_WORKFLOW.md](docs/AI_AGENT_WORKFLOW.md) - Detailed workflow guide
 

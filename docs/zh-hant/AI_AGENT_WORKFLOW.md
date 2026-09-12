@@ -21,14 +21,14 @@
 **建议阅读顺序：**
 1. **README.md** - 项目概览、快速入门与基础命令。
 2. **Cargo.toml** - 工作區结构、依赖项及最低 Rust 版本 (1.88+)。
-3. **ARCHITECTURE.md** - 架构设计与各组件职责。
-4. **DEVELOPMENT.md** - 本地开发环境搭建与工作流。
+3. **../architecture.md** - 架构设计与各组件职责。
+4. **../development.md** - 本地开发环境搭建与工作流。
 
 ### 步骤 1.2：根据具体任务阅读模块文档
 
 | 任务类型 | 需额外阅读的文件 |
 |---|---|
-| 语言后端开发 | `crates/fish-backend-rust/` (作为参考), `ARCHITECTURE.md` 后端部分 |
+| 语言后端开发 | `crates/fish-backend-rust/` (作为参考), `../architecture.md` 后端部分 |
 | 调度器逻辑修改 | `crates/fish-scheduler/` 源码 |
 | 缓存与 CAS 改进 | `crates/fish-cache/` 与 `crates/fish-cas/` 源码 |
 | CLI 命令拓展 | `crates/fish-cli/` 源码 |

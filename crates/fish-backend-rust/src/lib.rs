@@ -92,7 +92,7 @@ impl RustBackend {
             for id in level {
                 let package = package_graph
                     .node(id)
-                    .expect("levels contain existing nodes")
+                    .ok_or(fish_graph::GraphError::MissingNode(id))?
                     .payload
                     .clone();
                 let metadata = project.package(&package).ok_or_else(|| {
@@ -144,21 +144,19 @@ impl RustBackend {
         for level in &levels {
             // Resolve each member's package name once; sort the owned
             // pairs instead of allocating a fresh String per comparison.
-            let mut named: Vec<(String, NodeId)> = level
-                .iter()
-                .map(|id| {
-                    let package_id = &package_graph
-                        .node(*id)
-                        .expect("level members are package graph nodes")
-                        .payload;
-                    let name = project
-                        .package(package_id)
-                        .expect("level members are metadata packages")
-                        .name
-                        .to_string();
-                    (name, *id)
-                })
-                .collect();
+            let mut named: Vec<(String, NodeId)> = Vec::with_capacity(level.len());
+            for id in level {
+                let node = package_graph
+                    .node(*id)
+                    .ok_or(fish_graph::GraphError::MissingNode(*id))?;
+                let package = project.package(&node.payload).ok_or_else(|| {
+                    BackendError::Message(format!(
+                        "package `{}` was not found in cargo metadata",
+                        node.payload
+                    ))
+                })?;
+                named.push((package.name.to_string(), *id));
+            }
             named.sort_by(|a, b| a.0.cmp(&b.0));
 
             let mut names = Vec::with_capacity(named.len());
@@ -215,14 +213,17 @@ impl RustBackend {
         }
 
         for level in &levels {
-            let node = level_node
-                .get(&level[0])
-                .expect("every package maps to a level task");
+            let Some(first) = level.first() else {
+                continue;
+            };
+            let node = level_node.get(first).ok_or_else(|| {
+                BackendError::Message(format!("package `{first}` has no level task"))
+            })?;
             for id in level {
                 for dep in package_graph.deps(*id)? {
-                    let dep_node = level_node
-                        .get(dep)
-                        .expect("dependencies live in earlier levels");
+                    let dep_node = level_node.get(dep).ok_or_else(|| {
+                        BackendError::Message(format!("dependency `{dep}` has no level task"))
+                    })?;
                     if dep_node != node {
                         task_graph.add_dependency(*dep_node, *node)?;
                     }
@@ -243,10 +244,10 @@ fn bin_outputs(
 ) -> Vec<PathBuf> {
     let mut outputs = Vec::new();
     for id in members {
-        let package_id = &package_graph
-            .node(*id)
-            .expect("level members are package graph nodes")
-            .payload;
+        let Some(node) = package_graph.node(*id) else {
+            continue;
+        };
+        let package_id = &node.payload;
         let Some(package) = project.package(package_id) else {
             continue;
         };

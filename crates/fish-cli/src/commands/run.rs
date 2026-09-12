@@ -41,7 +41,7 @@ pub fn run_run(args: RunArgs) -> ExitCode {
             }
         }
         if target_pkg.is_none() {
-            eprintln!("error: package `{}` not found in workspace", pkg_name);
+            eprintln!("error: package `{pkg_name}` not found in workspace");
             return ExitCode::FAILURE;
         }
     } else if let Some(root_pkg) = project.root_package() {
@@ -51,7 +51,10 @@ pub fn run_run(args: RunArgs) -> ExitCode {
         return ExitCode::FAILURE;
     }
 
-    let pkg = target_pkg.unwrap();
+    let Some(pkg) = target_pkg else {
+        eprintln!("error: no target package selected");
+        return ExitCode::FAILURE;
+    };
     let package_name = pkg.name.to_string();
 
     if let Some(bin_name) = &args.bin {
@@ -60,10 +63,7 @@ pub fn run_run(args: RunArgs) -> ExitCode {
             .iter()
             .any(|t| t.kind.iter().any(|k| k.to_string() == "bin") && t.name == *bin_name);
         if !has_bin {
-            eprintln!(
-                "error: no bin target named `{}` found in package `{}`",
-                bin_name, package_name
-            );
+            eprintln!("error: no bin target named `{bin_name}` found in package `{package_name}`",);
             return ExitCode::FAILURE;
         }
     } else {

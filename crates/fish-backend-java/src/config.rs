@@ -26,7 +26,7 @@ impl JavaProjectConfig {
         }
 
         let content = std::fs::read_to_string(&pom_path)
-            .map_err(|e| format!("Failed to read pom.xml: {}", e))?;
+            .map_err(|e| format!("Failed to read pom.xml: {e}"))?;
 
         let group_id =
             extract_xml_tag(&content, "groupId").unwrap_or_else(|| "com.example".to_string());
@@ -56,7 +56,7 @@ impl JavaProjectConfig {
         };
 
         let content = std::fs::read_to_string(&build_file)
-            .map_err(|e| format!("Failed to read build file: {}", e))?;
+            .map_err(|e| format!("Failed to read build file: {e}"))?;
 
         let group_id = extract_gradle_property(&content, &["group", "grouping"])
             .unwrap_or_else(|| "com.example".to_string());
@@ -107,8 +107,8 @@ fn extract_xml_tag(content: &str, tag: &str) -> Option<String> {
 }
 
 fn extract_first_xml_tag(content: &str, tag: &str) -> Option<String> {
-    let start_tag = format!("<{}>", tag);
-    let end_tag = format!("</{}>", tag);
+    let start_tag = format!("<{tag}>");
+    let end_tag = format!("</{tag}>");
 
     content.find(&start_tag).and_then(|start| {
         let start = start + start_tag.len();

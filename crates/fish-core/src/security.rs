@@ -166,11 +166,10 @@ impl SecurityValidator {
     fn is_suspicious_argument(&self, arg: &str) -> bool {
         static CMD_REGEXES: std::sync::LazyLock<Vec<regex::Regex>> =
             std::sync::LazyLock::new(|| {
-                vec![
-                    regex::Regex::new(r"\$\([^)]*\)").unwrap(),
-                    regex::Regex::new(r"`[^`]*`").unwrap(),
-                    regex::Regex::new(r"\$\{[^}]*\}").unwrap(),
-                ]
+                [r"\$\([^)]*\)", r"`[^`]*`", r"\$\{[^}]*\}"]
+                    .into_iter()
+                    .filter_map(|pattern| regex::Regex::new(pattern).ok())
+                    .collect()
             });
 
         for re in CMD_REGEXES.iter() {
@@ -230,9 +229,9 @@ pub enum SecurityError {
 impl std::fmt::Display for SecurityError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SecurityError::InvalidCommand(msg) => write!(f, "Invalid command: {}", msg),
+            SecurityError::InvalidCommand(msg) => write!(f, "Invalid command: {msg}"),
             SecurityError::ExecutableNotAllowed(exec) => {
-                write!(f, "Executable not allowed: {}", exec)
+                write!(f, "Executable not allowed: {exec}")
             }
             SecurityError::PathNotAllowed(path) => {
                 write!(f, "Path not allowed: {}", path.display())
@@ -241,9 +240,9 @@ impl std::fmt::Display for SecurityError {
                 write!(f, "Path traversal attempt: {}", path.display())
             }
             SecurityError::FileSizeExceeded(size) => {
-                write!(f, "File size exceeded: {} bytes", size)
+                write!(f, "File size exceeded: {size} bytes")
             }
-            SecurityError::SuspiciousArgument(arg) => write!(f, "Suspicious argument: {}", arg),
+            SecurityError::SuspiciousArgument(arg) => write!(f, "Suspicious argument: {arg}"),
             SecurityError::ExecutionTimeout => write!(f, "Execution timeout"),
             SecurityError::PolicyLockPoisoned => write!(f, "Security policy lock poisoned"),
         }

@@ -311,16 +311,37 @@ the workspace yet. They are listed here as roadmap items only:
   (Docker orchestration today lives in `fish-backend-docker`)
 - `fish-templates` — shareable pipeline templates (Handlebars rendering)
 
-## Vendored submodules
+## Vendored submodules (optional) + offline shims
 
-Two companion projects are vendored as git submodules and are members of the
-workspace:
+Two companion projects are vendored as git submodules but are **excluded**
+from the Cargo workspace so offline builds work:
 
 - **`submodules/apple`** — hermetic sandbox and process isolation daemon
   (kernel-level sandboxing, CoW storage jails, SLSA/SPDX/CycloneDX
   provenance). Independent project, not affiliated with Apple Inc.
 - **`submodules/banana`** — distribution, P2P swarm, and supply-chain
   infrastructure companion for Fish.
+
+Because these repos are currently private, the workspace builds offline via
+local fallback shims (package names preserved so `use apple::...` /
+`use banana::...` keeps compiling):
+
+- **`crates/fish-apple-shim`** (package `apple`) — `protocol`
+  (`ExecutionRequest`/`ExecutionResult`/`SandboxProfile`/`IsolationLevel`),
+  `AppleDaemonServer` (tokio process execution), `DeterminismVerifier`.
+- **`crates/fish-banana-shim`** (package `banana`) — `ast`
+  (`PolyglotAstEngine`/`DependencyGraph`/`SemanticSymbol`), `telemetry`,
+  `oci` (`OciBuilder`), `p2p` (`P2PNode`/`P2PSwarmManager`), `ledger`
+  (SLSA/Merkle).
+
+To restore the full implementations once public:
+
+```sh
+rm -rf submodules/apple submodules/banana
+git submodule update --init --recursive
+# then point [workspace.dependencies] apple/banana back to submodules/...
+# and re-add them to [workspace] members.
+```
 
 ## Data Flow
 

@@ -121,9 +121,8 @@ parameters:
 # - Artifact sharing between jobs
 # - Remote cache support if configured
 
-{}
-"#,
-            content
+{content}
+"#
         ))
     }
 }
@@ -151,7 +150,7 @@ mod tests {
 
         let result = generator.generate(&matrix);
         if let Err(e) = &result {
-            println!("CircleCI generation error: {}", e);
+            println!("CircleCI generation error: {e}");
         }
         assert!(result.is_ok());
     }

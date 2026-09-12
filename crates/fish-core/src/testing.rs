@@ -143,7 +143,7 @@ impl PropertyTestRunner {
                 passed += 1;
             } else {
                 failed += 1;
-                counter_example = Some(format!("Iteration {}", i));
+                counter_example = Some(format!("Iteration {i}"));
                 break;
             }
         }
@@ -290,16 +290,19 @@ impl Semaphore {
 
     fn acquire(&self) {
         let (lock, cvar) = &*self.permits;
-        let mut permits = lock.lock().expect("semaphore lock poisoned");
+        // Lock poisoning means a prior panic while holding the lock; recover the guard.
+        let mut permits = lock.lock().unwrap_or_else(|e| e.into_inner());
         while *permits == 0 {
-            permits = cvar.wait(permits).expect("condition variable wait failed");
+            // Lock poisoning means a prior panic while holding the lock; recover the guard.
+            permits = cvar.wait(permits).unwrap_or_else(|e| e.into_inner());
         }
         *permits -= 1;
     }
 
     fn release(&self) {
         let (lock, cvar) = &*self.permits;
-        let mut permits = lock.lock().expect("semaphore lock poisoned");
+        // Lock poisoning means a prior panic while holding the lock; recover the guard.
+        let mut permits = lock.lock().unwrap_or_else(|e| e.into_inner());
         *permits += 1;
         cvar.notify_one();
     }

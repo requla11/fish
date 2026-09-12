@@ -18,7 +18,7 @@ impl ArtifactHash {
     /// Create hash from file content
     pub fn from_file(path: &Path) -> Result<Self> {
         let content =
-            fs::read(path).map_err(|e| CasError::Hash(format!("Failed to read file: {}", e)))?;
+            fs::read(path).map_err(|e| CasError::Hash(format!("Failed to read file: {e}")))?;
         Self::from_bytes(&content)
     }
 

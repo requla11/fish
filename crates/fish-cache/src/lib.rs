@@ -294,7 +294,10 @@ impl LocalCache {
             key: Some(key_owned.clone()),
         };
         self.memory_cache.insert(key_owned.clone(), record.clone());
-        let payload = serde_json::to_vec(&record).expect("a fingerprint record always serializes");
+        let payload = serde_json::to_vec(&record).map_err(|e| CacheError::Write {
+            key: key_owned.clone(),
+            source: io::Error::other(e.to_string()),
+        })?;
         let tmp = unique_tmp_path(&path);
         {
             let mut file = fs::File::create(&tmp).map_err(|source| CacheError::Write {

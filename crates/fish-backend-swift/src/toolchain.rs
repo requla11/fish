@@ -92,7 +92,7 @@ impl SwiftToolchain {
             .args(args)
             .output()
             .map_err(|e| {
-                SwiftBackendError::Toolchain(format!("Failed to run {}: {}", executable, e))
+                SwiftBackendError::Toolchain(format!("Failed to run {executable}: {e}"))
             })?;
 
         if !output.status.success() {

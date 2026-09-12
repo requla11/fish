@@ -237,12 +237,13 @@ impl WorkerServer {
                 })
                 .transpose()?;
             if let Some(ref root) = source_dir {
-                spec.cwd = Some(match req.cwd.as_ref().map(Path::new) {
-                    Some(cwd) => cwd
-                        .strip_prefix(&req.source.as_ref().expect("source_dir implies source").root)
+                let source_root = req.source.as_ref().map(|source| Path::new(&source.root));
+                spec.cwd = Some(match (req.cwd.as_ref().map(Path::new), source_root) {
+                    (Some(cwd), Some(src_root)) => cwd
+                        .strip_prefix(src_root)
                         .map(|relative| root.join(relative))
                         .unwrap_or_else(|_| root.clone()),
-                    None => root.clone(),
+                    _ => root.clone(),
                 });
             } else if let Some(cwd) = req.cwd {
                 spec.cwd = Some(std::path::PathBuf::from(cwd));

@@ -162,7 +162,7 @@ Warten & Bereinigen:
 
 ## 🏗️ Architektur & Workspace-Layout
 
-Die Engine ist als modularer Rust-Workspace (28 Crates) strukturiert, der strikte Grenzisolation beibehält:
+Die Engine ist als modularer Rust-Workspace (30 Crates) strukturiert, der strikte Grenzisolation beibehält:
 
 ```text
 crates/
@@ -178,9 +178,8 @@ crates/
   fish-remote-cache/ Durchsatzstarker Remote-Cache-Server mit Ed25519-Signatur-Gating
   fish-security/     Mehrschichtige Sicherheit, OSV-Schwachstellenscanner und SLSA-Herkunft
   fish-cli/          Einheitliche Kommandozeilenanwendung, Daemon-IPC und Terminal-Rendering
-submodules/          Gekapselte Isolations-Engines (vendored):
-  apple/             Hermetische Sandbox und OS-Prozessisolations-Daemon
-  banana/            P2P-Swarm-Mesh, OCI-Container-Builder und Merkle-Ledger
+crates/fish-apple-shim/  Offline-Fallback für die private `apple`-Sandbox-API
+crates/fish-banana-shim/  Offline-Fallback für die private `banana`-Verteil-API
 examples/            Ausführbereite polyglotte Monorepo-Demonstrationen
 ```
 
@@ -217,8 +216,8 @@ cargo test --workspace
 
 ## 📖 Dokumentation & Community
 
-- [Architektur-Leitfaden](ARCHITECTURE.md) — Detailliertes Architekturdesign und Komponenten.
-- [Entwicklungs-Setup](DEVELOPMENT.md) — Lokale Einrichtung, Debugging und Benchmarks.
+- [Architektur-Leitfaden](docs/architecture.md) — Detailliertes Architekturdesign und Komponenten.
+- [Entwicklungs-Setup](docs/development.md) — Lokale Einrichtung, Debugging und Benchmarks.
 - [Mitwirkungsrichtlinien](CONTRIBUTING.md) — Wie man Änderungen vorschlägt und Backends hinzufügt.
 - [AI Agent Workflow](docs/AI_AGENT_WORKFLOW.md) — Best Practices für KI-Programmieragenten.
 

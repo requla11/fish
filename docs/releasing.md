@@ -27,7 +27,7 @@ Fish follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 
 - [ ] CHANGELOG.md updated with all changes
 - [ ] README.md updated if features changed
-- [ ] ARCHITECTURE.md updated if architecture changed
+- [ ] architecture.md updated if architecture changed
 - [ ] API documentation updated
 - [ ] Migration guide if breaking changes
 

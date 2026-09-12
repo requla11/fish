@@ -257,7 +257,7 @@ impl OtelTracer {
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_nanos();
-        let trace_id = format!("{:032x}", now);
+        let trace_id = format!("{now:032x}");
 
         Self {
             service_name: service_name.into(),

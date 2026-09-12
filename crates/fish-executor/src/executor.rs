@@ -54,13 +54,18 @@ impl Default for ProcessExecutor {
 
 static GLOBAL_RT: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
 
-fn global_runtime() -> &'static tokio::runtime::Runtime {
-    GLOBAL_RT.get_or_init(|| {
-        tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .expect("tokio runtime for ProcessExecutor")
-    })
+fn global_runtime() -> Result<&'static tokio::runtime::Runtime, std::io::Error> {
+    if let Some(rt) = GLOBAL_RT.get() {
+        return Ok(rt);
+    }
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()?;
+    // Another thread may have won the race; keep whichever is stored.
+    let _ = GLOBAL_RT.set(runtime);
+    GLOBAL_RT
+        .get()
+        .ok_or_else(|| std::io::Error::other("tokio runtime initialization raced"))
 }
 
 #[cfg(windows)]
@@ -131,16 +136,18 @@ fn run_with_timeout(
     // Ensure we kill the process if this thread panics
     let child_guard = KillOnDrop(&mut child);
 
-    let mut stdout = child_guard
-        .0
-        .stdout
-        .take()
-        .expect("piped stdout is present");
-    let mut stderr = child_guard
-        .0
-        .stderr
-        .take()
-        .expect("piped stderr is present");
+    let mut stdout = {
+        let Some(stdout) = child_guard.0.stdout.take() else {
+            return Err(std::io::Error::other("failed to capture piped stdout"));
+        };
+        stdout
+    };
+    let mut stderr = {
+        let Some(stderr) = child_guard.0.stderr.take() else {
+            return Err(std::io::Error::other("failed to capture piped stderr"));
+        };
+        stderr
+    };
 
     let stdout_reader = std::thread::spawn(move || {
         let mut buf = Vec::new();
@@ -215,8 +222,18 @@ impl ProcessExecutor {
                 }
                 let child_guard = KillOnDrop(&mut child);
 
-                let mut stdout = child_guard.0.stdout.take().expect("piped stdout");
-                let mut stderr = child_guard.0.stderr.take().expect("piped stderr");
+                let Some(mut stdout) = child_guard.0.stdout.take() else {
+                    return Err(ExecutorError::Record {
+                        command: task.spec.command_line(),
+                        source: std::io::Error::other("failed to capture piped stdout"),
+                    });
+                };
+                let Some(mut stderr) = child_guard.0.stderr.take() else {
+                    return Err(ExecutorError::Record {
+                        command: task.spec.command_line(),
+                        source: std::io::Error::other("failed to capture piped stderr"),
+                    });
+                };
 
                 let stdout_reader = std::thread::spawn(move || {
                     let mut buf = Vec::new();
@@ -313,14 +330,15 @@ impl TaskExecutor for ProcessExecutor {
                 self.verbose,
                 self.timeout,
             );
-            let rt = global_runtime();
-            let res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                rt.block_on(async_exec.execute_async(task))
-            }));
-            match res {
-                Ok(Ok(outcome)) => return Ok(outcome),
-                Ok(Err(e)) => return Err(e),
-                Err(_) => {}
+            if let Ok(rt) = global_runtime() {
+                let res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    rt.block_on(async_exec.execute_async(task))
+                }));
+                match res {
+                    Ok(Ok(outcome)) => return Ok(outcome),
+                    Ok(Err(e)) => return Err(e),
+                    Err(_) => {}
+                }
             }
         } else {
             let this = self.clone();

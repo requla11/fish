@@ -59,8 +59,7 @@ impl<E: TaskExecutor + Sync> TaskExecutor for SandboxedExecutor<E> {
                         ExecutorError::Spawn {
                             command: task.spec.program.clone(),
                             source: std::io::Error::other(format!(
-                                "Failed to create isolated workspace: {}",
-                                e
+                                "Failed to create isolated workspace: {e}"
                             )),
                         }
                     })?;

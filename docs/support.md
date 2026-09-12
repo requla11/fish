@@ -9,8 +9,8 @@ This document provides support resources for Fish users.
 ### Documentation
 
 - [README.md](README.md) - Project overview and quick start
-- [ARCHITECTURE.md](ARCHITECTURE.md) - System architecture
-- [DEVELOPMENT.md](DEVELOPMENT.md) - Development guide
+- [architecture.md](architecture.md) - System architecture
+- [development.md](development.md) - Development guide
 - [CONTRIBUTING.md](CONTRIBUTING.md) - Contribution guidelines
 
 ### Community

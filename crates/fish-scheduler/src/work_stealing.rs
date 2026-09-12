@@ -81,8 +81,11 @@ impl WorkStealingScheduler {
 
     fn priority_score(&self, id: NodeId, tail_lengths: &[usize]) -> u64 {
         let tail_length = tail_lengths.get(id.index()).copied().unwrap_or(0) as u64;
-        let task = &self.graph.node(id).expect("ready nodes exist").payload;
-        let weight = self.heuristics.get_estimated_weight(task);
+        let weight = self
+            .graph
+            .node(id)
+            .map(|node| self.heuristics.get_estimated_weight(&node.payload))
+            .unwrap_or(100);
         tail_length * 1000 + weight
     }
 
@@ -114,7 +117,9 @@ impl WorkStealingScheduler {
             let executor = Arc::clone(&self.executor);
             let heuristics = Arc::clone(&self.heuristics);
             let build_start = start;
-            let local_deque = workers_local.pop().unwrap();
+            let Some(local_deque) = workers_local.pop() else {
+                continue;
+            };
             let global_injector = Arc::clone(&injector);
             let sibling_stealers = Arc::clone(&stealers);
 
@@ -223,7 +228,7 @@ impl WorkStealingScheduler {
                     let task = self
                         .graph
                         .node(id)
-                        .expect("ready nodes exist")
+                        .ok_or(fish_graph::GraphError::MissingNode(id))?
                         .payload
                         .clone();
                     self.graph.set_state(id, TaskState::Running)?;
@@ -384,8 +389,8 @@ mod tests {
         let mut graph = fish_graph::BuildGraph::new();
 
         for i in 0..10 {
-            let spec = CommandSpec::new("echo").arg(format!("task_{}", i));
-            let task = Task::new(format!("task_{}", i), spec.command_line(), spec);
+            let spec = CommandSpec::new("echo").arg(format!("task_{i}"));
+            let task = Task::new(format!("task_{i}"), spec.command_line(), spec);
             graph.add_node(task);
         }
 

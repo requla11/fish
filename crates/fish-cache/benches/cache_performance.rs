@@ -66,9 +66,7 @@ fn bench_cache_matches(c: &mut Criterion) {
     let cache = LocalCache::new(temp_dir.path()).unwrap();
 
     for i in 0..100 {
-        cache
-            .put(&format!("key_{}", i), &format!("fp_{}", i))
-            .unwrap();
+        cache.put(&format!("key_{i}"), &format!("fp_{i}")).unwrap();
     }
 
     c.bench_function("cache_matches_hit", |b| {
@@ -95,7 +93,7 @@ fn bench_cache_put_object(c: &mut Criterion) {
     for size in [1024, 4096, 16384, 65536].iter() {
         let data = vec![0u8; *size];
         group.bench_with_input(BenchmarkId::new("put_object", size), size, |b, &size| {
-            let hash = format!("hash_{}", size);
+            let hash = format!("hash_{size}");
             b.iter(|| {
                 cache
                     .put_object(&hash, std::hint::black_box(&data))
@@ -112,11 +110,9 @@ fn bench_cache_disk_stats(c: &mut Criterion) {
     let cache = LocalCache::new(temp_dir.path()).unwrap();
 
     for i in 0..100 {
+        cache.put(&format!("key_{i}"), &format!("fp_{i}")).unwrap();
         cache
-            .put(&format!("key_{}", i), &format!("fp_{}", i))
-            .unwrap();
-        cache
-            .put_object(&format!("obj_{}", i), &vec![0u8; 1024])
+            .put_object(&format!("obj_{i}"), &vec![0u8; 1024])
             .unwrap();
     }
 
@@ -133,11 +129,9 @@ fn bench_cache_prune(c: &mut Criterion) {
     let cache = LocalCache::new(temp_dir.path()).unwrap();
 
     for i in 0..100 {
+        cache.put(&format!("key_{i}"), &format!("fp_{i}")).unwrap();
         cache
-            .put(&format!("key_{}", i), &format!("fp_{}", i))
-            .unwrap();
-        cache
-            .put_object(&format!("obj_{}", i), &vec![0u8; 1024])
+            .put_object(&format!("obj_{i}"), &vec![0u8; 1024])
             .unwrap();
     }
 

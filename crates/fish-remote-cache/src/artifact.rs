@@ -198,7 +198,7 @@ mod tests {
                 *byte = b' ';
             }
             let sum: u32 = header.iter().map(|&b| b as u32).sum();
-            header[148..156].copy_from_slice(format!("{:06o}\0 ", sum).as_bytes());
+            header[148..156].copy_from_slice(format!("{sum:06o}\0 ").as_bytes());
             let mut out = header.to_vec();
             out.extend_from_slice(data);
             let pad = (512 - data.len() % 512) % 512;
@@ -214,8 +214,7 @@ mod tests {
         let result = unpack_artifacts(&blob, &dest);
         assert!(
             result.is_ok(),
-            "unpack should skip the traversal entry: {:?}",
-            result
+            "unpack should skip the traversal entry: {result:?}"
         );
         assert!(!dir.path().join("escape.txt").exists());
         assert!(!dest.join("escape.txt").exists());

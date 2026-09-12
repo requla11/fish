@@ -80,7 +80,7 @@ impl DotnetToolchain {
             .args(args)
             .output()
             .map_err(|e| {
-                DotnetBackendError::Toolchain(format!("Failed to run {}: {}", executable, e))
+                DotnetBackendError::Toolchain(format!("Failed to run {executable}: {e}"))
             })?;
 
         if !output.status.success() {

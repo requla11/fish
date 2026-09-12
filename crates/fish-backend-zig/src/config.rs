@@ -64,7 +64,7 @@ impl ZigProjectConfig {
         }
 
         let content = std::fs::read_to_string(&build_zig_path)
-            .map_err(|e| format!("Failed to read build.zig: {}", e))?;
+            .map_err(|e| format!("Failed to read build.zig: {e}"))?;
 
         let project_name =
             Self::extract_project_name(&content).unwrap_or_else(|| "zig_project".to_string());

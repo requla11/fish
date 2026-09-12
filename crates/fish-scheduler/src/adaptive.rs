@@ -241,17 +241,15 @@ impl AdaptiveParallelismScheduler {
         }
     }
 
-    #[allow(clippy::manual_checked_ops)]
     pub fn metrics(&self) -> PerformanceMetrics {
         let completed = self.completed_tasks.load(Ordering::Relaxed);
         let total_time_ms = self.total_task_time.load(Ordering::Relaxed);
         let elapsed = self.start_time.elapsed();
 
-        let avg_duration = if completed > 0 {
-            Duration::from_millis(total_time_ms / completed)
-        } else {
-            Duration::ZERO
-        };
+        let avg_duration = total_time_ms
+            .checked_div(completed)
+            .map(Duration::from_millis)
+            .unwrap_or(Duration::ZERO);
 
         let throughput = if elapsed.as_secs_f64() > 0.0 {
             completed as f64 / elapsed.as_secs_f64()
@@ -275,7 +273,6 @@ impl AdaptiveParallelismScheduler {
         }
     }
 
-    #[allow(clippy::manual_checked_ops)]
     fn estimate_cpu_utilization(&self) -> f64 {
         let current = self.current_workers.load(Ordering::Relaxed);
         let completed = self.completed_tasks.load(Ordering::Relaxed);

@@ -126,9 +126,8 @@ pipelines:
 # - Artifact sharing between jobs
 # - Remote cache support if configured
 
-{}
-"#,
-            content
+{content}
+"#
         ))
     }
 }

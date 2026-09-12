@@ -45,8 +45,7 @@ pub fn enable() {
 pub fn require_enabled(feature_name: &str) -> Result<(), String> {
     if !is_enabled() {
         Err(format!(
-            "Experimental feature '{}' is disabled. Use --experimental flag to enable.",
-            feature_name
+            "Experimental feature '{feature_name}' is disabled. Use --experimental flag to enable."
         ))
     } else {
         Ok(())

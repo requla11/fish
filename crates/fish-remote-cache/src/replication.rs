@@ -68,26 +68,41 @@ impl ReplicationTopology {
     pub fn register_region(&self, node: RegionNode) {
         self.regions
             .write()
-            .unwrap()
+            .unwrap_or_else(|e| e.into_inner())
             .insert(node.region.clone(), node);
     }
 
     /// Mark a region as unhealthy so it's excluded from replication targets.
     pub fn mark_unhealthy(&self, region: &RegionId) {
-        if let Some(node) = self.regions.write().unwrap().get_mut(region) {
+        if let Some(node) = self
+            .regions
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .get_mut(region)
+        {
             node.is_healthy = false;
         }
     }
 
     pub fn mark_healthy(&self, region: &RegionId) {
-        if let Some(node) = self.regions.write().unwrap().get_mut(region) {
+        if let Some(node) = self
+            .regions
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .get_mut(region)
+        {
             node.is_healthy = true;
         }
     }
 
     /// Record that `artifact_hash` is now available in `region`.
     pub fn announce_artifact(&self, region: &RegionId, artifact_hash: &str) {
-        if let Some(node) = self.regions.write().unwrap().get_mut(region) {
+        if let Some(node) = self
+            .regions
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .get_mut(region)
+        {
             node.catalog.insert(artifact_hash.to_string());
             node.last_sync_unix_secs = now_secs();
         }
@@ -98,7 +113,7 @@ impl ReplicationTopology {
     /// Selects up to `max_replica_regions` healthy regions that don't already
     /// have it, prioritising those with fewer replicas (spread load).
     pub fn select_replication_targets(&self, artifact_hash: &str) -> Vec<RegionId> {
-        let map = self.regions.read().unwrap();
+        let map = self.regions.read().unwrap_or_else(|e| e.into_inner());
         let mut candidates: Vec<(&RegionId, &RegionNode)> = map
             .iter()
             .filter(|(id, node)| {
@@ -121,7 +136,7 @@ impl ReplicationTopology {
 
     /// Find the closest healthy region holding `artifact_hash`.
     pub fn locate_artifact(&self, artifact_hash: &str) -> Option<RegionId> {
-        let map = self.regions.read().unwrap();
+        let map = self.regions.read().unwrap_or_else(|e| e.into_inner());
         map.iter()
             .filter(|(id, node)| {
                 **id != self.local_region && node.is_healthy && node.catalog.contains(artifact_hash)
@@ -132,7 +147,7 @@ impl ReplicationTopology {
 
     /// Count healthy replicas of an artifact across all known regions.
     pub fn replica_count(&self, artifact_hash: &str) -> usize {
-        let map = self.regions.read().unwrap();
+        let map = self.regions.read().unwrap_or_else(|e| e.into_inner());
         map.values()
             .filter(|node| node.is_healthy && node.catalog.contains(artifact_hash))
             .count()
@@ -146,7 +161,7 @@ impl ReplicationTopology {
     /// Remove stale catalog entries whose last sync exceeds TTL.
     pub fn evict_stale_entries(&self) {
         let cutoff = now_secs().saturating_sub(self.policy.catalog_ttl_secs);
-        let mut map = self.regions.write().unwrap();
+        let mut map = self.regions.write().unwrap_or_else(|e| e.into_inner());
         for node in map.values_mut() {
             if node.last_sync_unix_secs < cutoff {
                 node.catalog.clear();
@@ -159,7 +174,7 @@ impl ReplicationTopology {
     }
 
     pub fn region_count(&self) -> usize {
-        self.regions.read().unwrap().len()
+        self.regions.read().unwrap_or_else(|e| e.into_inner()).len()
     }
 }
 
@@ -350,7 +365,7 @@ pub mod federation {
                 RoutingPolicy::LeastLoaded => *available
                     .iter()
                     .min_by_key(|&&i| (self.sites[i].current_load, self.sites[i].latency_ms))
-                    .unwrap(),
+                    .unwrap_or(&available[0]),
             };
 
             self.sites[idx].current_load += 1;

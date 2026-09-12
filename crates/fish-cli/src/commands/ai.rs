@@ -163,7 +163,7 @@ pub fn run_ai(args: AiArgs) -> ExitCode {
                 .spawn()
             {
                 if let Some(mut stdin) = child.stdin.take() {
-                    let _ = writeln!(stdin, "{}", rpc_request);
+                    let _ = writeln!(stdin, "{rpc_request}");
                 }
                 if let Ok(output) = child.wait_with_output()
                     && output.status.success()
@@ -173,7 +173,7 @@ pub fn run_ai(args: AiArgs) -> ExitCode {
                         && let Some(result) = resp.get("result")
                     {
                         println!("=== Fish AI Build Diagnostics (IPC) ===");
-                        println!("Toolchain: {}", toolchain);
+                        println!("Toolchain: {toolchain}");
                         println!(
                             "Category: {}",
                             result
@@ -194,7 +194,7 @@ pub fn run_ai(args: AiArgs) -> ExitCode {
                             println!("Suggested Remediation:");
                             for s in suggs {
                                 if let Some(fix_str) = s.as_str() {
-                                    println!("  • {}", fix_str);
+                                    println!("  • {fix_str}");
                                 }
                             }
                         }
@@ -205,13 +205,13 @@ pub fn run_ai(args: AiArgs) -> ExitCode {
 
             let report = analyze_compiler_error(&toolchain, &error_text, exit_code);
             println!("=== Fish AI Build Diagnostics ===");
-            println!("Toolchain: {}", toolchain);
-            println!("Exit Code: {}", exit_code);
+            println!("Toolchain: {toolchain}");
+            println!("Exit Code: {exit_code}");
             println!("Category: {}", report.category);
             println!("Root Cause: {}", report.root_cause);
             println!("Suggested Remediation:");
             for s in &report.suggested_fixes {
-                println!("  • {}", s);
+                println!("  • {s}");
             }
 
             ExitCode::SUCCESS
@@ -222,7 +222,7 @@ pub fn run_ai(args: AiArgs) -> ExitCode {
                 "Running Fish AI Autonomous Optimizer on: {}",
                 target_path.display()
             );
-            println!("Worker threads allocated: {}", workers);
+            println!("Worker threads allocated: {workers}");
             println!("Optimization status: Profile guided flag search active.");
             ExitCode::SUCCESS
         }
@@ -232,7 +232,7 @@ pub fn run_ai(args: AiArgs) -> ExitCode {
                 "Running Fish AI Predictive Quarantine on: {}",
                 target_path.display()
             );
-            println!("Evaluating files: {:?}", files);
+            println!("Evaluating files: {files:?}");
             println!("Recommendation: No flaky tests detected in current changeset.");
             ExitCode::SUCCESS
         }

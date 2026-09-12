@@ -10,15 +10,15 @@ fn bench_cache_operations(c: &mut Criterion) {
 
     for i in 0..100 {
         cache
-            .put(&format!("key_{}", i), &format!("fingerprint_{}", i))
+            .put(&format!("key_{i}"), &format!("fingerprint_{i}"))
             .unwrap();
     }
 
     c.bench_function("cache_operations_100_keys", |b| {
         b.iter(|| {
             for i in 0..100 {
-                let key = format!("key_{}", i);
-                let fp = format!("fingerprint_{}", i);
+                let key = format!("key_{i}");
+                let fp = format!("fingerprint_{i}");
                 std::hint::black_box(cache.matches(&key, &fp));
             }
         });

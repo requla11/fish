@@ -60,11 +60,22 @@ pub fn merge_worker_traces(tracers: &[&OtelTracer]) -> (OtelTracer, MergeStats) 
     }
 
     // Canonical trace id comes from the earliest-starting span's worker.
-    let canonical_trace_id = all_spans
+    let Some(canonical_trace_id) = all_spans
         .iter()
         .min_by_key(|s| s.start_time_unix_nano)
         .map(|s| s.trace_id.clone())
-        .expect("non-empty span list");
+    else {
+        return (
+            OtelTracer::with_trace_id("fish-build", "0".repeat(32)),
+            MergeStats {
+                source_workers: tracers.len(),
+                total_spans: 0,
+                dropped_duplicates,
+                re_parented_orphans: 0,
+                synthesized_root: false,
+            },
+        );
+    };
 
     for span in &mut all_spans {
         span.trace_id = canonical_trace_id.clone();

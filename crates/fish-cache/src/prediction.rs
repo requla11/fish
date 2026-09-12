@@ -83,7 +83,6 @@ impl CachePredictor {
     }
 
     /// Detect access pattern for a key
-    #[allow(clippy::manual_checked_ops)]
     fn detect_pattern(&self, key: &str, history: &VecDeque<Instant>) {
         if history.len() < 3 {
             return;
@@ -145,7 +144,6 @@ impl CachePredictor {
     }
 
     /// Predict cache hit probability and next access time
-    #[allow(clippy::manual_checked_ops)]
     pub fn predict(&self, key: &str) -> Option<CachePrediction> {
         let history = self.access_history.read();
         let history_entry = history.get(key)?;
@@ -201,7 +199,6 @@ impl CachePredictor {
     }
 
     /// Get keys that are likely to be accessed soon
-    #[allow(clippy::manual_checked_ops)]
     pub fn prefetch_candidates(&self, horizon: Duration) -> Vec<String> {
         let mut candidates = Vec::new();
         let now = Instant::now();
@@ -214,7 +211,9 @@ impl CachePredictor {
                 continue;
             }
 
-            let last_access = *history_entry.back().unwrap();
+            let Some(&last_access) = history_entry.back() else {
+                continue;
+            };
             let intervals: Vec<Duration> = history_entry
                 .iter()
                 .zip(history_entry.iter().skip(1))
@@ -258,7 +257,6 @@ impl CachePredictor {
     }
 
     /// Get cache statistics
-    #[allow(clippy::manual_checked_ops)]
     pub fn stats(&self) -> CachePredictorStats {
         let history = self.access_history.read();
         let hit_counts = self.hit_counts.read();

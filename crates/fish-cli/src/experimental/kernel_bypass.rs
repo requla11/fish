@@ -98,7 +98,10 @@ impl KernelBypassVfs {
     }
 
     pub fn dma_read(&self, key: &str) -> io::Result<Vec<u8>> {
-        let pool = self.virtual_memory_pool.read().unwrap();
+        let pool = self
+            .virtual_memory_pool
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
         pool.get(key)
             .cloned()
             .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "DMA Key not mapped in VFS"))

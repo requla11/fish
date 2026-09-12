@@ -162,7 +162,7 @@ Fish는 CLI를 깔끔하고 직관적이며 개발자 친화적으로 유지합�
 
 ## 🏗️ 아키텍처 및 작업 공간 레이아웃
 
-이 엔진은 엄격한 경계 격리를 유지하는 모듈식 Rust 작업 공간(28개의 크레이트)으로 구성되어 있습니다:
+이 엔진은 엄격한 경계 격리를 유지하는 모듈식 Rust 작업 공간(30개의 크레이트)으로 구성되어 있습니다:
 
 ```text
 crates/
@@ -178,9 +178,8 @@ crates/
   fish-remote-cache/ Ed25519 서명 게이팅을 갖춘 고처리량 원격 캐시 서버
   fish-security/     다중 계층 보안, OSV 취약성 스캐너 및 SLSA 출처(provenance)
   fish-cli/          통합 명령줄 애플리케이션, 데몬 IPC 및 터미널 렌더링
-submodules/          벤더링된 컴패니언 격리 엔진:
-  apple/             밀폐된 샌드박스 및 OS 프로세스 격리 데몬
-  banana/            P2P 스웜 메시, OCI 컨테이너 빌더 및 머클 원장
+crates/fish-apple-shim/  비공개 `apple` sandbox API용 오프라인 폴백
+crates/fish-banana-shim/  비공개 `banana` 배포 API용 오프라인 폴백
 examples/            실행 준비가 된 다국어 모노레포 데모
 ```
 
@@ -217,8 +216,8 @@ cargo test --workspace
 
 ## 📖 문서 및 커뮤니티
 
-- [아키텍처 가이드](ARCHITECTURE.md) — 심층적인 아키텍처 설계 및 컴포넌트.
-- [개발 환경 설정](DEVELOPMENT.md) — 로컬 설정, 디버깅 및 벤치마크.
+- [아키텍처 가이드](docs/architecture.md) — 심층적인 아키텍처 설계 및 컴포넌트.
+- [개발 환경 설정](docs/development.md) — 로컬 설정, 디버깅 및 벤치마크.
 - [기여 가이드라인](CONTRIBUTING.md) — 변경 사항 제안 및 백엔드 추가 방법.
 - [AI 에이전트 워크플로](docs/AI_AGENT_WORKFLOW.md) — AI 코딩 에이전트를 위한 모범 사례.
 

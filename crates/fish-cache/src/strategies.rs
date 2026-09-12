@@ -636,8 +636,8 @@ mod tests {
             let cache_clone = cache.clone();
             let handle = std::thread::spawn(move || {
                 for i in 0..50 {
-                    let key = format!("t{}-k{}", thread_id, i);
-                    let value = format!("v{}", i);
+                    let key = format!("t{thread_id}-k{i}");
+                    let value = format!("v{i}");
                     cache_clone.put(key.clone(), value, 100);
                     let _ = cache_clone.get(&key);
                 }

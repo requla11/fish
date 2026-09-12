@@ -150,16 +150,16 @@ impl std::fmt::Display for PluginError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             PluginError::Execution { command, message } => {
-                write!(f, "Plugin execution failed for '{}': {}", command, message)
+                write!(f, "Plugin execution failed for '{command}': {message}")
             }
             PluginError::Unsupported(msg) => {
-                write!(f, "Unsupported plugin feature: {}", msg)
+                write!(f, "Unsupported plugin feature: {msg}")
             }
             PluginError::InvalidConfig(msg) => {
-                write!(f, "Invalid plugin configuration: {}", msg)
+                write!(f, "Invalid plugin configuration: {msg}")
             }
             PluginError::DependencyMissing(dep) => {
-                write!(f, "Missing plugin dependency: {}", dep)
+                write!(f, "Missing plugin dependency: {dep}")
             }
         }
     }
@@ -187,12 +187,12 @@ impl PluginManager {
         }
 
         let entries = std::fs::read_dir(&self.plugin_dir).map_err(|e| {
-            PluginError::InvalidConfig(format!("Cannot read plugin directory: {}", e))
+            PluginError::InvalidConfig(format!("Cannot read plugin directory: {e}"))
         })?;
 
         for entry in entries {
             let entry = entry.map_err(|e| {
-                PluginError::InvalidConfig(format!("Cannot read plugin entry: {}", e))
+                PluginError::InvalidConfig(format!("Cannot read plugin entry: {e}"))
             })?;
             let path = entry.path();
 
@@ -209,11 +209,10 @@ impl PluginManager {
     fn load_plugin_from_dir(&self, dir: &Path) -> Result<ScriptPlugin, PluginError> {
         let config_path = dir.join("plugin.json");
         let config_content = std::fs::read_to_string(&config_path)
-            .map_err(|e| PluginError::InvalidConfig(format!("Cannot read plugin config: {}", e)))?;
+            .map_err(|e| PluginError::InvalidConfig(format!("Cannot read plugin config: {e}")))?;
 
-        let plugin: ScriptPlugin = serde_json::from_str(&config_content).map_err(|e| {
-            PluginError::InvalidConfig(format!("Cannot parse plugin config: {}", e))
-        })?;
+        let plugin: ScriptPlugin = serde_json::from_str(&config_content)
+            .map_err(|e| PluginError::InvalidConfig(format!("Cannot parse plugin config: {e}")))?;
 
         for dep in &plugin.dependencies {
             if !self.check_dependency(dep) {
@@ -244,7 +243,7 @@ impl PluginManager {
     ) -> Result<PluginOutput, PluginError> {
         let plugin = self
             .get_plugin(name)
-            .ok_or_else(|| PluginError::InvalidConfig(format!("Plugin '{}' not found", name)))?;
+            .ok_or_else(|| PluginError::InvalidConfig(format!("Plugin '{name}' not found")))?;
 
         plugin.execute(command, args)
     }

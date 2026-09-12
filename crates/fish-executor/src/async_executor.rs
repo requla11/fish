@@ -114,8 +114,12 @@ impl AsyncProcessExecutor {
 
         let mut child = command.spawn()?;
 
-        let stdout = child.stdout.take().expect("piped stdout");
-        let stderr = child.stderr.take().expect("piped stderr");
+        let Some(stdout) = child.stdout.take() else {
+            return Err(std::io::Error::other("failed to capture piped stdout"));
+        };
+        let Some(stderr) = child.stderr.take() else {
+            return Err(std::io::Error::other("failed to capture piped stderr"));
+        };
 
         let (stdout_result, stderr_result) = tokio::join!(
             async {

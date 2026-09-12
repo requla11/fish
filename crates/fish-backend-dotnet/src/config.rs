@@ -63,7 +63,7 @@ impl DotnetProjectConfig {
         };
 
         let content = std::fs::read_to_string(&csproj_path)
-            .map_err(|e| format!("Failed to read .csproj file: {}", e))?;
+            .map_err(|e| format!("Failed to read .csproj file: {e}"))?;
 
         let project_name = csproj_path
             .file_stem()
@@ -123,7 +123,7 @@ impl DotnetProjectConfig {
 
     fn csproj_from(csproj_path: std::path::PathBuf) -> Result<Self, String> {
         let content = std::fs::read_to_string(&csproj_path)
-            .map_err(|e| format!("Failed to read .csproj file: {}", e))?;
+            .map_err(|e| format!("Failed to read .csproj file: {e}"))?;
 
         let project_name = csproj_path
             .file_stem()

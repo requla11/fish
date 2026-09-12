@@ -61,7 +61,7 @@ impl CompilerDaemonPool {
     }
 
     pub fn active_worker_count(&self) -> usize {
-        self.workers.lock().unwrap().len()
+        self.workers.lock().unwrap_or_else(|e| e.into_inner()).len()
     }
 
     pub fn dispatch_fast_compile(
@@ -78,7 +78,7 @@ impl CompilerDaemonPool {
     }
 
     pub fn respawn_dead_workers(&self) -> usize {
-        let mut workers = self.workers.lock().unwrap();
+        let mut workers = self.workers.lock().unwrap_or_else(|e| e.into_inner());
         let mut respawned = 0;
         for w in workers.iter_mut() {
             if w.state == WorkerState::Evicted {

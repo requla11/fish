@@ -117,7 +117,10 @@ impl FishDaemon {
         let mesh_port = self.mesh_port;
         let running_mesh = Arc::clone(&self.running);
         std::thread::spawn(move || {
-            let addr = format!("0.0.0.0:{}", mesh_port).parse().unwrap();
+            let Ok(addr): Result<std::net::SocketAddr, _> = format!("0.0.0.0:{mesh_port}").parse()
+            else {
+                return;
+            };
             let _mesh_cache = fish_remote_cache::BananaMeshCache::new("fish-daemon-seeder", addr);
             let mut _federation = fish_remote_cache::GlobalMeshFederation::new(_mesh_cache);
             // In a real scenario, this would scan local caches and publish them with attestations

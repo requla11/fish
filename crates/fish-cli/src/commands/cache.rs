@@ -127,7 +127,13 @@ pub fn run_cache(args: CacheArgs) -> ExitCode {
 }
 
 pub fn run_cas(cache: &LocalCache, args: CasArgs) -> ExitCode {
-    let rt = tokio::runtime::Runtime::new().unwrap();
+    let rt = match tokio::runtime::Runtime::new() {
+        Ok(rt) => rt,
+        Err(e) => {
+            eprintln!("error: failed to create async runtime: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
 
     match args.command {
         CasCommand::Stats => {
@@ -154,12 +160,12 @@ pub fn run_cas(cache: &LocalCache, args: CasArgs) -> ExitCode {
                         ExitCode::SUCCESS
                     }
                     Err(e) => {
-                        eprintln!("error: failed to get CAS stats: {}", e);
+                        eprintln!("error: failed to get CAS stats: {e}");
                         ExitCode::FAILURE
                     }
                 },
                 Err(e) => {
-                    eprintln!("error: failed to initialize CAS storage: {}", e);
+                    eprintln!("error: failed to initialize CAS storage: {e}");
                     ExitCode::FAILURE
                 }
             }
@@ -201,18 +207,18 @@ pub fn run_cas(cache: &LocalCache, args: CasArgs) -> ExitCode {
                                 ExitCode::SUCCESS
                             }
                             Err(e) => {
-                                eprintln!("error: failed to store artifact: {}", e);
+                                eprintln!("error: failed to store artifact: {e}");
                                 ExitCode::FAILURE
                             }
                         },
                         Err(e) => {
-                            eprintln!("error: failed to initialize CAS storage: {}", e);
+                            eprintln!("error: failed to initialize CAS storage: {e}");
                             ExitCode::FAILURE
                         }
                     }
                 }
                 Err(e) => {
-                    eprintln!("error: failed to read artifact file: {}", e);
+                    eprintln!("error: failed to read artifact file: {e}");
                     ExitCode::FAILURE
                 }
             }
@@ -233,17 +239,17 @@ pub fn run_cas(cache: &LocalCache, args: CasArgs) -> ExitCode {
                             ExitCode::SUCCESS
                         }
                         Err(e) => {
-                            eprintln!("error: failed to write artifact: {}", e);
+                            eprintln!("error: failed to write artifact: {e}");
                             ExitCode::FAILURE
                         }
                     },
                     Err(e) => {
-                        eprintln!("error: failed to retrieve artifact: {}", e);
+                        eprintln!("error: failed to retrieve artifact: {e}");
                         ExitCode::FAILURE
                     }
                 },
                 Err(e) => {
-                    eprintln!("error: failed to initialize CAS storage: {}", e);
+                    eprintln!("error: failed to initialize CAS storage: {e}");
                     ExitCode::FAILURE
                 }
             }
@@ -256,17 +262,17 @@ pub fn run_cas(cache: &LocalCache, args: CasArgs) -> ExitCode {
                     Ok(hashes) => {
                         println!("CAS Artifacts ({} total):", hashes.len());
                         for hash in hashes {
-                            println!("  {}", hash);
+                            println!("  {hash}");
                         }
                         ExitCode::SUCCESS
                     }
                     Err(e) => {
-                        eprintln!("error: failed to list artifacts: {}", e);
+                        eprintln!("error: failed to list artifacts: {e}");
                         ExitCode::FAILURE
                     }
                 },
                 Err(e) => {
-                    eprintln!("error: failed to initialize CAS storage: {}", e);
+                    eprintln!("error: failed to initialize CAS storage: {e}");
                     ExitCode::FAILURE
                 }
             }
@@ -282,12 +288,12 @@ pub fn run_cas(cache: &LocalCache, args: CasArgs) -> ExitCode {
                         ExitCode::SUCCESS
                     }
                     Err(e) => {
-                        eprintln!("error: failed to delete artifact: {}", e);
+                        eprintln!("error: failed to delete artifact: {e}");
                         ExitCode::FAILURE
                     }
                 },
                 Err(e) => {
-                    eprintln!("error: failed to initialize CAS storage: {}", e);
+                    eprintln!("error: failed to initialize CAS storage: {e}");
                     ExitCode::FAILURE
                 }
             }
@@ -333,13 +339,13 @@ pub fn run_cas(cache: &LocalCache, args: CasArgs) -> ExitCode {
                             ExitCode::SUCCESS
                         }
                         Err(e) => {
-                            eprintln!("error: failed to cleanup CAS: {}", e);
+                            eprintln!("error: failed to cleanup CAS: {e}");
                             ExitCode::FAILURE
                         }
                     }
                 }
                 Err(e) => {
-                    eprintln!("error: failed to initialize CAS storage: {}", e);
+                    eprintln!("error: failed to initialize CAS storage: {e}");
                     ExitCode::FAILURE
                 }
             }

@@ -17,7 +17,7 @@ pub fn run_worker(args: WorkerArgs) -> ExitCode {
                     resp.health.active_jobs, resp.health.max_concurrency
                 );
                 println!("  Uptime:            {}s", resp.health.uptime_secs);
-                println!("  Roundtrip Latency: {:?}", latency);
+                println!("  Roundtrip Latency: {latency:?}");
                 return ExitCode::SUCCESS;
             }
             Err(e) => {
